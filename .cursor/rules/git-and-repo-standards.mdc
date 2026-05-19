@@ -7,6 +7,12 @@ alwaysApply: true
 
 Apply on **every** Hollow Crown project and when the user starts or reorganizes a GitHub repo.
 
+## GitHub push (mandatory)
+
+- **Never run `git push`** (or `gh` commands that upload to GitHub) unless the user explicitly says **push**, **commit and push**, or similar in that message.
+- Committing locally is allowed when the user asks for work to be saved or when finishing a requested task; pushing is not.
+- If GitHub setup is needed, document commands or add a remote only when asked — do not push.
+
 ## Commits
 
 - Use **Conventional Commits**: `feat`, `fix`, `docs`, `refactor`, `build`, `chore`, `remove`.

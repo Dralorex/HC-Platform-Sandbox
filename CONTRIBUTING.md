@@ -39,6 +39,12 @@ remove(hub): deprecated lobby join command alias
 4. **Additions** — note new modules, commands, permissions, config keys.
 5. **Removals** — call out breaking changes explicitly (`BREAKING:` in footer if needed).
 
+## GitHub push
+
+**Manual only.** Do not push to GitHub unless you explicitly request it. See [docs/GITHUB.md](docs/GITHUB.md).
+
+Agents must not run `git push` without your say-so (see `.cursor/rules/git-and-repo-standards.mdc`).
+
 ## Branches
 
 - `main` — stable integration branch.

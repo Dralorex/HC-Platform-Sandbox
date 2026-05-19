@@ -8,6 +8,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Minigame copy template under `minigames/_template/` (not a Maven module).
+- [docs/GITHUB.md](docs/GITHUB.md) for manual push workflow.
+- Cursor rule: never `git push` unless the user explicitly asks.
+
+### Added (earlier)
+
 - Monorepo combining API, Foundation, Hub, and Iron Legacy under `HC-Platform`.
 - Maven parent reactor (`hollowcrown-platform` 1.21.4-SNAPSHOT).
 - `CONTRIBUTING.md`, `docs/REPO_LAYOUT.md`, `docs/PACKAGING.md`.

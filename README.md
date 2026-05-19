@@ -40,12 +40,9 @@ See [minigames/README.md](minigames/README.md).
 
 ## GitHub
 
-```bash
-git remote add origin https://github.com/Dralorex/HC-Platform.git
-git push -u origin main
-```
+**Push is manual** — the agent will not upload unless you say so. See [docs/GITHUB.md](docs/GITHUB.md).
 
-Legacy per-plugin repos (`HC-API`, `HC-Hub`, etc.) are archived; history was merged into this monorepo via `scripts/import-history.ps1`.
+Legacy per-plugin repos are archived; history was merged via `scripts/import-history.ps1`.
 
 ## Related plugins
 
