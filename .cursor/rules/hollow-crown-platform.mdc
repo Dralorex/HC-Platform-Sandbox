@@ -24,3 +24,17 @@ alwaysApply: false
 - Minigames register `MinigameMechanic` on `GamePlatform` via `MinigameBootstrap`.
 - Hub owns `templates.yml`, lobby worlds (`*-L#`), `MatchQueueService`, `PreMatchLimboService`.
 - Do not add `depend` on minigames in Hub; integration is Bukkit services + mechanics.
+
+## New minigame (when the user asks)
+
+When the user wants a **new Hub minigame plugin**:
+
+1. Copy `minigames/_template/` → `minigames/<game-id>/` (do not build from `_template` in place).
+2. Find-replace placeholders: `YOUR_GAME_ID`, `YourGame`, `yourgame`, `Your Game`, packages, `artifactId`, plugin name.
+3. Add `<module>minigames/<game-id></module>` to the root `pom.xml`.
+4. Update `CHANGELOG.md` under `[Unreleased]`.
+5. Commit locally with `feat(minigames): scaffold <game-id>`.
+6. Implement game logic in the new module; use `iron-legacy/` as the reference.
+7. **Never `git push`** unless the user explicitly asks to push in that message.
+
+If `game-id` or display name is missing, ask once before copying.
