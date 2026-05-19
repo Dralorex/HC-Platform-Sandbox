@@ -1,0 +1,9 @@
+{
+  "folders": [
+    { "path": ".", "name": "Hollow Crown Platform" }
+  ],
+  "settings": {
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.compile.nullAnalysis.mode": "automatic"
+  }
+}
