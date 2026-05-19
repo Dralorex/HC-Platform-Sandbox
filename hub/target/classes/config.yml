@@ -1,0 +1,33 @@
+# HollowCrownHub — optional MySQL hot store (parties, lobby instances, match queues).
+# When storage.type is YAML (default), all hot data uses plugin folder YAML only.
+#
+# If storage.type=MYSQL and JDBC fails at startup, the plugin logs SEVERE and falls back to YAML-only.
+storage:
+  type: YAML
+  # type: MYSQL
+  mysql:
+    host: localhost
+    port: 3306
+    database: hollowcrown_hub
+    username: hub
+    password: ""
+    poolSize: 4
+    connectionTimeoutMs: 10000
+    # Appended to jdbc:mysql://host:port/database?
+    jdbcUrlParams: "useUnicode=true&characterEncoding=utf8&serverTimezone=UTC"
+
+# Hub parties (/hch party …); persisted in plugins/HollowCrownHub/parties.yml
+# When MySQL is active, parties + pending invites are also mirrored to hc_party* tables.
+party:
+  inviteTtlSeconds: 300
+  allOfflineDisbandSeconds: 180
+  leaderAbandonedPromoteSeconds: 180
+
+# Limbo layout wand writes limbo.zone + limbo spawn under this plugin's data folder:
+#   plugins/<ironLegacy.pluginName>/worlds.yml
+ironLegacy:
+  pluginName: HCIronLegacy
+
+# Set in-game with /hch sethub (writes world-uuid + coords).
+hub:
+  spawn: {}
