@@ -2,65 +2,51 @@
 
 Monorepo for the **Hollow Crown Hub stack**: shared API, Foundation bootstrap, Hub platform, and minigames that register on `GamePlatform`.
 
-Paper **1.21.4**, Java **21**.
+- **Paper** 1.21.4 · **Java** 21
+- **Git**: conventional commits — see [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Layout**: [docs/REPO_LAYOUT.md](docs/REPO_LAYOUT.md)
+- **Packaging**: [docs/PACKAGING.md](docs/PACKAGING.md) (three plugin JARs, not one)
 
 ## Layout
 
 ```
 HC-Platform/
-├── pom.xml                 # Parent reactor (build everything)
-├── api/                    # hollowcrown-api — shared contracts (not a server plugin)
-├── foundation/             # HC-Foundation — shades API onto the classpath
-├── hub/                    # HollowCrownHub — lobbies, parties, queues, limbo
+├── api/                    # hollowcrown-api (library, not a plugin)
+├── foundation/             # HC-Foundation
+├── hub/                    # HollowCrownHub
 └── minigames/
-    ├── iron-legacy/        # HCIronLegacy — first minigame
+    ├── iron-legacy/        # HCIronLegacy
     └── (add more here)
 ```
 
 ## Build
 
-From the repo root:
-
 ```bash
 mvn clean package -DskipTests
 ```
 
-Output JARs (copy to your server `plugins/` folder):
+| Module | Deploy to `plugins/`? | JAR |
+|--------|-------------------------|-----|
+| `foundation` | Yes (first) | `HC-Foundation-*.jar` |
+| `hub` | Yes | `HollowCrownHub-*.jar` |
+| `minigames/iron-legacy` | Yes | `HCIronLegacy-*.jar` |
+| `api` | No | (shaded into Foundation) |
 
-| Module | JAR |
-|--------|-----|
-| `foundation` | `HC-Foundation-*.jar` |
-| `hub` | `HollowCrownHub-*.jar` |
-| `minigames/iron-legacy` | `HCIronLegacy-*.jar` |
+Load order: **HC-Foundation** → **HollowCrownHub** → **HCIronLegacy**.
 
-Load order on the server: **HC-Foundation** → **HollowCrownHub** → **HCIronLegacy**.
+## Adding a minigame
 
-The `api` module is a library only; it is shaded into Foundation and used at compile time by Hub and minigames.
-
-## Adding a new minigame
-
-1. Copy `minigames/iron-legacy` as a template or create `minigames/<your-game>/` with:
-   - `pom.xml` (parent `hollowcrown-platform`, depend on `hollowcrown-api` with `provided` scope)
-   - `src/main/resources/plugin.yml` with `depend: [HC-Foundation, HollowCrownHub]`
-2. Register `MinigameMechanic` on enable via `MinigameBootstrap` (see Iron Legacy).
-3. Add a row in Hub `templates.yml` with `mechanicId` matching your `MinigamePluginKey`.
-4. Add `<module>minigames/your-game</module>` to the root `pom.xml` `<modules>` list.
-
-See `minigames/README.md` for a short checklist.
+See [minigames/README.md](minigames/README.md).
 
 ## GitHub
 
-This repo replaces separate clones of HC-API, HC-Foundation, HC-Hub, and HC-Iron-Legacy for platform development. Standalone plugin repos can stay for releases or be archived once you migrate.
-
 ```bash
-git init
-git add .
-git commit -m "Initial Hollow Crown Platform monorepo"
-gh repo create HC-Platform --private --source=. --remote=origin --push
+git remote add origin https://github.com/Dralorex/HC-Platform.git
+git push -u origin main
 ```
 
-(Adjust repo name and visibility as you prefer.)
+Legacy per-plugin repos (`HC-API`, `HC-Hub`, etc.) are archived; history was merged into this monorepo via `scripts/import-history.ps1`.
 
 ## Related plugins
 
-Gameplay plugins that do **not** require the Hub stack (Revival, Local Chat, Environmental Hazards, etc.) remain in their own repositories under `0. HC-Plugins`.
+Standalone gameplay plugins (Revival, Local Chat, Environmental Hazards, etc.) stay in separate repositories unless they join the Hub stack.
