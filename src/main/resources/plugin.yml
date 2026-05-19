@@ -1,0 +1,34 @@
+name: HollowCrownHub
+version: '${project.version}'
+main: com.hollowcrown.hub.HollowCrownHubPlugin
+api-version: '1.21'
+load: POSTWORLD
+depend: [HC-Foundation]
+authors: [HollowCrownStudio]
+description: Hollow Crown Hub — world templates, lobby instances, platform services.
+commands:
+  hch:
+    description: Hollow Crown Hub commands
+    usage: /hch help
+    aliases: [hollowcrownhub, hchub]
+  hub:
+    description: Teleport to Hollow Crown hub spawn
+    usage: /hub
+    aliases: [lobby, spawnhub]
+permissions:
+  hollowcrownhub.use:
+    default: true
+  hollowcrownhub.join:
+    default: true
+    description: Open the join GUI and teleport into Hub-managed lobby instances
+  hollowcrownhub.party:
+    default: true
+    description: Use Hub party commands and invite papers
+  hollowcrownhub.queue:
+    default: true
+    description: Join or leave Hub match queues
+  hollowcrownhub.queue.bypass:
+    default: op
+    description: Bypass template solo-only and max-unit-size queue gates
+  hollowcrownhub.admin:
+    default: op
