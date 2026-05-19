@@ -1,0 +1,915 @@
+package com.hollowcrown.hungergames.managers;
+
+import com.hollowcrown.hungergames.HungerGamesPlugin;
+import com.hollowcrown.hungergames.integration.HubIntegrationRouting;
+import com.hollowcrown.hungergames.util.TeamColorRgb;
+import org.bukkit.*;
+import org.bukkit.ChatColor;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scoreboard.*;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+import org.bukkit.OfflinePlayer; // needed
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.title.Title;
+import java.time.Duration;
+
+public class GameManager implements Listener {
+    public enum State { LOBBY, FREEZE, RUNNING, ENDED }
+
+    private final HungerGamesPlugin plugin;
+    private final TeamManager teamManager;
+    private final SpawnManager spawnManager;
+    private State state = State.LOBBY;
+    private final Set<UUID> participants = new HashSet<>();
+    private final Set<UUID> countedParticipants = new HashSet<>();
+    private final Set<UUID> bypassParticipants = new HashSet<>();
+    private final Set<UUID> eliminated = new HashSet<>();
+    private final Map<UUID, Long> punished = new HashMap<>();
+    private final Map<UUID, Location> assignedPads = new HashMap<>();
+    private final Set<UUID> countedJoinIntent = new HashSet<>();
+    private final Set<UUID> bypassJoinIntent = new HashSet<>();
+    private Set<UUID> forcedParticipants = null;
+    private final Scoreboard scoreboard;
+    private String lastError = null;
+
+    // freeze / leash control
+    private boolean hardFreezeActive = false;           // true during the 30s countdown
+    private long softLeashEndMs = 0L;                   // 4s leash window after TP
+    private World currentWorld = null;                  // world for border + win handling
+    private String activeInstanceWorldName = null;      // runtime cloned instance world, if any
+    private String activeMatchTemplateKey = null;
+    private WorldGameSettings activeMatchSettings = null;
+    /** Eliminated players held in place before hub teleport so death cannon audio can play. */
+    private final Set<UUID> legacyDeathHold = new HashSet<>();
+
+    public GameManager(HungerGamesPlugin plugin, TeamManager teams, SpawnManager spawns) {
+        this.plugin = plugin;
+        this.teamManager = teams;
+        this.spawnManager = spawns;
+        this.scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
+    }
+
+    public State getState() { return state; }
+    public String getLastError() { return lastError; }
+
+    public String getActiveMatchTemplateKey() {
+        return activeMatchTemplateKey;
+    }
+
+    /** Match arena world for border / win logic; may remain set briefly after {@link #stopGame}. */
+    public World getCurrentWorld() {
+        return currentWorld;
+    }
+
+    /** Effective settings for the running match; null when lobby/ended. */
+    public WorldGameSettings getActiveMatchSettings() {
+        return activeMatchSettings;
+    }
+
+    public boolean isMatchParticipant(UUID id) {
+        return participants.contains(id);
+    }
+    public void markJoinIntentCounted(Player p) {
+        UUID id = p.getUniqueId();
+        countedJoinIntent.add(id);
+        bypassJoinIntent.remove(id);
+    }
+    public void markJoinIntentBypass(Player p) {
+        UUID id = p.getUniqueId();
+        bypassJoinIntent.add(id);
+        countedJoinIntent.remove(id);
+    }
+    public void clearJoinIntent(Player p) {
+        UUID id = p.getUniqueId();
+        bypassJoinIntent.remove(id);
+        countedJoinIntent.remove(id);
+    }
+
+    /** Starts the game with the new staged flow. */
+    public boolean startGame(World world) {
+        return startGame(world, null, false, false);
+    }
+
+    public boolean startGame(World world, Set<UUID> explicitParticipants) {
+        return startGame(world, explicitParticipants, false, false);
+    }
+
+    public boolean startGameFromTemplate(String templateKey, Set<UUID> explicitParticipants) {
+        return startGameFromTemplate(templateKey, explicitParticipants, false);
+    }
+
+    public boolean startGameFromTemplate(String templateKey, Set<UUID> explicitParticipants, boolean immediateTeleportFromLimbo) {
+        if (state != State.LOBBY && state != State.ENDED) {
+            lastError = "Game already running or freezing.";
+            plugin.getLogger().warning(lastError);
+            return false;
+        }
+        var instance = plugin.templates().createMatchInstanceFromTemplate(templateKey);
+        if (instance == null) {
+            lastError = "Failed to create runtime instance from template: " + templateKey;
+            plugin.getLogger().warning(lastError);
+            return false;
+        }
+        World iw = Bukkit.getWorld(instance.worldName());
+        if (iw == null) {
+            lastError = "Instance world failed to load: " + instance.worldName();
+            plugin.getLogger().warning(lastError);
+            return false;
+        }
+        activeInstanceWorldName = iw.getName();
+        return startGame(iw, explicitParticipants, true, immediateTeleportFromLimbo);
+    }
+
+    /** Starts a match on a pre-created runtime instance world. */
+    public boolean startGameOnPreparedInstance(World instanceWorld, Set<UUID> explicitParticipants, boolean immediateTeleportFromLimbo) {
+        if (instanceWorld == null) {
+            lastError = "Prepared instance world is null.";
+            return false;
+        }
+        activeInstanceWorldName = instanceWorld.getName();
+        return startGame(instanceWorld, explicitParticipants, true, immediateTeleportFromLimbo);
+    }
+
+    private boolean startGame(World world, Set<UUID> explicitParticipants, boolean skipTemplateClone, boolean immediateTeleportFromLimbo) {
+        if (state != State.LOBBY && state != State.ENDED) {
+            lastError = "Game already running or freezing.";
+            plugin.getLogger().warning(lastError);
+            return false;
+        }
+        if (spawnManager.getSpawnPads().isEmpty()) {
+            lastError = "No spawn pads set!";
+            plugin.getLogger().warning(lastError);
+            return false;
+        }
+
+        if (!skipTemplateClone) {
+            // If a template world was selected, run the match on a cloned instance.
+            var templateInfo = plugin.templates().getTemplateByWorldName(world.getName());
+            if (templateInfo != null) {
+                var instance = plugin.templates().createMatchInstanceFromTemplate(templateInfo.key());
+                if (instance == null) {
+                    lastError = "Failed to create runtime instance from template: " + templateInfo.worldName();
+                    plugin.getLogger().warning(lastError);
+                    return false;
+                }
+                World iw = Bukkit.getWorld(instance.worldName());
+                if (iw == null) {
+                    lastError = "Instance world failed to load: " + instance.worldName();
+                    plugin.getLogger().warning(lastError);
+                    return false;
+                }
+                world = iw;
+                activeInstanceWorldName = iw.getName();
+            } else {
+                activeInstanceWorldName = null;
+            }
+        }
+
+        participants.clear();
+        countedParticipants.clear();
+        bypassParticipants.clear();
+        eliminated.clear();
+        assignedPads.clear();
+        currentWorld = world;
+        activeMatchTemplateKey = plugin.templates().resolveTemplateKeyForWorld(world.getName()).orElse(null);
+        activeMatchSettings = plugin.worldSettings().resolve(activeMatchTemplateKey);
+        forcedParticipants = explicitParticipants == null ? null : new HashSet<>(explicitParticipants);
+
+        int countedCap = Math.max(1, plugin.files().gameflow().getInt("caps.countedPlayers", 100));
+        int countedAdded = 0;
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (p.getGameMode() == GameMode.SPECTATOR) continue;
+            UUID id = p.getUniqueId();
+            if (forcedParticipants != null && !forcedParticipants.contains(id)) continue;
+            boolean op = p.isOp();
+            boolean bypassIntent = bypassJoinIntent.contains(id);
+            boolean forcedCounted = countedJoinIntent.contains(id);
+
+            if (bypassIntent) {
+                participants.add(id);
+                bypassParticipants.add(id);
+                continue;
+            }
+
+            // OPs do not count/join unless they entered the normal counted flow.
+            if (op && !forcedCounted && !activeMatchSettings.includeOpsInGame()) continue;
+
+            if (countedAdded >= countedCap) continue;
+            participants.add(id);
+            countedParticipants.add(id);
+            countedAdded++;
+        }
+
+        List<Location> padsRaw = new ArrayList<>(spawnManager.getSpawnPads());
+        List<Location> pads = new ArrayList<>();
+        for (Location pad : padsRaw) {
+            if (pad == null || pad.getWorld() == null) continue;
+            Location r = pad.clone();
+            if (!r.getWorld().equals(world)) {
+                r.setWorld(world);
+            }
+            pads.add(r);
+        }
+        Collections.shuffle(pads);
+
+        List<Player> plist = participants.stream()
+                .map(Bukkit::getPlayer)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        assignAutoTeamsIfNeeded(plist);
+
+        if (pads.size() < plist.size()) {
+            activeMatchTemplateKey = null;
+            activeMatchSettings = null;
+            lastError = "Not enough spawn pads: need " + plist.size() + ", have " + pads.size()
+                    + ". Add " + (plist.size() - pads.size()) + " more.";
+            plugin.getLogger().warning(lastError);
+            return false;
+        }
+
+        try {
+            HungerGamesPlugin.get().replenish().setMatchContext(activeMatchTemplateKey, world);
+        } catch (Throwable ignored) {}
+
+        // Prepare world border (centered on world spawn, set to max size)
+        WorldBorder wb = world.getWorldBorder();
+        double start = activeMatchSettings.borderStartSize();
+        double end = activeMatchSettings.borderEndSize();
+        long shrinkDelay = activeMatchSettings.borderShrinkDelaySeconds();
+        long shrinkDuration = activeMatchSettings.borderShrinkDurationSeconds();
+        wb.setCenter(world.getSpawnLocation());
+        wb.setSize(start);
+
+        // Run any hooks (e.g., envoy). These can be delayed via "delay:<ticks>:/command"
+        runHooks(plugin.getConfig().getStringList("hooks.onGameStart"));
+        final World launchWorld = world;
+        final WorldGameSettings ws = activeMatchSettings;
+
+        Runnable doTeleportPhase = () -> {
+            new BukkitRunnable() {
+            @Override public void run() {
+                // assign pads 1:1 and TP
+                for (int i = 0; i < plist.size(); i++) {
+                    Player p = plist.get(i);
+                    Location pad = pads.get(i).clone();
+                    assignedPads.put(p.getUniqueId(), pad);
+                    // safety
+                    p.setFallDistance(0f);
+                    p.setNoDamageTicks(100);
+                    p.teleport(pad);
+                    // Match launch transition policy for normal counted players.
+                    if (countedParticipants.contains(p.getUniqueId())) {
+                        p.getInventory().clear();
+                        p.getInventory().setArmorContents(null);
+                        p.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
+                        boolean keepAdventure = ws.keepAdventureOnStart();
+                        p.setGameMode(keepAdventure ? GameMode.ADVENTURE : GameMode.SURVIVAL);
+                    }
+                    p.setFoodLevel(20);
+                    p.setSaturation(20f);
+                    p.setHealth(Math.min(20.0, p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue()));
+                }
+
+                try {
+                    launchWorld.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, ws.doDaylightCycle());
+                    launchWorld.setGameRule(GameRule.DO_WEATHER_CYCLE, ws.doWeatherCycle());
+                } catch (Throwable ignored) {}
+                launchWorld.setTime(6000L);
+                launchWorld.setStorm(false);
+                launchWorld.setThundering(false);
+
+                if (ws.freeMovementAfterTeleport()) {
+                    state = State.RUNNING;
+                    hardFreezeActive = false;
+                    softLeashEndMs = 0L;
+                    try { plugin.leaderboardSidebar().refreshAll(); } catch (Throwable ignored) {}
+                    try { HungerGamesPlugin.get().replenish().startSchedule(); } catch (Throwable ignored) {}
+                    scheduleBorderShrink(plist, wb, end, shrinkDelay, shrinkDuration);
+                } else {
+                    state = State.FREEZE;
+                    hardFreezeActive = false;
+                    softLeashEndMs = System.currentTimeMillis() + 5000L;
+                    try { plugin.leaderboardSidebar().refreshAll(); } catch (Throwable ignored) {}
+
+                    new BukkitRunnable() {
+                        @Override public void run() {
+                            beginCountdown(plist, wb, end, shrinkDelay, shrinkDuration);
+                            try { HungerGamesPlugin.get().replenish().startSchedule(); } catch (Throwable ignored) {}
+                        }
+                    }.runTaskLater(plugin, 5 * 20L);
+                }
+            }
+            }.runTask(plugin);
+        };
+
+        boolean skipPreTeleportCountdown = immediateTeleportFromLimbo || !ws.movementCountdownEnabled();
+        if (skipPreTeleportCountdown) {
+            doTeleportPhase.run();
+        } else {
+            new BukkitRunnable() {
+                int pre = 5;
+                @Override public void run() {
+                    if (pre <= 0) {
+                        doTeleportPhase.run();
+                        cancel();
+                        return;
+                    }
+                    for (Player p : promptAudience(plist, launchWorld)) {
+                        sendPrompt(
+                                p,
+                                Component.text(Integer.toString(pre), NamedTextColor.RED),
+                                Component.text("DO NOT MOVE", NamedTextColor.DARK_RED),
+                                Component.text("DO NOT MOVE - Teleporting in " + pre, NamedTextColor.RED)
+                        );
+                    }
+                    pre--;
+                }
+            }.runTaskTimer(plugin, 0L, 20L);
+        }
+
+        return true;
+    }
+
+    private void scheduleBorderShrink(List<Player> plist, WorldBorder wb, double end, long shrinkDelay, long shrinkDuration) {
+        new BukkitRunnable() {
+            @Override public void run() {
+                if (state != State.RUNNING) return;
+                wb.setSize(end, shrinkDuration);
+                for (Player p : promptAudience(plist, currentWorld)) {
+                    sendPrompt(
+                            p,
+                            Component.text("World Border is Shrinking!", NamedTextColor.RED),
+                            Component.empty(),
+                            Component.text("[HCIronLegacy] World Border is Shrinking!", NamedTextColor.RED)
+                    );
+                }
+            }
+        }.runTaskLater(plugin, shrinkDelay * 20L);
+    }
+
+    private void beginCountdown(List<Player> plist, WorldBorder wb, double end, long shrinkDelay, long shrinkDuration) {
+        hardFreezeActive = true; // punish moves from now on
+
+        final int base = activeMatchSettings != null
+                ? activeMatchSettings.freezeCountdownSeconds()
+                : plugin.getConfig().getInt("game.countdownSeconds", 30);
+        new BukkitRunnable() {
+            int t = base;
+            @Override public void run() {
+                if (t <= 0) {
+                    // BEGIN!
+                    for (Player p : promptAudience(plist, currentWorld)) {
+                        sendPrompt(
+                                p,
+                                Component.text("BEGIN!", NamedTextColor.GOLD),
+                                Component.empty(),
+                                Component.text("BEGIN!", NamedTextColor.GOLD)
+                        );
+                    }
+
+                    state = State.RUNNING;
+                    hardFreezeActive = false; // freeze over
+                    try { plugin.leaderboardSidebar().refreshAll(); } catch (Throwable ignored) {}
+
+                    scheduleBorderShrink(plist, wb, end, shrinkDelay, shrinkDuration);
+
+                    cancel();
+                    return;
+                }
+
+                NamedTextColor col = (t >= 16) ? NamedTextColor.GREEN : (t >= 6 ? NamedTextColor.YELLOW : NamedTextColor.RED);
+
+                for (Player p : promptAudience(plist, currentWorld)) {
+                    sendPrompt(
+                            p,
+                            Component.text(Integer.toString(t), col),
+                            Component.empty(),
+                            Component.text("Countdown: " + t, col)
+                    );
+                }
+                t--;
+            }
+        }.runTaskTimer(plugin, 0L, 20L);
+    }
+
+    public void stopGame(boolean announce) {
+        if (state == State.LOBBY) {
+            try { plugin.leaderboardSidebar().refreshAll(); } catch (Throwable ignored) {}
+            return;
+        }
+        state = State.ENDED;
+        if (announce) Bukkit.broadcast(Component.text("[HCIronLegacy] Game ended.", NamedTextColor.YELLOW));
+        try {
+            HungerGamesPlugin.get().replenish().stopSchedule();
+            HungerGamesPlugin.get().replenish().clearMatchContext();
+        } catch (Throwable ignored) {}
+        runHooks(plugin.getConfig().getStringList("hooks.onGameEnd"));
+        assignedPads.clear();
+        countedParticipants.clear();
+        bypassParticipants.clear();
+        forcedParticipants = null;
+        hardFreezeActive = false;
+        activeMatchTemplateKey = null;
+        activeMatchSettings = null;
+        try { teamManager.clearAllTeams(); } catch (Throwable ignored) {}
+
+        // Cleanup: remove scoreboard teams we created and reset player display/list names
+        try {
+            for (Team t : new ArrayList<>(scoreboard.getTeams())) {
+                String n = t.getName();
+                if (n != null && n.startsWith("hg_")) {
+                    t.unregister();
+                }
+            }
+            for (UUID id : participants) {
+                Player p = Bukkit.getPlayer(id);
+                if (p != null) {
+                    p.playerListName(null);
+                    p.displayName(null);
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        // Tear down runtime match instance worlds when the match ends.
+        if (activeInstanceWorldName != null) {
+            String instanceToCleanup = activeInstanceWorldName;
+            try {
+                evacuatePlayersFromInstance(instanceToCleanup);
+                boolean ok = plugin.templates().destroyMatchInstanceByWorld(instanceToCleanup);
+                if (!ok) {
+                    plugin.getLogger().warning("Could not fully cleanup instance world immediately: " + instanceToCleanup + ". Scheduling retries.");
+                    scheduleInstanceCleanupRetry(instanceToCleanup, 1);
+                }
+            } catch (Throwable t) {
+                plugin.getLogger().warning("Error cleaning instance world " + instanceToCleanup + ": " + t.getMessage());
+                scheduleInstanceCleanupRetry(instanceToCleanup, 1);
+            } finally {
+                activeInstanceWorldName = null;
+            }
+        }
+        try { plugin.leaderboardSidebar().refreshAll(); } catch (Throwable ignored) {}
+    }
+
+    private void evacuatePlayersFromInstance(String instanceWorldName) {
+        if (instanceWorldName == null || instanceWorldName.isBlank()) return;
+        World instance = Bukkit.getWorld(instanceWorldName);
+        if (instance == null) return;
+        List<Player> players = new ArrayList<>(instance.getPlayers());
+        if (players.isEmpty()) return;
+        String hubServer = plugin.files().gameflow().getString("velocity.hubServerId", "hub-1");
+        World safe = Bukkit.getWorlds().stream()
+                .filter(w -> !w.getName().equalsIgnoreCase(instanceWorldName))
+                .findFirst().orElse(null);
+        for (Player p : players) {
+            if (plugin.serverRole().velocityEnabled()
+                    && !HubIntegrationRouting.hubTargetIsThisServer(plugin)) {
+                if (safe != null) {
+                    p.teleport(safe.getSpawnLocation());
+                }
+                plugin.velocity().connectPlayer(p, hubServer);
+            } else {
+                plugin.lobby().sendToLobbyExact(p, true, true);
+            }
+        }
+    }
+
+    private void scheduleInstanceCleanupRetry(String worldName, int attempt) {
+        if (worldName == null || worldName.isBlank() || attempt > 10) return;
+        new BukkitRunnable() {
+            @Override public void run() {
+                try {
+                    evacuatePlayersFromInstance(worldName);
+                    boolean ok = plugin.templates().destroyMatchInstanceByWorld(worldName);
+                    if (!ok) {
+                        scheduleInstanceCleanupRetry(worldName, attempt + 1);
+                    }
+                } catch (Throwable ignored) {
+                    scheduleInstanceCleanupRetry(worldName, attempt + 1);
+                }
+            }
+        }.runTaskLater(plugin, 40L);
+    }
+
+    public void forceStop() {
+        stopGame(false);
+    }
+
+    // --- Adventure bridge: Bukkit ChatColor -> NamedTextColor ---
+    @SuppressWarnings("deprecation") // Bridge function for team color compatibility
+    private static NamedTextColor toNamed(ChatColor c) {
+        return switch (c) {
+            case BLACK -> NamedTextColor.BLACK;
+            case DARK_BLUE -> NamedTextColor.DARK_BLUE;
+            case DARK_GREEN -> NamedTextColor.DARK_GREEN;
+            case DARK_AQUA -> NamedTextColor.DARK_AQUA;
+            case DARK_RED -> NamedTextColor.DARK_RED;
+            case DARK_PURPLE -> NamedTextColor.DARK_PURPLE;
+            case GOLD -> NamedTextColor.GOLD;
+            case GRAY -> NamedTextColor.GRAY;
+            case DARK_GRAY -> NamedTextColor.DARK_GRAY;
+            case BLUE -> NamedTextColor.BLUE;
+            case GREEN -> NamedTextColor.GREEN;
+            case AQUA -> NamedTextColor.AQUA;
+            case RED -> NamedTextColor.RED;
+            case LIGHT_PURPLE -> NamedTextColor.LIGHT_PURPLE;
+            case YELLOW -> NamedTextColor.YELLOW;
+            case WHITE, RESET -> NamedTextColor.WHITE;
+            default -> NamedTextColor.WHITE;
+        };
+    }
+
+    private static boolean isAutoTeamName(String name) {
+        return name != null && name.trim().matches("(?i)team\\s+\\d+(?:\\s*#\\d+)?");
+    }
+
+    public void applyTeamColors() {
+        for (com.hollowcrown.hungergames.model.Team t : teamManager.getTeams()) {
+            String sbName = ("hg_" + t.getName()).replaceAll("[^A-Za-z0-9_]", "").toLowerCase();
+            Team sbTeam = scoreboard.getTeam(sbName);
+            if (sbTeam == null) sbTeam = scoreboard.registerNewTeam(sbName);
+
+            @SuppressWarnings("deprecation")
+            ChatColor scoreboardChat = t.getDisplayNameRgb() != null
+                    ? TeamColorRgb.nearestChatColor(t.getDisplayNameRgb())
+                    : t.getColor();
+            sbTeam.setColor(scoreboardChat);
+
+            String teamName = t.getName();
+            boolean auto = isAutoTeamName(teamName);
+            String prefixPlain = (auto ? "{" + teamName + "}" : "[" + teamName + "]") + " ";
+
+            sbTeam.prefix(Component.text(prefixPlain, NamedTextColor.WHITE));
+
+            sbTeam.setSuffix("");
+
+            for (UUID id : t.getMembers()) {
+                OfflinePlayer off = Bukkit.getOfflinePlayer(id);
+                if (off.getName() == null) continue;
+
+                if (!sbTeam.hasEntry(off.getName())) {
+                    sbTeam.addEntry(off.getName());
+                }
+
+                Player p = off.getPlayer();
+                if (p != null) {
+                    TextColor nameColor = t.getDisplayNameRgb() != null
+                            ? TextColor.color(0xFF000000 | (0xFFFFFF & t.getDisplayNameRgb()))
+                            : toNamed(t.getColor());
+                    Component prefixComp = Component.text(prefixPlain, NamedTextColor.WHITE);
+                    Component nameComp = Component.text(p.getName(), nameColor);
+                    p.playerListName(prefixComp.append(nameComp));
+                    p.displayName(prefixComp.append(nameComp));
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onMove(PlayerMoveEvent e) {
+        UUID id = e.getPlayer().getUniqueId();
+        if (legacyDeathHold.contains(id)) {
+            if (e.getTo() != null && e.getFrom().toVector().distanceSquared(e.getTo().toVector()) < 0.0001) return;
+            e.setCancelled(true);
+            return;
+        }
+        if (state != State.FREEZE) return;
+        if (!participants.contains(id)) return;
+
+        // ignore micro-movements
+        if (e.getFrom().toVector().distanceSquared(e.getTo().toVector()) < 0.0001) return;
+
+        long now = System.currentTimeMillis();
+
+        // During soft leash (first 5s after TP): snap back to pad, no punishment.
+        if (now < softLeashEndMs) {
+            Location pad = assignedPads.get(id);
+            if (pad != null) {
+                // if they left the pad block, snap them
+                if (e.getTo().getBlockX() != pad.getBlockX() ||
+                    e.getTo().getBlockY() != pad.getBlockY() ||
+                    e.getTo().getBlockZ() != pad.getBlockZ()) {
+                    new BukkitRunnable() { @Override public void run() {
+                        if (e.getPlayer().isOnline()) {
+                            e.getPlayer().teleport(pad);
+                            e.getPlayer().setFallDistance(0f);
+                        }
+                    }}.runTask(plugin);
+                }
+            }
+            return;
+        }
+
+        // Hard freeze (the 30s countdown): default is teleport-back + damage.
+        if (hardFreezeActive) {
+            long last = punished.getOrDefault(id, 0L);
+            boolean launchMode = activeMatchSettings != null
+                    ? activeMatchSettings.launchOnMove()
+                    : plugin.getConfig().getBoolean("game.launchOnMove", false);
+            long cooldownMs = launchMode ? 2000L : 500L;
+            if (now - last < cooldownMs) return;
+            punished.put(id, now);
+            Location pad = assignedPads.get(id);
+            if (pad != null) {
+                new BukkitRunnable() { @Override public void run() {
+                    if (e.getPlayer().isOnline()) {
+                        e.getPlayer().teleport(pad);
+                        e.getPlayer().setFallDistance(0f);
+                    }
+                }}.runTask(plugin);
+            }
+            if (launchMode) {
+                int height = activeMatchSettings != null
+                        ? activeMatchSettings.freezePenaltyHeight()
+                        : plugin.getConfig().getInt("game.freezePenaltyHeight", 100);
+                e.getPlayer().setVelocity(new org.bukkit.util.Vector(0, Math.max(2, height / 20.0), 0));
+                e.getPlayer().sendMessage(Component.text("You should not have moved!", NamedTextColor.RED));
+                new BukkitRunnable() {
+                    @Override public void run() {
+                        if (e.getPlayer().isOnline() && e.getPlayer().getHealth() > 0) {
+                            e.getPlayer().setHealth(0.0);
+                        }
+                    }
+                }.runTaskLater(plugin, 40L);
+            } else {
+                Player mover = e.getPlayer();
+                if (mover.getHealth() > 0) {
+                    mover.setHealth(Math.max(0.0, mover.getHealth() - 1.0));
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onDeath(PlayerDeathEvent e) {
+        boolean suppress = activeMatchSettings != null
+                ? activeMatchSettings.suppressDeathMessages()
+                : plugin.getConfig().getBoolean("game.suppressDeathMessages", true);
+        if (suppress) {
+            e.deathMessage(null);
+        }
+        boolean inGame = participants.contains(e.getEntity().getUniqueId());
+        if (inGame) {
+            Player dead = e.getEntity();
+            final UUID deadId = dead.getUniqueId();
+            final Location deathSpot = dead.getLocation().clone();
+
+            boolean cannon = activeMatchSettings != null
+                    ? activeMatchSettings.playCannonOnDeath()
+                    : plugin.getConfig().getBoolean("game.playCannonOnDeath", true);
+            if (cannon && currentWorld != null) {
+                for (Player listener : currentWorld.getPlayers()) {
+                    if (listener == null || !listener.isOnline()) continue;
+                    listener.playSound(deathSpot, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER, 1.0f, 0.8f);
+                }
+            }
+
+            e.setKeepInventory(false);
+            e.getDrops().clear();
+            removeFromGame(deadId);
+
+            final long respawnAt = 1L;
+            final long hubAt = respawnAt + 100L;
+            new BukkitRunnable() {
+                @Override public void run() {
+                    Player p = Bukkit.getPlayer(deadId);
+                    if (p == null || !p.isOnline()) return;
+                    p.spigot().respawn();
+                    legacyDeathHold.add(deadId);
+                    p.setGameMode(GameMode.SPECTATOR);
+                    p.teleport(deathSpot);
+                    p.setFallDistance(0f);
+                    p.showTitle(Title.title(
+                            Component.text("Your Legacy is Over", NamedTextColor.DARK_RED),
+                            Component.empty(),
+                            Title.Times.times(Duration.ZERO, Duration.ofSeconds(5), Duration.ofMillis(500))
+                    ));
+                }
+            }.runTaskLater(plugin, respawnAt);
+            new BukkitRunnable() {
+                @Override public void run() {
+                    legacyDeathHold.remove(deadId);
+                    Player p = Bukkit.getPlayer(deadId);
+                    if (p != null && p.isOnline()) {
+                        p.setGameMode(GameMode.ADVENTURE);
+                        sendPlayerToHub(p);
+                    }
+                    evaluateWinCondition();
+                }
+            }.runTaskLater(plugin, hubAt);
+        }
+    }
+
+    @EventHandler
+    public void onQuitDuringLegacyHold(PlayerQuitEvent e) {
+        legacyDeathHold.remove(e.getPlayer().getUniqueId());
+    }
+
+    /** One team left? Celebrate, reset border, end game. */
+    private void evaluateWinCondition() {
+        if (state == State.ENDED) return;
+
+        // group alive participants by their team (or solo bucket)
+        Map<String, Integer> aliveGroups = new HashMap<>();
+        for (UUID id : participants) {
+            if (eliminated.contains(id)) continue;
+            Player p = Bukkit.getPlayer(id);
+            if (p == null || p.isDead()) continue;
+
+            var team = teamManager.getTeamOf(id);
+            String key = (team != null) ? "team:" + team.getName().toLowerCase() : "solo:" + id;
+            aliveGroups.merge(key, 1, Integer::sum);
+        }
+
+        if (aliveGroups.size() <= 1 && state != State.LOBBY) {
+            Player winner = null;
+            for (UUID id : participants) {
+                if (eliminated.contains(id)) continue;
+                Player p = Bukkit.getPlayer(id);
+                if (p != null && p.isOnline() && !p.isDead()) {
+                    winner = p;
+                    break;
+                }
+            }
+            if (winner != null) {
+                Player finalWinner = winner;
+                finalWinner.showTitle(Title.title(
+                        Component.text("Congratulations!", NamedTextColor.GOLD),
+                        Component.text("You have won!", NamedTextColor.YELLOW),
+                        Title.Times.times(Duration.ofMillis(200), Duration.ofMillis(1200), Duration.ofMillis(200))
+                ));
+                finalWinner.setInvulnerable(true);
+                new BukkitRunnable() {
+                    @Override public void run() {
+                        if (finalWinner.isOnline()) {
+                            finalWinner.setInvulnerable(false);
+                            sendPlayerToHub(finalWinner);
+                        }
+                        if (currentWorld != null) {
+                            double start = activeMatchSettings != null
+                                    ? activeMatchSettings.borderStartSize()
+                                    : plugin.getConfig().getDouble("worldborder.startSize");
+                            currentWorld.getWorldBorder().setSize(start);
+                        }
+                        stopGame(true);
+                    }
+                }.runTaskLater(plugin, 200L);
+            } else {
+                if (currentWorld != null) {
+                    double start = activeMatchSettings != null
+                            ? activeMatchSettings.borderStartSize()
+                            : plugin.getConfig().getDouble("worldborder.startSize");
+                    currentWorld.getWorldBorder().setSize(start);
+                }
+                stopGame(true);
+            }
+        }
+    }
+
+    private void assignAutoTeamsIfNeeded(List<Player> plist) {
+        if (activeMatchSettings == null || !activeMatchSettings.autoAssignTeams()) return;
+
+        var info = activeMatchTemplateKey != null ? plugin.templates().getTemplateByNameKey(activeMatchTemplateKey) : null;
+        int teamCap = info != null ? Math.max(1, info.teamSizeMax()) : Math.max(1, plugin.getConfig().getInt("game.teamSize", 2));
+
+        Set<UUID> pIds = plist.stream().map(Player::getUniqueId).collect(Collectors.toCollection(HashSet::new));
+        List<UUID> unassigned = new ArrayList<>();
+        for (Player p : plist) {
+            if (teamManager.getTeamOf(p.getUniqueId()) == null) unassigned.add(p.getUniqueId());
+        }
+        if (unassigned.isEmpty()) return;
+        Collections.shuffle(unassigned);
+
+        List<com.hollowcrown.hungergames.model.Team> partial = teamManager.getTeams().stream()
+                .filter(t -> t.getMembers().stream().anyMatch(pIds::contains))
+                .filter(t -> t.getMembers().size() < teamCap)
+                .sorted((a, b) -> Integer.compare(b.getMembers().size(), a.getMembers().size()))
+                .collect(Collectors.toList());
+
+        Iterator<UUID> it = unassigned.iterator();
+        for (com.hollowcrown.hungergames.model.Team t : partial) {
+            while (t.getMembers().size() < teamCap && it.hasNext()) {
+                UUID nid = it.next();
+                try {
+                    teamManager.addMember(t, nid);
+                } catch (IllegalStateException ignored) {
+                    break;
+                }
+            }
+        }
+
+        List<UUID> remaining = new ArrayList<>();
+        while (it.hasNext()) remaining.add(it.next());
+
+        TeamNameDatabaseManager db = plugin.teamNames();
+        while (!remaining.isEmpty()) {
+            UUID owner = remaining.remove(0);
+            String nm = db.takeUnusedNameForNewTeam();
+            if (nm == null) nm = db.generateSequentialTeamName();
+            ChatColor color = db.pickUnusedChatColor();
+            com.hollowcrown.hungergames.model.Team created = teamManager.createTeam(nm, color, owner);
+            while (created.getMembers().size() < teamCap && !remaining.isEmpty()) {
+                UUID nid = remaining.remove(0);
+                try {
+                    teamManager.addMember(created, nid);
+                } catch (IllegalStateException ignored) {
+                    break;
+                }
+            }
+        }
+        applyTeamColors();
+    }
+
+    private void removeFromGame(UUID id) {
+        participants.remove(id);
+        countedParticipants.remove(id);
+        bypassParticipants.remove(id);
+        eliminated.add(id);
+        assignedPads.remove(id);
+        punished.remove(id);
+        teamManager.removeMember(id);
+    }
+
+    private void sendPlayerToHub(Player p) {
+        if (p == null) return;
+        p.getInventory().clear();
+        p.getInventory().setArmorContents(null);
+        p.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
+        plugin.game().clearJoinIntent(p);
+        HubIntegrationRouting.returnToHubOrLobby(plugin, p, true, true);
+    }
+
+    private boolean shouldUseBigTitle(Player p) {
+        if (p == null) return false;
+        if (!p.isOp()) return true;
+        return countedParticipants.contains(p.getUniqueId());
+    }
+
+    private List<Player> promptAudience(List<Player> participantsInRound, World world) {
+        LinkedHashMap<UUID, Player> out = new LinkedHashMap<>();
+        if (participantsInRound != null) {
+            for (Player p : participantsInRound) {
+                if (p != null && p.isOnline()) out.put(p.getUniqueId(), p);
+            }
+        }
+        if (world != null) {
+            for (Player p : world.getPlayers()) {
+                if (p == null || !p.isOnline() || !p.isOp()) continue;
+                if (!participants.contains(p.getUniqueId())) out.putIfAbsent(p.getUniqueId(), p);
+            }
+        }
+        return new ArrayList<>(out.values());
+    }
+
+    private void sendPrompt(Player p, Component title, Component subtitle, Component chatFallback) {
+        if (p == null || !p.isOnline()) return;
+        if (shouldUseBigTitle(p)) {
+            p.showTitle(Title.title(
+                    title == null ? Component.empty() : title,
+                    subtitle == null ? Component.empty() : subtitle,
+                    Title.Times.times(Duration.ZERO, Duration.ofSeconds(1), Duration.ZERO)
+            ));
+        } else if (chatFallback != null) {
+            p.sendMessage(chatFallback);
+        }
+    }
+
+    // supports "delay:<ticks>:/some command" lines in hooks
+    private void runHooks(List<String> cmds) {
+        if (cmds == null) return;
+        for (String raw : cmds) {
+            if (raw == null || raw.isBlank()) continue;
+
+            long delay = 0L;
+            String cmd = raw;
+
+            if (raw.startsWith("delay:")) {
+                int first = raw.indexOf(':', 6); // after "delay:"
+                if (first > 6) {
+                    try {
+                        delay = Long.parseLong(raw.substring(6, first));
+                        cmd = raw.substring(first + 1);
+                    } catch (NumberFormatException ignore) { /* no-op */ }
+                }
+            }
+
+            final String toRun = cmd.startsWith("/") ? cmd.substring(1) : cmd;
+            Bukkit.getScheduler().runTaskLater(plugin,
+                    () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), toRun),
+                    delay);
+        }
+    }
+}

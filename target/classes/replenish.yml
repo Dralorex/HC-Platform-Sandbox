@@ -1,0 +1,111 @@
+# EXAMPLE
+#  T#:
+#    items:
+#      - { material: APPLE, minStack: 3, maxStack: 8 }
+#      - { material: COBBLESTONE, minStack: 8, maxStack: 24 }
+#      - { material: TORCH, minStack: 4, maxStack: 12 }
+
+# Template
+#      - { material: X, minStack: #, maxStack: # }
+
+
+schedule:
+  intervalMinutes: 30
+  repeatsPerTier: 1
+  # First refill after this many seconds once the match replenish schedule starts (with begin-countdown flow).
+  firstRefillDelaySeconds: 20
+
+tiers:
+  T1:
+    numItems:
+      min: 2     # Minimum items that spawn in a chest
+      max: 4     # Maxumum items that spawn in a chest
+    items:       # List of items that can spawn is specified tier
+      - { material: APPLE, minStack: 3, maxStack: 8 }
+      - { material: COBBLESTONE, minStack: 8, maxStack: 16 }
+      - { material: TORCH, minStack: 4, maxStack: 12 }
+      - { material: OAK_PLANKS, minStack: 4, maxStack: 8 }
+      - { material: COBWEB, minStack: 1, maxStack: 2 }
+      - { material: WOODEN_AXE, minStack: 1, maxStack: 1 }
+      - { material: WOODEN_SWORD, minStack: 1, maxStack: 1 }
+      - { material: WOODEN_PICKAXE, minStack: 1, maxStack: 1 }
+      - { material: CHAINMAIL_HELMET, minStack: 1, maxStack: 1 }
+      - { material: CHAIMAIL_CHESTPLATE, minStack: 1, maxStack: 1 }
+      - { material: CHAINMAIL_LEGGINGS, minStack: 1, maxStack: 1 }
+      - { material: CHAINMAIL_BOOTS, minStack: 1, maxStack: 1 }
+      - { material: LEATHER_HELMET, minStack: 1, maxStack: 1 }
+      - { material: LEATHER_CHESTPLATE, minStack: 1, maxStack: 1 }
+      - { material: LEATHER_LEGGINS, minStack: 1, maxStack: 1 }
+      - { material: LEATHER_BOOTS, minStack: 1, maxStack: 1 }
+      - { material: LEATHER_HORSE_ARMOR, minStack: 1, maxStack: 1 }
+  T2:
+    numItems: { min: 3, max: 4 }
+    items:
+      - { material: COBBLESTONE, minStack: 12, maxStack: 24 }
+      - { material: OAK_PLANKS, minStack: 8, maxStack: 16 }
+      - { material: COBWEB, minStack: 2, maxStack: 4 }
+      - { material: STONE_AXE, minStack: 1, maxStack: 1 }
+      - { material: STONE_SWORD, minStack: 1, maxStack: 1 }
+      - { material: STONE_PICKAXE, minStack: 1, maxStack: 1 }
+      - { material: COOKED_BEEF, minStack: 4, maxStack: 12 }
+      - { material: IRON_INGOT, minStack: 2, maxStack: 6 }
+      - { material: ARROW, minStack: 12, maxStack: 32 }
+      - { material: FISHING_ROD, minStack: 1, maxStack: 1 }
+      - { material: CHAINMAIL_HELMET, minStack: 1, maxStack: 1 }
+      - { material: CHAIMAIL_CHESTPLATE, minStack: 1, maxStack: 1 }
+      - { material: CHAINMAIL_LEGGINGS, minStack: 1, maxStack: 1 }
+      - { material: CHAINMAIL_BOOTS, minStack: 1, maxStack: 1 }
+      - { material: IRON_HELMET, minStack: 1, maxStack: 1 }
+      - { material: IRON_CHESTPLATE, minStack: 1, maxStack: 1 }
+      - { material: IRON_LEGGINGS, minStack: 1, maxStack: 1 }
+      - { material: IRON_BOOTS, minStack: 1, maxStack: 1 }
+      - { material: IRON_HORSE_ARMOR, minStack: 1, maxStack: 1 }
+      - { material: SADDLE, minStack: 1, maxStack: 1 }
+  T3:
+    numItems: { min: 3, max: 5 }
+    items:
+      - { material: COBBLESTONE, minStack: 16, maxStack: 32 }
+      - { material: OAK_PLANKS, minStack: 12, maxStack: 24 }
+      - { material: COBWEB, minStack: 4, maxStack: 8 }
+      - { material: STONE_AXE, minStack: 1, maxStack: 1 }
+      - { material: STONE_SWORD, minStack: 1, maxStack: 1 }
+      - { material: STONE_PICKAXE, minStack: 1, maxStack: 1 }
+      - { material: IRON_AXE, minStack: 1, maxStack: 1 }
+      - { material: IRON_SWORD, minStack: 1, maxStack: 1 }
+      - { material: IRON_PICKAXE, minStack: 1, maxStack: 1 }
+      - { material: GOLDEN_APPLE, minStack: 1, maxStack: 2 }
+      - { material: ENDER_PEARL, minStack: 1, maxStack: 3 }
+      - { material: IRON, minStack: 8, maxStack: 16 }
+      - { material: COOKED_PORKCHOP, minStack: 6, maxStack: 14 }
+      - { material: CAMPFIRE, minStack: 1, maxStack: 1 }
+      - { material: LAVA_BUCKET, minStack: 1, maxStack: 1 }
+      - { material: IRON_HELMET, minStack: 1, maxStack: 1 }
+      - { material: IRON_CHESTPLATE, minStack: 1, maxStack: 1 }
+      - { material: IRON_LEGGINGS, minStack: 1, maxStack: 1 }
+      - { material: IRON_BOOTS, minStack: 1, maxStack: 1 }
+      - { material: IRON_HORSE_ARMOR, minStack: 1, maxStack: 1 }
+      - { material: SADDLE, minStack: 1, maxStack: 1 }
+  T4:
+    numItems: { min: 3, max: 6 }
+    items:
+      - { material: COBBLESTONE, minStack: 32, maxStack: 64 }
+      - { material: OAK_PLANKS, minStack: 4, maxStack: 8 }
+      - { material: COBWEB, minStack: 1, maxStack: 2 }
+      - { material: IRON_AXE, minStack: 1, maxStack: 1 }
+      - { material: IRON_SWORD, minStack: 1, maxStack: 1 }
+      - { material: IRON_PICKAXE, minStack: 1, maxStack: 1 }
+      - { material: DIAMOND_AXE, minStack: 1, maxStack: 1 }
+      - { material: DIAMOND_SWORD, minStack: 1, maxStack: 1 }
+      - { material: DIAMOND_PICKAXE, minStack: 1, maxStack: 1 }
+      - { material: ENDER_PEARL, minStack: 2, maxStack: 6 }
+      - { material: GOLDEN_APPLE, minStack: 3, maxStack: 6 }
+      - { material: GOLDEN_CARROT, minStack: 8, maxStack: 24 }
+      - { material: DIAMOND, minStack: 4, maxStack: 8 }
+      - { material: DIAMOND_HELMET, minStack: 1, maxStack: 1 }
+      - { material: DIAMOND_CHESTPLATE, minStack: 1, maxStack: 1 }
+      - { material: DIAMOND_HORSE_ARMOR, minStack: 1, maxStack: 1 }
+      - { material: SADDLE, minStack: 1, maxStack: 1 }
+
+locations: []
+
+

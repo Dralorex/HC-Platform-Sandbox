@@ -1,0 +1,7 @@
+{
+    "java.compile.nullAnalysis.mode": "automatic",
+    "git.path": "C:\\Program Files\\Git\\cmd\\git.exe",
+    "terminal.integrated.env.windows": {
+        "PATH": "C:\\Program Files\\Git\\cmd;C:\\Users\\Test bench 2042\\AppData\\Local\\GitHubDesktop\\bin;${env:PATH}"
+    }
+}

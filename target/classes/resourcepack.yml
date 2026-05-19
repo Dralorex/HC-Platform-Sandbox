@@ -1,0 +1,9 @@
+schemaVersion: 1
+
+resourcepack:
+  enabled: false
+  url: ""
+  sha1: ""
+  enforce: false
+  prompt: "This server uses a resource pack."
+
