@@ -1,0 +1,7 @@
+name: HC-Foundation
+version: '1.21.4-a0.1.0'
+main: com.hollowcrown.api.bootstrap.HollowCrownApiBootstrap
+api-version: '1.21'
+load: STARTUP
+authors: [HollowCrownStudio]
+description: Foundation plugin — shades hollowcrown-api for Hub and minigames.
