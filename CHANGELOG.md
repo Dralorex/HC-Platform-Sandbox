@@ -8,6 +8,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Cursor rule: scaffold new minigames by copying `minigames/_template/` when requested.
 - Minigame copy template under `minigames/_template/` (not a Maven module).
 - [docs/GITHUB.md](docs/GITHUB.md) for manual push workflow.
 - Cursor rule: never `git push` unless the user explicitly asks.
