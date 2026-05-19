@@ -1,0 +1,39 @@
+---
+description: Hollow Crown Paper plugins — single-source version in pom.xml; plugin.yml uses '${project.version}' with Maven filtering on plugin.yml only
+alwaysApply: true
+---
+
+# Paper plugin version (single source of truth)
+
+- Put the release version **only** in the module **`pom.xml`** `<version>...</version>`.
+- In **`src/main/resources/plugin.yml`**, use **`version: '${project.version}'`** (YAML quotes avoid accidental merging issues).
+
+## Maven resources
+
+Enable filtering **only for `plugin.yml`**, not for all of `src/main/resources`, so `config.yml`, SQL migrations, and other assets never accidentally substitute `$ {...}` tokens:
+
+```xml
+<build>
+  <resources>
+    <resource>
+      <directory>src/main/resources</directory>
+      <filtering>true</filtering>
+      <includes>
+        <include>plugin.yml</include>
+      </includes>
+    </resource>
+    <resource>
+      <directory>src/main/resources</directory>
+      <filtering>false</filtering>
+      <excludes>
+        <exclude>plugin.yml</exclude>
+      </excludes>
+    </resource>
+  </resources>
+  ...
+</build>
+```
+
+## New Hollow Crown minigames / plugins
+
+Apply the same pattern for every new Paper plugin in this stack: **one version in `pom.xml`**, **`plugin.yml`** references **`${project.version}`**, **plugin.yml-only filtering**.
