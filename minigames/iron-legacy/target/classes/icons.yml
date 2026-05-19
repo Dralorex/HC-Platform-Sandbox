@@ -1,0 +1,17 @@
+icons:
+  default:
+    type: MATERIAL
+    value: PLAYER_HEAD
+  nether:
+    type: MATERIAL
+    value: NETHERRACK
+  end:
+    type: MATERIAL
+    value: END_STONE
+  desert:
+    type: MATERIAL
+    value: SAND
+  snow:
+    type: MATERIAL
+    value: SNOW_BLOCK
+

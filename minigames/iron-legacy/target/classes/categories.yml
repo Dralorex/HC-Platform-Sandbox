@@ -1,0 +1,303 @@
+# Server-defined categories for HCIronLegacy build/dig rule system.
+# You can reference categories in-game:
+#   /il build add category:<name>
+#   /il dig remove cat:<name>
+#
+# A category can contain:
+#   - Bukkit Tags:  "tag:<TAG_NAME>" (case-insensitive). Examples: tag:LOGS, tag:PLANKS, tag:WOOL
+#   - Explicit materials: "STONE", "OAK_LOG", ...
+#
+# Notes:
+# - Only valid block materials will be used when categories resolve.
+# - You can combine tags and materials in the same category.
+# - Use /il rules to see a summary of rules (build/dig/crafting, modes, sizes, etc.)
+#
+# Some widely useful Bukkit tags (not exhaustive) include:
+# LOGS, PLANKS, WOOL, CARPETS, LEAVES, SAPLINGS, STAIRS, SLABS, FENCES, FENCE_GATES, DOORS,
+# TRAPDOORS, BUTTONS, PRESSURE_PLATES, WOODEN_BUTTONS, WOODEN_DOORS, WOODEN_TRAPDOORS,
+# WOODEN_PRESSURE_PLATES, SIGNS, WALL_SIGNS, BANNERS, WALL_BANNERS, GLASS_BLOCKS, GLASS_PANES,
+# SAND, TERRACOTTA, CONCRETE, CONCRETE_POWDER, STONE_BRICKS, ANVIL, RAILS, CANDLES, CANDLES_CAKES
+# (Availability varies by MC version; unknown tags are ignored safely.)
+
+categories:
+
+  # --- Basic building families ---
+  logs:
+    - tag:LOGS
+  planks:
+    - tag:PLANKS
+  leaves:
+    - tag:LEAVES
+  stairs:
+    - tag:STAIRS
+  slabs:
+    - tag:SLABS
+  fences:
+    - tag:FENCES
+    - tag:FENCE_GATES
+  doors:
+    - tag:DOORS
+    - tag:TRAPDOORS
+  buttons:
+    - tag:BUTTONS
+    - tag:WOODEN_BUTTONS
+  pressure_plates:
+    - tag:PRESSURE_PLATES
+    - tag:WOODEN_PRESSURE_PLATES
+  signs:
+    - tag:SIGNS
+    - tag:WALL_SIGNS
+  banners:
+    - tag:BANNERS
+    - tag:WALL_BANNERS
+  glass:
+    - tag:GLASS_BLOCKS
+    - tag:GLASS_PANES
+
+  # --- Stone-like families ---
+  cobblestones:
+    - COBBLESTONE
+    - MOSSY_COBBLESTONE
+    - COBBLED_DEEPSLATE
+  stone_basic:
+    - STONE
+    - SMOOTH_STONE
+  stone_bricks:
+    - tag:STONE_BRICKS
+    - STONE_BRICKS
+    - CRACKED_STONE_BRICKS
+    - MOSSY_STONE_BRICKS
+    - CHISELED_STONE_BRICKS
+  deepslate_family:
+    - DEEPSLATE
+    - COBBLED_DEEPSLATE
+    - POLISHED_DEEPSLATE
+    - DEEPSLATE_TILES
+    - CRACKED_DEEPSLATE_TILES
+    - DEEPSLATE_BRICKS
+    - CRACKED_DEEPSLATE_BRICKS
+    - CHISELED_DEEPSLATE
+  blackstone_family:
+    - BLACKSTONE
+    - POLISHED_BLACKSTONE
+    - POLISHED_BLACKSTONE_BRICKS
+    - CRACKED_POLISHED_BLACKSTONE_BRICKS
+    - CHISELED_POLISHED_BLACKSTONE
+
+  # --- Dirt / sand / gravel / clay ---
+  soils:
+    - DIRT
+    - COARSE_DIRT
+    - ROOTED_DIRT
+    - FARMLAND
+    - MUD
+    - MUDDY_MANGROVE_ROOTS
+    - CLAY
+  sands_and_gravel:
+    - tag:SAND
+    - GRAVEL
+  concrete:
+    - tag:CONCRETE
+    - tag:CONCRETE_POWDER
+  terracotta:
+    - tag:TERRACOTTA
+
+  # --- Ores and resource blocks ---
+  all_ores:
+    - tag:ORES
+  overworld_ores:
+    - COAL_ORE
+    - IRON_ORE
+    - COPPER_ORE
+    - GOLD_ORE
+    - REDSTONE_ORE
+    - LAPIS_ORE
+    - DIAMOND_ORE
+    - EMERALD_ORE
+    - DEEPSLATE_COAL_ORE
+    - DEEPSLATE_IRON_ORE
+    - DEEPSLATE_COPPER_ORE
+    - DEEPSLATE_GOLD_ORE
+    - DEEPSLATE_REDSTONE_ORE
+    - DEEPSLATE_LAPIS_ORE
+    - DEEPSLATE_DIAMOND_ORE
+    - DEEPSLATE_EMERALD_ORE
+  nether_ores:
+    - NETHER_GOLD_ORE
+    - NETHER_QUARTZ_ORE
+    - ANCIENT_DEBRIS
+  ore_blocks:
+    - COAL_BLOCK
+    - IRON_BLOCK
+    - COPPER_BLOCK
+    - GOLD_BLOCK
+    - REDSTONE_BLOCK
+    - LAPIS_BLOCK
+    - DIAMOND_BLOCK
+    - EMERALD_BLOCK
+    - NETHERITE_BLOCK
+
+  # --- Redstone and rails ---
+  redstone_core:
+    - REDSTONE_WIRE
+    - REDSTONE_TORCH
+    - REPEATER
+    - COMPARATOR
+    - OBSERVER
+    - PISTON
+    - STICKY_PISTON
+    - DROPPER
+    - DISPENSER
+    - HOPPER
+    - NOTE_BLOCK
+    - TARGET
+    - LEVER
+  rails:
+    - tag:RAILS
+
+  # --- Utility blocks / crafting ---
+  utility_blocks:
+    - CRAFTING_TABLE
+    - FURNACE
+    - BLAST_FURNACE
+    - SMOKER
+    - ANVIL
+    - GRINDSTONE
+    - CARTOGRAPHY_TABLE
+    - FLETCHING_TABLE
+    - SMITHING_TABLE
+    - STONECUTTER
+    - LOOM
+    - ENCHANTING_TABLE
+    - COMPOSTER
+    - BREWING_STAND
+    - CAMPFIRE
+    - SOUL_CAMPFIRE
+    - LODESTONE
+    - BELL
+    - BEACON
+  containers:
+    - CHEST
+    - TRAPPED_CHEST
+    - BARREL
+    - ENDER_CHEST
+    - SHULKER_BOX
+    - WHITE_SHULKER_BOX
+    - ORANGE_SHULKER_BOX
+    - MAGENTA_SHULKER_BOX
+    - LIGHT_BLUE_SHULKER_BOX
+    - YELLOW_SHULKER_BOX
+    - LIME_SHULKER_BOX
+    - PINK_SHULKER_BOX
+    - GRAY_SHULKER_BOX
+    - LIGHT_GRAY_SHULKER_BOX
+    - CYAN_SHULKER_BOX
+    - PURPLE_SHULKER_BOX
+    - BLUE_SHULKER_BOX
+    - BROWN_SHULKER_BOX
+    - GREEN_SHULKER_BOX
+    - RED_SHULKER_BOX
+    - BLACK_SHULKER_BOX
+
+  # --- Lighting ---
+  lights:
+    - TORCH
+    - SOUL_TORCH
+    - LANTERN
+    - SOUL_LANTERN
+    - SEA_LANTERN
+    - GLOWSTONE
+    - JACK_O_LANTERN
+    - REDSTONE_LAMP
+    - SHROOMLIGHT
+    - CANDLE
+    - tag:CANDLES
+    - tag:CANDLES_CAKES
+
+  # --- Nature / plants (place/break) ---
+  plants_all:
+    - SAPLING
+    - tag:SAPLINGS
+    - GRASS_BLOCK
+    - SHORT_GRASS
+    - TALL_GRASS
+    - FERN
+    - LARGE_FERN
+    - FLOWERING_AZALEA
+    - AZALEA
+    - FLOWER_POT
+    - DANDELION
+    - POPPY
+    - BLUE_ORCHID
+    - ALLIUM
+    - AZURE_BLUET
+    - OXEYE_DAISY
+    - CORNFLOWER
+    - LILY_OF_THE_VALLEY
+    - SUNFLOWER
+    - LILAC
+    - ROSE_BUSH
+    - PEONY
+    - tag:flower
+  crops:
+    - WHEAT
+    - CARROTS
+    - POTATOES
+    - BEETROOTS
+    - PUMPKIN
+    - MELON
+    - SUGAR_CANE
+    - COCOA
+    - NETHER_WART
+  flowers:
+    - 
+
+  # --- Fluids / ice ---
+  water_related:
+    - WATER
+    - KELP
+    - SEAGRASS
+    - PRISMARINE
+    - PRISMARINE_BRICKS
+    - DARK_PRISMARINE
+  ice_family:
+    - ICE
+    - PACKED_ICE
+    - BLUE_ICE
+    - FROSTED_ICE
+
+  # --- Dimension-flavored groups ---
+  nether_building:
+    - NETHERRACK
+    - NETHER_BRICKS
+    - RED_NETHER_BRICKS
+    - CRACKED_NETHER_BRICKS
+    - CHISELED_NETHER_BRICKS
+    - NETHER_WART_BLOCK
+    - WARPED_WART_BLOCK
+    - BASALT
+    - POLISHED_BASALT
+    - GLOWSTONE
+    - BLACKSTONE
+  end_building:
+    - END_STONE
+    - END_STONE_BRICKS
+    - PURPUR_BLOCK
+    - PURPUR_PILLAR
+    - PURPUR_STAIRS
+    - PURPUR_SLAB
+  overworld_natural:
+    - STONE
+    - ANDESITE
+    - DIORITE
+    - GRANITE
+    - CALCITE
+    - TUFF
+    - DRIPSTONE_BLOCK
+    - MOSS_BLOCK
+
+  # --- Glass families split ---
+  glass_blocks:
+    - tag:GLASS_BLOCKS
+  glass_panes:
+    - tag:GLASS_PANES
