@@ -1,0 +1,21 @@
+name: HCYourGame
+version: '${project.version}'
+main: com.hollowcrown.minigame.yourgame.YourGamePlugin
+api-version: '1.21'
+load: POSTWORLD
+depend: [HC-Foundation, HollowCrownHub]
+authors: [HollowCrownStudio]
+description: YOUR_GAME_ID minigame for Hollow Crown Hub.
+
+commands:
+  yourgame:
+    description: YourGame admin/player command
+    usage: /yourgame help
+    aliases: [YOUR_GAME_ID]
+    permission: hcyourgame.use
+
+permissions:
+  hcyourgame.use:
+    default: true
+  hcyourgame.admin:
+    default: op

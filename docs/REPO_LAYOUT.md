@@ -27,6 +27,7 @@ HC-Platform/                          # Git root (this repo)
 ├── minigames/                        # All Hub-integrated minigames
 │   ├── README.md                     # How to add a minigame
 │   ├── pom.xml                       # Optional grouping POM
+│   ├── _template/                    # Copy-only starter (NOT in root pom modules)
 │   └── iron-legacy/                  # Plugin: HCIronLegacy
 │       ├── pom.xml
 │       └── src/

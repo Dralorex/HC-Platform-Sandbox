@@ -13,3 +13,5 @@ Each subdirectory is a Paper plugin that **depends on HC-Foundation + HollowCrow
 7. **Root pom** — add `<module>minigames/<id></module>`.
 
 Reference implementation: `iron-legacy/`.
+
+**Starter files (not built):** copy `minigames/_template/` to `minigames/<your-game-id>/` and follow its README.
