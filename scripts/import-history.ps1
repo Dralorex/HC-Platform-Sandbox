@@ -24,8 +24,8 @@ $imports = [ordered]@{
 $saved = Join-Path $plat "scripts\saved-poms"
 
 function Invoke-Git {
-    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Args)
-    & $git @gitIdentity @Args
+    param([Parameter(ValueFromRemainingArguments = $true)]$GitArgs)
+    & $git @gitIdentity @GitArgs
 }
 
 function Restore-MonorepoPoms {
