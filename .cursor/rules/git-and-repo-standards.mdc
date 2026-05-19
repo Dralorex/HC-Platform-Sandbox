@@ -1,0 +1,35 @@
+---
+description: Git commit discipline and repo layout for Hollow Crown and new GitHub projects
+alwaysApply: true
+---
+
+# Git and repository standards
+
+Apply on **every** Hollow Crown project and when the user starts or reorganizes a GitHub repo.
+
+## Commits
+
+- Use **Conventional Commits**: `feat`, `fix`, `docs`, `refactor`, `build`, `chore`, `remove`.
+- Optional scope: module or area, e.g. `feat(hub): ...`.
+- **One logical change per commit** (additions, removals, refactors not mixed arbitrarily).
+- Update `CHANGELOG.md` under `## [Unreleased]` for user-visible changes.
+- Call out **removals** and **breaking changes** explicitly.
+
+## New or reorganized repos
+
+1. Add `README.md`, `.gitignore`, `CHANGELOG.md`, `CONTRIBUTING.md` when the project is non-trivial.
+2. Document layout in `docs/REPO_LAYOUT.md` (or README section) before the tree grows ad hoc.
+3. **Commit after each logical unit of work** — not one giant commit at the end.
+4. Do **not** run `git config --global`; use repo-local `-c user.name=...` or env vars if identity is missing.
+
+## Hollow Crown Platform monorepo
+
+- Root: `HC-Platform` — Hub stack only.
+- Paths: `api/`, `foundation/`, `hub/`, `minigames/<game>/`.
+- New Hub minigames go under `minigames/` and root `pom.xml` `<modules>`.
+- Server deploy: **three** JARs (Foundation, Hub, minigame) — not one uber-JAR. See `docs/PACKAGING.md`.
+
+## When editing
+
+- Match existing module boundaries; do not add unrelated files to the same commit.
+- After structural moves, commit with `refactor:` or `chore:` and note path changes in CHANGELOG.

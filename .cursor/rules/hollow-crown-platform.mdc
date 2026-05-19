@@ -1,0 +1,26 @@
+---
+description: HC-Platform monorepo module map and Hub stack conventions
+globs: "**/*"
+alwaysApply: false
+---
+
+# Hollow Crown Platform (this repo)
+
+## Stack load order
+
+`HC-Foundation` → `HollowCrownHub` → minigame plugin(s).
+
+## Where to edit
+
+| Task | Location |
+|------|----------|
+| Shared API / SPI | `api/src/main/java/com/hollowcrown/api/` |
+| Hub lobbies, queue, parties | `hub/src/main/java/com/hollowcrown/hub/` |
+| Iron Legacy match logic | `minigames/iron-legacy/` |
+| New minigame | `minigames/<id>/` + root `pom.xml` module |
+
+## Integration
+
+- Minigames register `MinigameMechanic` on `GamePlatform` via `MinigameBootstrap`.
+- Hub owns `templates.yml`, lobby worlds (`*-L#`), `MatchQueueService`, `PreMatchLimboService`.
+- Do not add `depend` on minigames in Hub; integration is Bukkit services + mechanics.
