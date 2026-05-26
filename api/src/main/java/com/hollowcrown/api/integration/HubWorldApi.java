@@ -57,6 +57,9 @@ public interface HubWorldApi {
 
     boolean isHubPvpModeActive(Player player);
 
+    /** Whether the player is currently standing inside the PvP zone. */
+    boolean isInPvpZone(Player player);
+
     void givePvpPadItem(Player player);
 
     /** After leaving limbo queue, avoid opening the game lobby GUI from a hotbar refresh. */

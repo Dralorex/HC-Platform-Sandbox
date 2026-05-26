@@ -45,6 +45,9 @@ import java.util.regex.Pattern;
 public final class HubLobbyService {
 
     private static final Pattern FOLDER_SAFE = Pattern.compile("^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$");
+    /** Source world folders may be nested under managed roots (e.g. {@code hch-worlds/templates/my_map}). */
+    private static final Pattern SOURCE_FOLDER_SAFE = Pattern.compile(
+            "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}(?:/[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}){0,8}$");
     /** When Iron Legacy rows are unavailable, assume this lobby capacity for fill checks. */
     private static final int DEFAULT_LOBBY_MAX_PLAYERS = 64;
 
@@ -82,7 +85,7 @@ public final class HubLobbyService {
         if (sourceFolder == null || sourceFolder.isBlank()) {
             throw new IOException("Template has no source world folder. Use: /hch template setsource " + entry.templateKey() + " <folderName>");
         }
-        validateFolderName(sourceFolder);
+        validateSourceFolderName(sourceFolder);
         String tk = entry.templateKey();
         int lobbyIndex = nextLobbyIndex(tk);
         String worldName = tk + "-L" + lobbyIndex;
@@ -511,6 +514,12 @@ public final class HubLobbyService {
     private static void validateFolderName(String name) throws IOException {
         if (name == null || !FOLDER_SAFE.matcher(name).matches()) {
             throw new IOException("Invalid folder/world name: " + name);
+        }
+    }
+
+    private static void validateSourceFolderName(String name) throws IOException {
+        if (name == null || !SOURCE_FOLDER_SAFE.matcher(name).matches()) {
+            throw new IOException("Invalid source folder path: " + name);
         }
     }
 }

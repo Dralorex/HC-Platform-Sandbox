@@ -46,26 +46,13 @@ public final class HubTemplateLimboCommands {
             sender.sendMessage(Component.text("Players only (wand goes into inventory).", NamedTextColor.RED));
             return true;
         }
-        if (args.length < 4) {
-            sender.sendMessage(Component.text(
-                    "Usage: /hch template limbo wand <worldFolder|yamlKey>", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text(
-                    "Corner wand writes zones into HCIronLegacy worlds.yml (no IL admin command needed).",
-                    NamedTextColor.GRAY));
-            return true;
-        }
-        String raw = args[3].trim();
-        if (raw.isEmpty()) {
-            sender.sendMessage(Component.text("Missing template/world key.", NamedTextColor.RED));
-            return true;
-        }
-        if (plugin.limboLayout().giveLimboWand(p, raw)) {
+        if (plugin.limboLayout().giveLimboWand(p)) {
             p.sendMessage(Component.text(
-                    "Limbo wand given — Left-click / right-click blocks for corners, shift-right-click saves.",
+                    "Limbo wand given — works in any template world. Left/right-click blocks for corners, shift-right-click saves.",
                     NamedTextColor.GREEN));
         } else {
             sender.sendMessage(Component.text(
-                    "Could not give wand (inventory full or invalid key — use letters, numbers, _ or -).",
+                    "Could not give wand (inventory full?).",
                     NamedTextColor.RED));
         }
         return true;
@@ -74,7 +61,7 @@ public final class HubTemplateLimboCommands {
     private static void help(CommandSender sender) {
         sender.sendMessage(Component.text("Limbo setup (/hch template limbo)", NamedTextColor.GOLD));
         sender.sendMessage(Component.text(
-                " wand <world|key> — corner wand (writes worlds.yml under HCIronLegacy)",
+                " wand — corner wand (auto-detects world, writes worlds.yml under HCIronLegacy)",
                 NamedTextColor.GRAY));
         sender.sendMessage(Component.text(
                 " spawn — save limbo spawn at your feet (inside saved zone, template world)",

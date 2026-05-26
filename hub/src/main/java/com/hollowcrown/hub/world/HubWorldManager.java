@@ -83,17 +83,102 @@ public final class HubWorldManager implements HubWorldApi, Listener {
     private final Map<UUID, Long> lastPvpPadInactivePromptAt = new HashMap<>();
     private final Map<UUID, Long> suppressGameLobbyGuiOpenUntil = new HashMap<>();
 
+    private Location pvpZonePos1;
+    private Location pvpZonePos2;
+    private Location pvpZoneSpawn;
+
     public HubWorldManager(HollowCrownHubPlugin plugin, HubWorldYaml hubWorldYaml) {
         this.plugin = plugin;
         this.hubWorldYaml = hubWorldYaml;
         this.lockedItemKey = new NamespacedKey(plugin, "lobby_locked_item");
         this.pvpPadItemKey = new NamespacedKey(plugin, "pvp_pad_item");
+        loadPvpZone();
         startPvpStateTask();
         startInvulnerabilityParticleTask();
     }
 
     private FileConfiguration hw() {
         return hubWorldYaml.config();
+    }
+
+    // ── PvP zone persistence ──────────────────────────────────────────
+
+    private void loadPvpZone() {
+        FileConfiguration c = hw();
+        pvpZonePos1 = readLoc(c, "pvpZone.pos1");
+        pvpZonePos2 = readLoc(c, "pvpZone.pos2");
+        pvpZoneSpawn = readLocFull(c, "pvpZoneSpawn");
+    }
+
+    private static Location readLoc(FileConfiguration c, String path) {
+        if (!c.contains(path + ".x")) return null;
+        String wn = c.getString(path + ".world", "");
+        org.bukkit.World w = wn.isBlank() ? null : org.bukkit.Bukkit.getWorld(wn);
+        if (w == null) return null;
+        return new Location(w, c.getDouble(path + ".x"), c.getDouble(path + ".y"), c.getDouble(path + ".z"));
+    }
+
+    private static Location readLocFull(FileConfiguration c, String path) {
+        Location loc = readLoc(c, path);
+        if (loc == null) return null;
+        loc.setYaw((float) c.getDouble(path + ".yaw", 0.0));
+        loc.setPitch((float) c.getDouble(path + ".pitch", 0.0));
+        return loc;
+    }
+
+    private static void writeLoc(FileConfiguration c, String path, Location loc) {
+        c.set(path + ".world", loc.getWorld().getName());
+        c.set(path + ".x", loc.getX());
+        c.set(path + ".y", loc.getY());
+        c.set(path + ".z", loc.getZ());
+    }
+
+    public void savePvpZone(Location pos1, Location pos2) {
+        FileConfiguration c = hw();
+        writeLoc(c, "pvpZone.pos1", pos1);
+        writeLoc(c, "pvpZone.pos2", pos2);
+        hubWorldYaml.save();
+        pvpZonePos1 = pos1.clone();
+        pvpZonePos2 = pos2.clone();
+    }
+
+    public boolean savePvpZoneSpawn(Location loc) {
+        if (loc == null || loc.getWorld() == null) return false;
+        FileConfiguration c = hw();
+        writeLoc(c, "pvpZoneSpawn", loc);
+        c.set("pvpZoneSpawn.yaw", loc.getYaw());
+        c.set("pvpZoneSpawn.pitch", loc.getPitch());
+        hubWorldYaml.save();
+        pvpZoneSpawn = loc.clone();
+        return true;
+    }
+
+    @Override
+    public boolean isInPvpZone(Player p) {
+        return isLocationInPvpZone(p.getLocation());
+    }
+
+    public boolean isLocationInPvpZone(Location loc) {
+        if (pvpZonePos1 == null || pvpZonePos2 == null || loc == null || loc.getWorld() == null) return false;
+        if (pvpZonePos1.getWorld() == null || pvpZonePos2.getWorld() == null) return false;
+        if (!loc.getWorld().getName().equalsIgnoreCase(pvpZonePos1.getWorld().getName())) return false;
+        double minX = Math.min(pvpZonePos1.getX(), pvpZonePos2.getX());
+        double maxX = Math.max(pvpZonePos1.getX(), pvpZonePos2.getX()) + 1;
+        double minY = Math.min(pvpZonePos1.getY(), pvpZonePos2.getY());
+        double maxY = Math.max(pvpZonePos1.getY(), pvpZonePos2.getY()) + 1;
+        double minZ = Math.min(pvpZonePos1.getZ(), pvpZonePos2.getZ());
+        double maxZ = Math.max(pvpZonePos1.getZ(), pvpZonePos2.getZ()) + 1;
+        return loc.getX() >= minX && loc.getX() <= maxX
+                && loc.getY() >= minY && loc.getY() <= maxY
+                && loc.getZ() >= minZ && loc.getZ() <= maxZ;
+    }
+
+    /** Respawn location for PvP: pad > zone spawn > hub spawn. */
+    private Location resolvePvpRespawnLocation(UUID id) {
+        Location pad = pvpRespawnPads.get(id);
+        if (pad != null) return pad;
+        if (pvpZoneSpawn != null) return pvpZoneSpawn;
+        return hubCenterLocation().orElse(null);
     }
 
     @Override
@@ -164,7 +249,14 @@ public final class HubWorldManager implements HubWorldApi, Listener {
     public void applySurvivalHubLoadoutAfterTemplate(Player player) {
         if (player == null) return;
         UUID id = player.getUniqueId();
-        buildMode.remove(id);
+        if (buildMode.contains(id)) {
+            player.setGameMode(GameMode.CREATIVE);
+            InventorySnapshot snapshot = buildModeSnapshots.get(id);
+            if (snapshot != null) {
+                applyInventorySnapshot(player, snapshot);
+            }
+            return;
+        }
         player.setGameMode(GameMode.SURVIVAL);
         applyHubUtilityLoadout(player, true, true);
     }
@@ -557,14 +649,17 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         activateCountdown.remove(id);
         deactivateCountdown.remove(id);
         pendingDeactivateOnDeath.remove(id);
+
+        boolean hadPad = pvpRespawnPads.containsKey(id);
         pvpRespawnPads.remove(id);
         lastPvpPlateActivationMs.remove(id);
+
         if (message) sendPvpStatusLine(p, "PVP mode Deactivated", NamedTextColor.GREEN);
-        hubCenterLocation().ifPresent(lobby -> {
-            if (isInHubProtection(p)) {
-                p.teleport(lobby);
-            }
-        });
+
+        boolean inZone = isInPvpZone(p);
+        if (inZone || hadPad) {
+            hubCenterLocation().ifPresent(lobby -> p.teleport(lobby));
+        }
     }
 
     private void sendPvpStatusLine(Player p, String text, NamedTextColor color) {
@@ -626,8 +721,22 @@ public final class HubWorldManager implements HubWorldApi, Listener {
                         }
                     });
 
-                    boolean holding = isHoldingLobbySword(p);
                     UUID id = p.getUniqueId();
+                    boolean inZone = isInPvpZone(p);
+
+                    if (inZone && !canModifyHub(p)) {
+                        // Inside PvP zone: instant activation, force sword selected
+                        if (!pvpActive.contains(id)) {
+                            activatePvp(p);
+                        }
+                        activateCountdown.remove(id);
+                        deactivateCountdown.remove(id);
+                        pendingDeactivateOnDeath.remove(id);
+                        p.getInventory().setHeldItemSlot(0);
+                        continue;
+                    }
+
+                    boolean holding = isHoldingLobbySword(p);
 
                     if (holding) {
                         deactivateCountdown.remove(id);
@@ -705,25 +814,24 @@ public final class HubWorldManager implements HubWorldApi, Listener {
     @EventHandler
     public void onRespawn(PlayerRespawnEvent e) {
         Player p = e.getPlayer();
-        Optional<Location> spawnOpt = hubCenterLocation();
-        if (spawnOpt.isEmpty()) return;
-        Location spawn = spawnOpt.get();
         UUID id = p.getUniqueId();
 
         boolean inHub = isInHubProtection(p) || isLocationInHubProtection(e.getRespawnLocation());
         if (inHub || pendingDeactivateOnDeath.contains(id) || pvpActive.contains(id) || pvpRespawnPads.containsKey(id)) {
-            Location resp;
-            if (pvpRespawnPads.containsKey(id)) {
-                resp = pvpRespawnPads.get(id);
+            Location resp = resolvePvpRespawnLocation(id);
+            if (resp == null) {
+                hubCenterLocation().ifPresent(loc -> e.setRespawnLocation(loc));
             } else {
-                resp = spawn;
+                e.setRespawnLocation(resp);
             }
-            e.setRespawnLocation(resp);
             new BukkitRunnable() {
                 @Override public void run() {
                     if (!p.isOnline()) return;
                     p.setNoDamageTicks(60);
                     pvpInvulnerableUntil.put(id, System.currentTimeMillis() + 3000L);
+                    if (pvpActive.contains(id)) {
+                        p.getInventory().setHeldItemSlot(0);
+                    }
                 }
             }.runTaskLater(plugin, 1L);
         }
@@ -791,16 +899,24 @@ public final class HubWorldManager implements HubWorldApi, Listener {
             @Override public void run() {
                 if (!p.isOnline()) return;
                 p.spigot().respawn();
-                if (pvpActive.contains(id) && pvpRespawnPads.containsKey(id)) {
-                    p.teleport(pvpRespawnPads.get(id));
+
+                if (shouldDeactivate) {
+                    // Died during deactivation countdown: hub spawn, stop counter, deactivate
+                    hubCenterLocation().ifPresent(p::teleport);
+                    deactivatePvp(p, false);
+                    applyHubUtilityLoadout(p, true, false);
+                    sendPvpStatusLine(p, "PVP mode Deactivated", NamedTextColor.GREEN);
+                    return;
+                }
+
+                Location resp = resolvePvpRespawnLocation(id);
+                if (resp != null) {
+                    p.teleport(resp);
                     applyHubUtilityLoadout(p, false, false);
+                    p.getInventory().setHeldItemSlot(0);
                 } else {
                     hubCenterLocation().ifPresent(p::teleport);
                     applyHubUtilityLoadout(p, true, false);
-                }
-                if (shouldDeactivate) {
-                    deactivatePvp(p, false);
-                    sendPvpStatusLine(p, "PVP mode Deactivated", NamedTextColor.GREEN);
                 }
             }
         }.runTask(plugin);
