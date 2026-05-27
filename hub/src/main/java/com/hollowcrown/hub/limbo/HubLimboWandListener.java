@@ -27,6 +27,7 @@ import java.util.UUID;
 public final class HubLimboWandListener implements Listener {
 
     private static final String WAND_NAME = "§dLimbo Wand";
+    private static final String WAND_MARKER = "*";
 
     private final HollowCrownHubPlugin plugin;
     private final HubLimboWorldsYaml worldsYaml;
@@ -45,12 +46,21 @@ public final class HubLimboWandListener implements Listener {
             return;
         }
         ItemMeta meta = item.getItemMeta();
-        String templateKey = meta.getPersistentDataContainer().get(plugin.limboWandTemplateKey(), PersistentDataType.STRING);
-        if (templateKey == null || templateKey.isBlank()) {
+        String wandTag = meta.getPersistentDataContainer().get(plugin.limboWandTemplateKey(), PersistentDataType.STRING);
+        if (wandTag == null || wandTag.isBlank()) {
             return;
         }
 
         event.setCancelled(true);
+
+        String templateKey = resolveTemplateKey(p);
+        if (templateKey == null) {
+            p.sendMessage(Component.text(
+                    "Could not resolve a template key for world '" + p.getWorld().getName()
+                            + "'. Stand in a template world or lobby.",
+                    NamedTextColor.RED));
+            return;
+        }
 
         CornerState state = selections.get(p.getUniqueId());
         if (state == null || !state.templateKey.equals(templateKey)) {
@@ -94,7 +104,7 @@ public final class HubLimboWandListener implements Listener {
         }
     }
 
-    static ItemStack createWand(HollowCrownHubPlugin plugin, String wandTemplateKey) {
+    static ItemStack createWand(HollowCrownHubPlugin plugin) {
         ItemStack wand = new ItemStack(org.bukkit.Material.STICK);
         ItemMeta meta = wand.getItemMeta();
         if (meta != null) {
@@ -102,12 +112,59 @@ public final class HubLimboWandListener implements Listener {
             meta.lore(java.util.List.of(
                     Component.text("Left-click block: first corner", NamedTextColor.GRAY),
                     Component.text("Right-click block: second corner", NamedTextColor.GRAY),
-                    Component.text("Shift-right-click: save zone (HCIronLegacy worlds.yml)", NamedTextColor.GRAY)
+                    Component.text("Shift-right-click: save zone (HCIronLegacy worlds.yml)", NamedTextColor.GRAY),
+                    Component.text("Works in any template world", NamedTextColor.DARK_GRAY)
             ));
-            meta.getPersistentDataContainer().set(plugin.limboWandTemplateKey(), PersistentDataType.STRING, wandTemplateKey);
+            meta.getPersistentDataContainer().set(plugin.limboWandTemplateKey(), PersistentDataType.STRING, WAND_MARKER);
             wand.setItemMeta(meta);
         }
         return wand;
+    }
+
+    private static final java.util.regex.Pattern LOBBY_SUFFIX = java.util.regex.Pattern.compile("-L\\d+$");
+    private static final String MANAGED_PREFIX = "hch-worlds/templates/";
+
+    private String resolveTemplateKey(Player p) {
+        String worldName = p.getWorld().getName();
+
+        // 1. Direct worlds.yml lookup by world folder name
+        var direct = worldsYaml.findTemplateKeyForWorldFolder(worldName);
+        if (direct.isPresent()) return direct.get();
+
+        // 2. Managed template path (hch-worlds/templates/<key>)
+        String normalized = worldName.replace('\\', '/');
+        if (normalized.toLowerCase(java.util.Locale.ROOT).startsWith(MANAGED_PREFIX.toLowerCase(java.util.Locale.ROOT))) {
+            String tail = normalized.substring(MANAGED_PREFIX.length());
+            String key = tail.toLowerCase(java.util.Locale.ROOT);
+            if (HubLimboWorldsYaml.SAFE_TEMPLATE_KEY.matcher(key).matches()) {
+                return key;
+            }
+        }
+
+        // 3. Lobby instance world (<key>-L#) — strip suffix and retry
+        String stripped = LOBBY_SUFFIX.matcher(worldName).replaceFirst("");
+        if (!stripped.equals(worldName)) {
+            var fromStripped = worldsYaml.findTemplateKeyForWorldFolder(stripped);
+            if (fromStripped.isPresent()) return fromStripped.get();
+            String lower = stripped.toLowerCase(java.util.Locale.ROOT);
+            if (HubLimboWorldsYaml.SAFE_TEMPLATE_KEY.matcher(lower).matches()) {
+                return lower;
+            }
+        }
+
+        // 4. Template registry lookup by source world
+        for (var entry : plugin.templates().list()) {
+            if (worldName.equalsIgnoreCase(entry.sourceWorldName())) {
+                return entry.templateKey();
+            }
+        }
+
+        // 5. Fallback: use world name if it's a safe key
+        String lower = worldName.toLowerCase(java.util.Locale.ROOT);
+        if (HubLimboWorldsYaml.SAFE_TEMPLATE_KEY.matcher(lower).matches()) {
+            return lower;
+        }
+        return null;
     }
 
     private void startOutlinePreview(Player viewer, CornerState selection) {

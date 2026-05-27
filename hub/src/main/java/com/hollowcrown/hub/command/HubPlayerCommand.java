@@ -77,7 +77,7 @@ public final class HubPlayerCommand implements CommandExecutor {
                 HubWorldApi hubWorld = plugin.hubWorld();
                 target.teleportAsync(loc).thenAccept(ok -> {
                     if (Boolean.TRUE.equals(ok)) {
-                        hubWorld.applyHubUtilityLoadout(target, true, true);
+                        hubWorld.applySurvivalHubLoadoutAfterTemplate(target);
                         HubLog.info(plugin, "action=hub_teleport", "player=" + memberId, "result=ok", "partyPull=1");
                     } else {
                         HubLog.warn(plugin, "action=hub_teleport", "player=" + memberId, "result=fail", "partyPull=1");
@@ -102,7 +102,7 @@ public final class HubPlayerCommand implements CommandExecutor {
         HubWorldApi hubWorld = plugin.hubWorld();
         player.teleportAsync(loc).thenAccept(ok -> {
             if (Boolean.TRUE.equals(ok)) {
-                hubWorld.applyHubUtilityLoadout(player, true, true);
+                hubWorld.applySurvivalHubLoadoutAfterTemplate(player);
                 HubLog.info(plugin, "action=hub_teleport", "player=" + player.getUniqueId(), "result=ok");
             } else {
                 HubLog.warn(plugin, "action=hub_teleport", "player=" + player.getUniqueId(), "result=fail");
