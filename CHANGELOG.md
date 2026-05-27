@@ -9,6 +9,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Stop tracking Maven `target/` build output and local `HC-Plugins*.zip` deploy bundles in git.
+
 ### Added
 
 - Lobby prefetch when the last OPEN lobby starts a match.
