@@ -82,7 +82,6 @@ public final class HubLimboWandListener implements Listener {
                 p.sendMessage(Component.text("Failed to save limbo zone.", NamedTextColor.RED));
                 return;
             }
-            stopOutlinePreview(state);
             p.sendMessage(Component.text("Limbo zone confirmed for template: " + templateKey, NamedTextColor.GREEN));
             return;
         }
@@ -169,23 +168,36 @@ public final class HubLimboWandListener implements Listener {
 
     private void startOutlinePreview(Player viewer, CornerState selection) {
         stopOutlinePreview(selection);
-        selection.outlineTicksLeft = 40;
         selection.outlineTask = new BukkitRunnable() {
             @Override
             public void run() {
-                if (!viewer.isOnline() || selection.pos1 == null || selection.pos2 == null) {
+                if (!viewer.isOnline()) {
                     stopOutlinePreview(selection);
                     cancel();
                     return;
                 }
-                drawOutline(viewer, selection.pos1, selection.pos2);
-                selection.outlineTicksLeft--;
-                if (selection.outlineTicksLeft <= 0) {
-                    stopOutlinePreview(selection);
-                    cancel();
+                if (!isHoldingLimboWand(viewer)) return;
+
+                Location p1 = selection.pos1;
+                Location p2 = selection.pos2;
+                if (p1 == null || p2 == null) {
+                    var saved = worldsYaml.limboZone(selection.templateKey);
+                    if (saved.isEmpty()) return;
+                    p1 = saved.get().pos1();
+                    p2 = saved.get().pos2();
+                    if (p1 == null || p2 == null) return;
                 }
+                drawOutline(viewer, p1, p2);
             }
         }.runTaskTimer(plugin, 0L, 10L);
+    }
+
+    private boolean isHoldingLimboWand(Player p) {
+        ItemStack item = p.getInventory().getItemInMainHand();
+        if (item.getType().isAir() || !item.hasItemMeta()) return false;
+        String tag = item.getItemMeta().getPersistentDataContainer()
+                .get(plugin.limboWandTemplateKey(), PersistentDataType.STRING);
+        return tag != null && !tag.isBlank();
     }
 
     private void stopOutlinePreview(CornerState selection) {
@@ -246,7 +258,6 @@ public final class HubLimboWandListener implements Listener {
         Location pos1;
         Location pos2;
         BukkitTask outlineTask;
-        int outlineTicksLeft;
 
         CornerState(String templateKey) {
             this.templateKey = templateKey;

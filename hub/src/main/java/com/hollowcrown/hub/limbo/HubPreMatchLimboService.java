@@ -4,6 +4,7 @@ import com.hollowcrown.api.integration.HubWorldApi;
 import com.hollowcrown.api.integration.IronLegacyLimboBridge;
 import com.hollowcrown.api.integration.PreMatchLimboService;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
+import com.hollowcrown.hub.lobby.HubLobbyService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
@@ -104,6 +105,52 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
     }
 
     @Override
+    public boolean registerHubLobbyJoin(Player p, String templateKey, String lobbyWorldName) {
+        IronLegacyLimboBridge b = bridge();
+        if (b == null || p == null || templateKey == null || templateKey.isBlank()
+                || lobbyWorldName == null || lobbyWorldName.isBlank()) {
+            return false;
+        }
+        var info = b.findTemplate(templateKey).orElse(null);
+        if (info == null) {
+            return false;
+        }
+        World lobbyWorld = Bukkit.getWorld(lobbyWorldName);
+        if (lobbyWorld == null) {
+            return false;
+        }
+
+        String sessionKey = lobbyWorldName.toLowerCase(Locale.ROOT);
+        removeUuidFromLimboSessions(p.getUniqueId());
+
+        LimboSession s = sessions.get(sessionKey);
+        if (s == null) {
+            s = new LimboSession(info.key(), lobbyWorldName, info.teamSizeMax(), info.maxPlayers());
+            sessions.put(sessionKey, s);
+        }
+
+        prepareForLimboJoin(p);
+        s.players.add(p.getUniqueId());
+        b.markJoinIntentCounted(p);
+        p.getInventory().clear();
+        p.getInventory().setArmorContents(null);
+        p.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
+        applyLimboLoadout(p);
+        p.getInventory().setHeldItemSlot(4);
+        p.setGameMode(GameMode.ADVENTURE);
+        startQueueTaskIfNeeded(s);
+        return true;
+    }
+
+    @Override
+    public void endSessionForWorld(String lobbyWorldName) {
+        if (lobbyWorldName == null || lobbyWorldName.isBlank()) {
+            return;
+        }
+        cleanupSession(lobbyWorldName.toLowerCase(Locale.ROOT));
+    }
+
+    @Override
     public boolean isInLimbo(Player p) {
         UUID id = p.getUniqueId();
         for (LimboSession s : sessions.values()) {
@@ -114,11 +161,8 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
 
     @Override
     public String limboTemplateKey(Player p) {
-        UUID id = p.getUniqueId();
-        for (LimboSession s : sessions.values()) {
-            if (s.players.contains(id)) return s.templateKey;
-        }
-        return null;
+        LimboSession s = sessionForPlayer(p);
+        return s == null ? null : s.templateKey;
     }
 
     @Override
@@ -126,11 +170,7 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
         if (p == null) {
             return Set.of();
         }
-        String tk = limboTemplateKey(p);
-        if (tk == null) {
-            return Set.of();
-        }
-        LimboSession s = sessions.get(tk.toLowerCase(Locale.ROOT));
+        LimboSession s = sessionForPlayer(p);
         if (s == null || s.players.isEmpty()) {
             return Set.of();
         }
@@ -142,13 +182,24 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
         if (p == null) return null;
         IronLegacyLimboBridge b = bridge();
         if (b == null) return null;
-        String templateKey = limboTemplateKey(p);
-        if (templateKey == null) return null;
-        LimboSession s = sessions.get(templateKey.toLowerCase(Locale.ROOT));
+        LimboSession s = sessionForPlayer(p);
         if (s == null) return null;
-        var info = b.findTemplate(templateKey).orElse(null);
+        var info = b.findTemplate(s.templateKey).orElse(null);
         if (info == null) return null;
         return b.resolveLimboSpawn(info, s.worldName);
+    }
+
+    private LimboSession sessionForPlayer(Player p) {
+        if (p == null) {
+            return null;
+        }
+        UUID id = p.getUniqueId();
+        for (LimboSession s : sessions.values()) {
+            if (s.players.contains(id)) {
+                return s;
+            }
+        }
+        return null;
     }
 
     private void removeUuidFromLimboSessions(UUID id) {
@@ -391,22 +442,62 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
                 if (p != null) p.sendMessage(ChatColor.RED + "Failed to start match from limbo: " + b.lastGameStartError());
             }
             evacuatePlayersToHub(onlinePlayers, s.worldName, b);
+        } else {
+            hub.lobbyService().onHubLobbyMatchStarted(s.templateKey, s.worldName);
         }
-        cleanupSession(s.templateKey);
+        cleanupLimboSession(s);
+    }
+
+    private void cleanupLimboSession(LimboSession s) {
+        if (s == null) {
+            return;
+        }
+        LimboSession removed = sessions.remove(s.worldName.toLowerCase(Locale.ROOT));
+        if (removed == null) {
+            removed = sessions.remove(s.templateKey.toLowerCase(Locale.ROOT));
+        }
+        if (removed == null) {
+            return;
+        }
+        if (removed.countdownTask != null) {
+            try {
+                removed.countdownTask.cancel();
+            } catch (Exception ignored) {
+            }
+        }
+        IronLegacyLimboBridge b = bridge();
+        if (b == null || HubLobbyService.isHubManagedLobbyWorld(removed.worldName)) {
+            return;
+        }
+        World w = Bukkit.getWorld(removed.worldName);
+        if (w == null || w.getPlayers().isEmpty()) {
+            try {
+                b.destroyMatchInstanceIfEmpty(removed.worldName);
+            } catch (Throwable ignored) {
+            }
+        }
     }
 
     private void cleanupSession(String key) {
-        IronLegacyLimboBridge b = bridge();
+        if (key == null || key.isBlank()) {
+            return;
+        }
         LimboSession s = sessions.remove(key.toLowerCase(Locale.ROOT));
-        if (s == null) return;
+        if (s == null) {
+            return;
+        }
         if (s.countdownTask != null) {
             try {
                 s.countdownTask.cancel();
             } catch (Exception ignored) {
             }
         }
+        IronLegacyLimboBridge b = bridge();
+        if (b == null || HubLobbyService.isHubManagedLobbyWorld(s.worldName)) {
+            return;
+        }
         World w = Bukkit.getWorld(s.worldName);
-        if (b != null && (w == null || w.getPlayers().isEmpty())) {
+        if (w == null || w.getPlayers().isEmpty()) {
             try {
                 b.destroyMatchInstanceIfEmpty(s.worldName);
             } catch (Throwable ignored) {

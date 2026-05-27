@@ -4,40 +4,66 @@ All notable changes to Hollow Crown Platform are documented here.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+- **API** · **Foundation** · **Hub** · **Iron Legacy** — each has its own tag; same rule: bump only modules that changed.
+- **Up tags** (user request): bump every edited plugin plus `hc.plugins.zip.tag`, then rebuild. Zip/ship alone does not bump tags.
+
 ## [Unreleased]
 
 ### Added
 
-- PvP zone system: blaze rod wand (`/hch hubworld pvp wand`) with outline preview to define a PvP zone in the hub.
-- `/hch hubworld pvp setspawn` — set a respawn point inside the PvP zone.
-- `/hch hubworld pvp pad` — give PvP pad item (replaces `/hch hubworld pvppad`).
-- Players entering the PvP zone have PvP instantly activated with sword auto-selected (no countdown).
-- PvP respawn priority: PvP pad > PvP zone spawn > hub spawn.
-- Sword stays selected after forced PvP respawn inside the zone.
+- Lobby prefetch when the last OPEN lobby starts a match.
+- Template publish flow: destroy old lobbies, notify players, pre-create a fresh lobby.
+- `PreMatchLimboService.registerHubLobbyJoin` API for Hub lobby → limbo registration.
 
 ### Changed
 
-- PvP deactivation now only teleports to hub spawn if the player is in a PvP zone or has a PvP pad selected; otherwise the player stays in place.
-- Death during PvP deactivation countdown sends the player to hub spawn, stops the countdown, and deactivates PvP.
-- `/hch hubworld pvppad` is now a legacy alias for `/hch hubworld pvp pad`.
-- Cursor rule: scaffold new minigames by copying `minigames/_template/` when requested.
-- Minigame copy template under `minigames/_template/` (not a Maven module).
-- [docs/GITHUB.md](docs/GITHUB.md) for manual push workflow.
-- Cursor rule: never `git push` unless the user explicitly asks.
+- Hub lobby instance folders under `hch-worlds/minigames/<template>-L#`.
+- Lobby join teleports to limbo spawn from `worlds.yml` and registers pre-match limbo.
+- Per-plugin Maven versions (API, Foundation, Hub, Iron Legacy) and `HC-Plugins-a0.1.4` deploy zip tag.
+- Release rules: bump tags only on explicit request; zip/ship does not bump versions.
+- PvP zone wand outline visible only while holding the wand.
 
-### Added (earlier)
+### Fixed
 
-- Monorepo combining API, Foundation, Hub, and Iron Legacy under `HC-Platform`.
-- Maven parent reactor (`hollowcrown-platform` 1.21.4-SNAPSHOT).
-- `CONTRIBUTING.md`, `docs/REPO_LAYOUT.md`, `docs/PACKAGING.md`.
-- Git history imported from legacy repos (`HC-API`, `HC-Foundation`, `HC-Hub`, `HC-Iron-Legacy`).
+- Limbo wand template resolution from current world (`HubIlTemplateDetailMenu`).
+
+## [HC-Plugins-a0.1.4] - 2026-05-27
 
 ### Changed
 
-- Standalone per-plugin GitHub repos superseded for platform development (see their README banners).
+- Per-plugin versions (API, Foundation, Hub, Iron Legacy) are independent; deploy zip uses single tag **a0.1.4**.
+
+## [1.21.4-a0.0.4] - 2026-05-27
+
+### Added
+
+- PvP zone system: blaze rod wand (`/hch hubworld pvp wand`) with outline preview.
+- `/hch hubworld pvp setspawn` and `/hch hubworld pvp pad`.
+- Lobby prefetch: when the last OPEN lobby starts a match, Hub pre-creates the next lobby.
+- Publishing a template destroys old lobbies, notifies players to rejoin, and pre-creates a fresh lobby.
+- Hub lobby worlds under `hch-worlds/minigames/<template>-L#`.
+
+### Fixed
+
+- Lobby creation path validation on Windows (absolute world container).
+- Lobby join teleports to limbo spawn from `worlds.yml`.
+- Joining a Hub lobby registers players in pre-match limbo (natural start and `/hg start`).
+- Limbo wand auto-detects template from current world; leave lobby/party GUI buttons.
+- Hub return restores build mode when applicable.
+
+### Changed
+
+- PvP deactivation only teleports to hub when in a PvP zone or on a PvP pad.
+- Removed `/hch hubworld pvppad` (use `/hch hubworld pvp pad`).
 
 ## [1.21.4-SNAPSHOT] - 2026-05-19
 
 ### Added
 
 - Initial monorepo structure and platform documentation.
+- Monorepo combining API, Foundation, Hub, and Iron Legacy under `HC-Platform`.
+- `CONTRIBUTING.md`, `docs/REPO_LAYOUT.md`, `docs/PACKAGING.md`.
+
+### Changed
+
+- Standalone per-plugin GitHub repos superseded for platform development (see their README banners).

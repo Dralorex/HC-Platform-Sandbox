@@ -328,12 +328,16 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
         return editTemplate(templateKey, (yaml, b) -> { yaml.set(b + ".publish.gamerules." + ruleName.trim(), value); return true; });
     }
     @Override public boolean publishTemplate(String templateKey) {
-        return editTemplate(templateKey, (yaml, b) -> {
+        boolean ok = editTemplate(templateKey, (yaml, b) -> {
             yaml.set(b + ".status", "PUBLISHED");
             yaml.set(b + ".enabled", true);
             yaml.set(b + ".version", Math.max(0, yaml.getInt(b + ".version", 0)) + 1);
             return true;
         });
+        if (ok) {
+            plugin.lobbyService().refreshLobbiesAfterPublish(templateKey);
+        }
+        return ok;
     }
 
     public boolean writeLimboZone(String templateKey, Location pos1, Location pos2) {

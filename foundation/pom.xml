@@ -11,6 +11,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
+  <version>1.21.4-a0.1.4</version>
   <artifactId>hc-foundation</artifactId>
   <packaging>jar</packaging>
   <name>HC-Foundation</name>
