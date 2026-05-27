@@ -75,7 +75,6 @@ public final class HubPvpZoneWandListener implements Listener {
                 return;
             }
             worldManager.savePvpZone(state.pos1, state.pos2);
-            stopOutlinePreview(state);
             p.sendMessage(Component.text("PvP zone saved.", NamedTextColor.GREEN));
             return;
         }
@@ -93,7 +92,7 @@ public final class HubPvpZoneWandListener implements Listener {
         }
     }
 
-    static ItemStack createWand(HollowCrownHubPlugin plugin) {
+    public static ItemStack createWand(HollowCrownHubPlugin plugin) {
         ItemStack wand = new ItemStack(Material.BLAZE_ROD);
         ItemMeta meta = wand.getItemMeta();
         if (meta != null) {
@@ -112,23 +111,57 @@ public final class HubPvpZoneWandListener implements Listener {
 
     private void startOutlinePreview(Player viewer, CornerState selection) {
         stopOutlinePreview(selection);
-        selection.outlineTicksLeft = 40;
         selection.outlineTask = new BukkitRunnable() {
             @Override
             public void run() {
-                if (!viewer.isOnline() || selection.pos1 == null || selection.pos2 == null) {
+                if (!viewer.isOnline()) {
                     stopOutlinePreview(selection);
                     cancel();
                     return;
                 }
-                drawOutline(viewer, selection.pos1, selection.pos2);
-                selection.outlineTicksLeft--;
-                if (selection.outlineTicksLeft <= 0) {
-                    stopOutlinePreview(selection);
+                if (!isHoldingPvpWand(viewer)) return;
+
+                Location p1 = selection.pos1;
+                Location p2 = selection.pos2;
+                if (p1 == null || p2 == null) {
+                    if (!worldManager.isLocationInPvpZone(viewer.getLocation())) return;
+                    // no unsaved selection — nothing to preview
+                    return;
+                }
+                drawOutline(viewer, p1, p2);
+            }
+        }.runTaskTimer(plugin, 0L, 10L);
+    }
+
+    /**
+     * Starts a persistent outline that renders the saved PvP zone from config
+     * whenever the player holds the wand. Called once when the wand is given.
+     */
+    void startSavedZoneOutline(Player viewer) {
+        CornerState state = selections.computeIfAbsent(viewer.getUniqueId(), k -> new CornerState());
+        if (state.outlineTask != null) return;
+        state.outlineTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!viewer.isOnline()) {
+                    stopOutlinePreview(state);
                     cancel();
+                    return;
+                }
+                if (!isHoldingPvpWand(viewer)) return;
+                if (state.pos1 != null && state.pos2 != null) {
+                    drawOutline(viewer, state.pos1, state.pos2);
                 }
             }
         }.runTaskTimer(plugin, 0L, 10L);
+    }
+
+    private boolean isHoldingPvpWand(Player p) {
+        ItemStack item = p.getInventory().getItemInMainHand();
+        if (item.getType().isAir() || !item.hasItemMeta()) return false;
+        String tag = item.getItemMeta().getPersistentDataContainer()
+                .get(plugin.pvpZoneWandKey(), PersistentDataType.STRING);
+        return WAND_MARKER.equals(tag);
     }
 
     private void stopOutlinePreview(CornerState selection) {
@@ -178,6 +211,5 @@ public final class HubPvpZoneWandListener implements Listener {
         Location pos1;
         Location pos2;
         BukkitTask outlineTask;
-        int outlineTicksLeft;
     }
 }

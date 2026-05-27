@@ -162,7 +162,7 @@ public final class HubIlTemplateDetailMenu extends HubMenuView {
             return;
         }
         if (slot == 43) {
-            if (plugin.limboLayout().giveLimboWand(p, templateKey)) {
+            if (plugin.limboLayout().giveLimboWand(p)) {
                 p.sendMessage(Component.text(
                         "Limbo wand added — use corners in this template world; shift-right-click saves.",
                         NamedTextColor.GREEN));

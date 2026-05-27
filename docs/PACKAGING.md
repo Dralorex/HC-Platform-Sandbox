@@ -11,11 +11,13 @@
 
 ## On your Paper server
 
-Copy **three** JARs from `mvn package`:
+Copy **three** JARs from `mvn package` (each plugin has its own version in `pom.xml`):
 
 1. `foundation/target/HC-Foundation-*.jar`
 2. `hub/target/HollowCrownHub-*.jar`
 3. `minigames/iron-legacy/target/HCIronLegacy-*.jar`
+
+Or use the deploy zip at repo root: **`HC-Plugins-a0.1.4.zip`** (alias: `HC-Plugins.zip`). The zip tag (`a0.1.4`) is the bundle label, not each plugin’s tag.
 
 Load order: **HC-Foundation** → **HollowCrownHub** → **HCIronLegacy**.
 

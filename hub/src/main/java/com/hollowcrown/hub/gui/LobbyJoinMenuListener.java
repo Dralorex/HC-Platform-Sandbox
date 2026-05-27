@@ -1,5 +1,6 @@
 package com.hollowcrown.hub.gui;
 
+import com.hollowcrown.api.integration.PreMatchLimboService;
 import com.hollowcrown.api.platform.HubSpawn;
 import com.hollowcrown.api.queue.MatchEnqueueResult;
 import com.hollowcrown.hub.HubLog;
@@ -169,6 +170,10 @@ public final class LobbyJoinMenuListener implements Listener {
                 var plug = holder.plugin();
                 Bukkit.getScheduler().runTask(plug, () -> {
                     player.closeInventory();
+                    var limboReg = Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
+                    if (limboReg != null) {
+                        limboReg.getProvider().leaveLimbo(player);
+                    }
                     player.teleportAsync(loc).thenAccept(ok -> {
                         if (Boolean.TRUE.equals(ok)) {
                             plug.hubWorld().applySurvivalHubLoadoutAfterTemplate(player);

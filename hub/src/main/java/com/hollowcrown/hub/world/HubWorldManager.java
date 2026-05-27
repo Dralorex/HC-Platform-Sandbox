@@ -725,14 +725,13 @@ public final class HubWorldManager implements HubWorldApi, Listener {
                     boolean inZone = isInPvpZone(p);
 
                     if (inZone && !canModifyHub(p)) {
-                        // Inside PvP zone: instant activation, force sword selected
                         if (!pvpActive.contains(id)) {
                             activatePvp(p);
+                            p.getInventory().setHeldItemSlot(0);
                         }
                         activateCountdown.remove(id);
                         deactivateCountdown.remove(id);
                         pendingDeactivateOnDeath.remove(id);
-                        p.getInventory().setHeldItemSlot(0);
                         continue;
                     }
 
