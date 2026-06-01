@@ -1,8 +1,10 @@
 package com.hollowcrown.hub.gui;
 
+import com.hollowcrown.api.integration.PreMatchLimboService;
 import com.hollowcrown.api.party.PartyService;
 import com.hollowcrown.api.party.PartyView;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
+import com.hollowcrown.hub.party.HubPartyText;
 import com.hollowcrown.hub.party.HubPartyListener;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -14,6 +16,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -33,6 +36,7 @@ public final class HubPartyMenu extends HubMenuView {
     private static final int SLOT_MEMBERS = 10;
     private static final int SLOT_INVITE_PLAYERS = 13;
     private static final int SLOT_INVITES_IN_PARTY = 16;
+    private static final int SLOT_MATCH_TEAM = 22;
 
     private final HollowCrownHubPlugin plugin;
     private final PartyService parties;
@@ -63,6 +67,7 @@ public final class HubPartyMenu extends HubMenuView {
     private void build() {
         inv.clear();
         PartyView party = parties.partyForMember(viewer.getUniqueId()).orElse(null);
+        boolean inLimbo = isViewerInLimbo();
         if (party == null) {
             inv.setItem(SLOT_CREATE, button(Material.EMERALD,
                     Component.text("Create Party", NamedTextColor.GREEN),
@@ -70,6 +75,11 @@ public final class HubPartyMenu extends HubMenuView {
             inv.setItem(SLOT_INVITES_HUB, button(Material.PAPER,
                     Component.text("Party Invites", NamedTextColor.AQUA),
                     List.of(Component.text("Open pending invites", NamedTextColor.GRAY))));
+            if (inLimbo) {
+                inv.setItem(SLOT_MATCH_TEAM, button(Material.WHITE_BANNER,
+                        Component.text("Match Team", NamedTextColor.YELLOW),
+                        List.of(Component.text("Configure your match team", NamedTextColor.GRAY))));
+            }
             return;
         }
 
@@ -86,6 +96,21 @@ public final class HubPartyMenu extends HubMenuView {
         inv.setItem(SLOT_INVITES_IN_PARTY, button(Material.PAPER,
                 Component.text("Party Invites", NamedTextColor.AQUA),
                 List.of(Component.text("Click to view pending invites", NamedTextColor.GRAY))));
+        if (inLimbo) {
+            inv.setItem(SLOT_MATCH_TEAM, button(Material.WHITE_BANNER,
+                    Component.text("Match Team", NamedTextColor.YELLOW),
+                    List.of(
+                            Component.text(party.isLeader(viewer.getUniqueId())
+                                    ? "Pick a team color before match start"
+                                    : "View your match team",
+                                    NamedTextColor.GRAY))));
+        }
+    }
+
+    private boolean isViewerInLimbo() {
+        RegisteredServiceProvider<PreMatchLimboService> reg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
+        return reg != null && reg.getProvider().isInLimbo(viewer);
     }
 
     private static String nameOf(UUID id) {
@@ -103,6 +128,11 @@ public final class HubPartyMenu extends HubMenuView {
         }
         int slot = e.getRawSlot();
         PartyView party = parties.partyForMember(p.getUniqueId()).orElse(null);
+
+        if (slot == SLOT_MATCH_TEAM) {
+            HubLimboTeamMenu.open(plugin, p);
+            return;
+        }
 
         if (party == null) {
             if (slot == SLOT_CREATE) {
@@ -232,6 +262,13 @@ public final class HubPartyMenu extends HubMenuView {
                     return;
                 }
                 if (!party.isLeader(p.getUniqueId())) {
+                    return;
+                }
+                if (parties.partyForMember(target.getUniqueId()).isPresent()) {
+                    p.sendMessage(Component.text()
+                            .append(HubPartyText.coloredPlayerName(plugin, target))
+                            .append(Component.text(" is already in a party.", NamedTextColor.RED))
+                            .build());
                     return;
                 }
                 if (!parties.invite(p.getUniqueId(), target.getUniqueId())) {

@@ -246,6 +246,11 @@ public final class HubWorldManager implements HubWorldApi, Listener {
     }
 
     @Override
+    public boolean sendToHubSpawn(Player player) {
+        return plugin.sendPlayerToHubSpawn(player);
+    }
+
+    @Override
     public void applySurvivalHubLoadoutAfterTemplate(Player player) {
         if (player == null) return;
         UUID id = player.getUniqueId();
@@ -766,11 +771,27 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         }.runTaskTimer(plugin, 20L, 20L);
     }
 
+    /** Clears hub PvP opt-in / respawn invulnerability (e.g. when leaving limbo for a match). */
+    public void clearPvpOptInState(Player player) {
+        if (player == null) {
+            return;
+        }
+        UUID id = player.getUniqueId();
+        pvpActive.remove(id);
+        activateCountdown.remove(id);
+        deactivateCountdown.remove(id);
+        pendingDeactivateOnDeath.remove(id);
+        pvpInvulnerableUntil.remove(id);
+    }
+
     private void startInvulnerabilityParticleTask() {
         new BukkitRunnable() {
             @Override public void run() {
                 long now = System.currentTimeMillis();
                 for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (!isInHubProtection(p) || !pvpActive.contains(p.getUniqueId())) {
+                        continue;
+                    }
                     Long until = pvpInvulnerableUntil.get(p.getUniqueId());
                     if (until == null || until <= now) continue;
                     Location base = p.getLocation().clone().add(0, 0.1, 0);
@@ -823,11 +844,14 @@ public final class HubWorldManager implements HubWorldApi, Listener {
             } else {
                 e.setRespawnLocation(resp);
             }
+            boolean grantInvuln = pvpActive.contains(id) || pendingDeactivateOnDeath.contains(id);
             new BukkitRunnable() {
                 @Override public void run() {
                     if (!p.isOnline()) return;
                     p.setNoDamageTicks(60);
-                    pvpInvulnerableUntil.put(id, System.currentTimeMillis() + 3000L);
+                    if (grantInvuln) {
+                        pvpInvulnerableUntil.put(id, System.currentTimeMillis() + 3000L);
+                    }
                     if (pvpActive.contains(id)) {
                         p.getInventory().setHeldItemSlot(0);
                     }

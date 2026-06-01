@@ -2,6 +2,7 @@ package com.hollowcrown.hub.command;
 
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.HubLog;
+import com.hollowcrown.hub.party.HubPartyText;
 import com.hollowcrown.hub.party.HubPartyListener;
 import com.hollowcrown.hub.party.HubPartyService;
 import net.kyori.adventure.text.Component;
@@ -89,8 +90,15 @@ public final class HubPartyCommands {
             sender.sendMessage(Component.text("Player not found or not online.", NamedTextColor.RED));
             return true;
         }
+        if (parties.partyForMember(target.getUniqueId()).isPresent()) {
+            leader.sendMessage(Component.text()
+                    .append(HubPartyText.coloredPlayerName(plugin, target))
+                    .append(Component.text(" is already in a party.", NamedTextColor.RED))
+                    .build());
+            return true;
+        }
         if (!parties.invite(leader.getUniqueId(), target.getUniqueId())) {
-            leader.sendMessage(Component.text("Could not invite (must be leader, target must not be in a party).", NamedTextColor.RED));
+            leader.sendMessage(Component.text("Could not invite that player.", NamedTextColor.RED));
             return true;
         }
         String partyId = parties.partyForMember(leader.getUniqueId()).map(v -> v.partyId()).orElse("");

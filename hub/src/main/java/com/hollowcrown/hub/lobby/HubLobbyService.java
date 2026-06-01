@@ -7,7 +7,6 @@ import com.hollowcrown.api.integration.IronLegacyTemplateRow;
 import com.hollowcrown.api.mechanic.MechanicContext;
 import com.hollowcrown.api.mechanic.MinigameMechanic;
 import com.hollowcrown.api.party.PartyView;
-import com.hollowcrown.api.platform.HubSpawn;
 import com.hollowcrown.api.queue.MatchEnqueueResult;
 import com.hollowcrown.api.integration.PreMatchLimboService;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
@@ -30,6 +29,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.stream.Stream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -90,6 +90,29 @@ public final class HubLobbyService {
     }
 
     public String createLobby(String templateKey) throws IOException {
+        IOException last = null;
+        for (int attempt = 0; attempt < 8; attempt++) {
+            try {
+                return createLobbyOnce(templateKey);
+            } catch (IOException ex) {
+                last = ex;
+                String m = ex.getMessage() == null ? "" : ex.getMessage().toLowerCase(Locale.ROOT);
+                boolean retryable = m.contains("already exists") || m.contains("already loaded");
+                if (attempt < 7 && retryable) {
+                    HubLog.warn(plugin, "action=lobby_create_retry", "templateKey=" + templateKey,
+                            "attempt=" + attempt, "err=" + ex.getMessage());
+                    continue;
+                }
+                throw ex;
+            }
+        }
+        if (last != null) {
+            throw last;
+        }
+        throw new IOException("Lobby create failed after retries.");
+    }
+
+    private String createLobbyOnce(String templateKey) throws IOException {
         Optional<HubTemplateEntry> t = templates.get(templateKey);
         if (t.isEmpty()) {
             throw new IOException("Unknown template. Register with /hch template set … then /hch template setsource …");
@@ -285,7 +308,7 @@ public final class HubLobbyService {
         World world = rec.loadedWorld();
 
         if (world != null) {
-            evacuate(world);
+            plugin.evacuateWorldToHubSpawnSync(world);
         }
 
         RegisteredServiceProvider<PreMatchLimboService> limboReg =
@@ -297,12 +320,12 @@ public final class HubLobbyService {
         notifyReleased(rec);
 
         if (world != null) {
-            Bukkit.unloadWorld(world, false);
+            Bukkit.unloadWorld(world, true);
         }
 
-        Path worldContainer = Bukkit.getWorldContainer().toPath();
+        Path worldContainer = Bukkit.getWorldContainer().toPath().toAbsolutePath().normalize();
         Path target = worldContainer.resolve(rec.worldName()).normalize();
-        boolean deleted = WorldFolderCopier.deleteDirectoryBestEffort(target, 5, 200L);
+        boolean deleted = WorldFolderCopier.deleteDirectoryBestEffort(target, 20, 250L);
 
         if (deleted) {
             instances.remove(rec.id());
@@ -578,26 +601,6 @@ public final class HubLobbyService {
     private record LobbyCaps(int maxPlayers, int teamSizeMax) {
     }
 
-    private void evacuate(World world) {
-        Location fallback = plugin.platform().getHubSpawn()
-                .map(this::toLocation)
-                .orElseGet(() -> Bukkit.getWorlds().isEmpty() ? null : Bukkit.getWorlds().get(0).getSpawnLocation());
-        if (fallback == null) {
-            return;
-        }
-        for (Player p : new ArrayList<>(world.getPlayers())) {
-            p.teleport(fallback);
-        }
-    }
-
-    private Location toLocation(HubSpawn s) {
-        World w = Bukkit.getWorld(s.worldUuid());
-        if (w == null) {
-            return null;
-        }
-        return new Location(w, s.x(), s.y(), s.z(), s.yaw(), s.pitch());
-    }
-
     private void notifyCreated(HubTemplateEntry tmpl, HubLobbyInstanceRecord rec, World world) {
         MinigameMechanic m = plugin.platform().getMechanic(MechanicId.of(tmpl.mechanicId()));
         if (m == null) {
@@ -634,7 +637,7 @@ public final class HubLobbyService {
         }
     }
 
-    private int nextLobbyIndex(String templateKey) {
+    private int nextLobbyIndex(String templateKey) throws IOException {
         Set<Integer> used = new HashSet<>();
         for (HubLobbyInstanceRecord r : instances.all()) {
             if (!r.templateKey().equalsIgnoreCase(templateKey)) {
@@ -644,11 +647,66 @@ public final class HubLobbyService {
                 used.add(r.lobbyIndex());
             }
         }
+        reserveLobbyIndicesFromOrphans(templateKey, used);
         int i = 1;
         while (used.contains(i)) {
             i++;
+            if (i > 10_000) {
+                throw new IOException("Too many lobby folder indices in use for template " + templateKey);
+            }
         }
         return i;
+    }
+
+    /**
+     * After a match, the Hub lobby row is detached but the {@code …/template-L#} folder may remain on disk.
+     * Reserve any such indices so the next lobby uses L2, L3, … instead of colliding with a stale folder.
+     */
+    private void reserveLobbyIndicesFromOrphans(String templateKey, Set<Integer> used) {
+        if (templateKey == null || templateKey.isBlank()) {
+            return;
+        }
+        String tk = templateKey.trim();
+        String folderPrefix = tk + "-L";
+        Path worldContainer = Bukkit.getWorldContainer().toPath().toAbsolutePath().normalize();
+        Path minigamesRoot = worldContainer.resolve(LOBBY_ROOT).normalize();
+        if (minigamesRoot.startsWith(worldContainer) && Files.isDirectory(minigamesRoot)) {
+            try (Stream<Path> stream = Files.list(minigamesRoot)) {
+                for (Path child : stream.toList()) {
+                    if (!Files.isDirectory(child)) {
+                        continue;
+                    }
+                    String name = child.getFileName().toString();
+                    if (name.length() <= folderPrefix.length()) {
+                        continue;
+                    }
+                    if (!name.regionMatches(true, 0, folderPrefix, 0, folderPrefix.length())) {
+                        continue;
+                    }
+                    String suffix = name.substring(folderPrefix.length());
+                    try {
+                        used.add(Integer.parseInt(suffix));
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+            } catch (IOException ignored) {
+            }
+        }
+        String worldPrefix = LOBBY_ROOT + "/" + folderPrefix;
+        for (World w : Bukkit.getWorlds()) {
+            String name = w.getName();
+            if (name.length() <= worldPrefix.length()) {
+                continue;
+            }
+            if (!name.regionMatches(true, 0, worldPrefix, 0, worldPrefix.length())) {
+                continue;
+            }
+            String suffix = name.substring(worldPrefix.length());
+            try {
+                used.add(Integer.parseInt(suffix));
+            } catch (NumberFormatException ignored) {
+            }
+        }
     }
 
     private static void validateFolderName(String name) throws IOException {

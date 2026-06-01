@@ -119,14 +119,14 @@ public final class HubTemplateWorldsCommands {
                 }
                 yield true;
             }
-            case "tp", "teleport", "edit" -> {
+            case "edit" -> {
                 if (!(sender instanceof Player p)) {
                     sender.sendMessage(Component.text("Players only.", NamedTextColor.RED));
                     yield true;
                 }
                 if (args.length < 4) {
                     sender.sendMessage(Component.text(
-                            "Usage: /hch template worlds tp <worldFolder|yamlKey>", NamedTextColor.YELLOW));
+                            "Usage: /hch template worlds edit <worldFolder|yamlKey>", NamedTextColor.YELLOW));
                     yield true;
                 }
                 Optional<String> canon = resolveOrTell(sender, admin, args[3]);
@@ -285,7 +285,7 @@ public final class HubTemplateWorldsCommands {
                 " list · reload · gui · importhub [key] [--dry-run] [--sync]",
                 NamedTextColor.GRAY));
         sender.sendMessage(Component.text(
-                " tp <world|key> · publish <world|key> · delete <world|key> · rollback <world|key> [snap]",
+                " edit <world|key> · publish <world|key> · delete <world|key> · rollback <world|key> [snap]",
                 NamedTextColor.GRAY));
         sender.sendMessage(Component.text(
                 " snapshots <world|key> · toggle <world|key> · iconpreview [iconKey]",

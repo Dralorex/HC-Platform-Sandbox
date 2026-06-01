@@ -38,6 +38,12 @@ public interface PreMatchLimboService {
 
     boolean forceBeginTeleportCountdown(String worldOrTemplateKey);
 
+    /**
+     * After match start teleports players to spawn pads, clears the limbo arena volume in
+     * {@code instanceWorldName} (air + entities). No-op when zone metadata is missing.
+     */
+    void clearLimboZoneAfterSpawnPads(String instanceWorldName, String templateKey);
+
     boolean isInLimboWorld(World world);
 
     Set<String> limboWorldNames();

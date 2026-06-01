@@ -3,14 +3,17 @@ package com.hollowcrown.hub.integration;
 import com.hollowcrown.api.integration.IronLegacyMatchInstanceRuntime;
 import com.hollowcrown.api.integration.IronLegacyWorldsCatalog;
 import com.hollowcrown.api.platform.GamePlatform;
+import com.hollowcrown.api.platform.HubSpawn;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.util.WorldFolderCopier;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
@@ -53,26 +56,71 @@ public final class HubIronLegacyMatchInstanceRuntime implements IronLegacyMatchI
     public boolean destroyMatchInstanceByWorld(String worldName) {
         if (worldName == null || worldName.isBlank()) return false;
         World w = Bukkit.getWorld(worldName);
+
         if (w != null && !w.getPlayers().isEmpty()) {
-            return false;
-        }
-        if (w != null) {
-            try {
-                Bukkit.unloadWorld(w, false);
-            } catch (Throwable ignored) {
+            evacuateStragglersToHubSpawn(w);
+            if (!w.getPlayers().isEmpty()) {
+                return false;
             }
         }
-        Path root = Bukkit.getWorldContainer().toPath();
+
+        if (w != null) {
+            try {
+                Bukkit.unloadWorld(w, true);
+            } catch (Throwable t) {
+                plugin.getLogger().warning("Failed to unload match world '" + worldName + "': " + t.getMessage());
+                return false;
+            }
+        }
+
+        Path root = Bukkit.getWorldContainer().toPath().toAbsolutePath().normalize();
         Path folder = root.resolve(worldName).normalize();
         if (!folder.startsWith(root)) return false;
-        if (!Files.exists(folder)) return true;
-        try {
-            WorldFolderCopier.deleteDirectory(folder);
+        if (!Files.exists(folder)) {
+            unmarkPolicyMatchWorld(worldName);
             return true;
-        } catch (IOException ex) {
-            plugin.getLogger().warning("Failed to delete match world folder '" + worldName + "': " + ex.getMessage());
-            return false;
+        }
+
+        boolean deleted = WorldFolderCopier.deleteDirectoryBestEffort(folder, 20, 250L);
+        if (deleted) {
+            unmarkPolicyMatchWorld(worldName);
+            return true;
+        }
+        plugin.getLogger().warning("Failed to delete match world folder after retries: " + worldName);
+        return false;
+    }
+
+    private void evacuateStragglersToHubSpawn(World world) {
+        Optional<HubSpawn> spawnOpt = platform.getHubSpawn();
+        Location fallback = null;
+        if (spawnOpt.isPresent()) {
+            HubSpawn s = spawnOpt.get();
+            World hub = Bukkit.getWorld(s.worldUuid());
+            if (hub != null) {
+                fallback = new Location(hub, s.x(), s.y(), s.z(), s.yaw(), s.pitch());
+            }
+        }
+        for (Player p : new ArrayList<>(world.getPlayers())) {
+            boolean routed = false;
+            try {
+                routed = plugin.sendPlayerToHubSpawnSync(p);
+            } catch (Throwable ignored) {
+            }
+            if (!routed && fallback != null) {
+                try {
+                    p.teleport(fallback);
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+    }
+
+    private void unmarkPolicyMatchWorld(String worldName) {
+        try {
+            if (plugin.pluginPolicies() != null) {
+                plugin.pluginPolicies().unmarkWorldAsMatch(worldName);
+            }
+        } catch (Throwable ignored) {
         }
     }
 }
-

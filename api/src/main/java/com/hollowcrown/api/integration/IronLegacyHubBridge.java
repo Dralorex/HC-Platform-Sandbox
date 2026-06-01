@@ -10,4 +10,7 @@ import org.bukkit.entity.Player;
 public interface IronLegacyHubBridge {
 
     void recordHubProtectedKill(Player killer, Player victim);
+
+    /** True when the player is in a world running an active Iron Legacy match (freeze or running). */
+    boolean isPlayerInActiveMatchWorld(Player player);
 }

@@ -254,6 +254,11 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
         return plugin.serverRole().isHubLike();
     }
 
+    @Override
+    public boolean isActiveMatchParticipant(java.util.UUID playerId) {
+        return playerId != null && plugin.game().isMatchParticipant(playerId);
+    }
+
     private void autoCreateRandomTeams(List<UUID> players, int maxSize) {
         if (players.isEmpty()) return;
         List<UUID> pool = new ArrayList<>(players);

@@ -4,7 +4,10 @@ import com.hollowcrown.api.integration.IronLegacyHubImportResult;
 import com.hollowcrown.api.integration.IronLegacyTemplateAdmin;
 import com.hollowcrown.api.integration.IronLegacyTemplateRow;
 import com.hollowcrown.api.integration.IronLegacyWorldsCatalog;
+import com.hollowcrown.api.integration.HubTemplatePublishLifecycle;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
+import org.bukkit.Bukkit;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import com.hollowcrown.hungergames.managers.TemplateWorldManager;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
@@ -67,7 +70,15 @@ public record IronLegacyTemplateAdminImpl(HungerGamesPlugin plugin) implements I
 
     @Override
     public boolean publish(String templateKey) {
-        return requireWorldsCatalog().publishTemplate(templateKey);
+        boolean ok = plugin.templates().publishTemplate(templateKey);
+        if (ok) {
+            RegisteredServiceProvider<HubTemplatePublishLifecycle> reg =
+                    Bukkit.getServicesManager().getRegistration(HubTemplatePublishLifecycle.class);
+            if (reg != null) {
+                reg.getProvider().onTemplatePublished(templateKey);
+            }
+        }
+        return ok;
     }
 
     @Override

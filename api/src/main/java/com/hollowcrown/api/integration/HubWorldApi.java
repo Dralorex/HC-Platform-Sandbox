@@ -66,4 +66,10 @@ public interface HubWorldApi {
     void suppressGameLobbyGuiBriefly(Player player, long durationMs);
 
     boolean isGameLobbyGuiSuppressed(Player player);
+
+    /**
+     * Leave pre-match limbo if needed and teleport to configured hub spawn ({@code /hch sethub}).
+     * @return false when hub spawn is missing or the world is not loaded
+     */
+    boolean sendToHubSpawn(Player player);
 }

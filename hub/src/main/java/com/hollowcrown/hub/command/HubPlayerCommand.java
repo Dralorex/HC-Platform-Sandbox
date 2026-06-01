@@ -3,7 +3,6 @@ package com.hollowcrown.hub.command;
 import com.hollowcrown.api.party.PartyView;
 import com.hollowcrown.api.platform.GamePlatform;
 import com.hollowcrown.api.platform.HubSpawn;
-import com.hollowcrown.api.integration.HubWorldApi;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.HubLog;
 import net.kyori.adventure.text.Component;
@@ -74,15 +73,11 @@ public final class HubPlayerCommand implements CommandExecutor {
                 }
                 pulled++;
                 boolean isLeader = memberId.equals(player.getUniqueId());
-                HubWorldApi hubWorld = plugin.hubWorld();
-                target.teleportAsync(loc).thenAccept(ok -> {
-                    if (Boolean.TRUE.equals(ok)) {
-                        hubWorld.applySurvivalHubLoadoutAfterTemplate(target);
-                        HubLog.info(plugin, "action=hub_teleport", "player=" + memberId, "result=ok", "partyPull=1");
-                    } else {
-                        HubLog.warn(plugin, "action=hub_teleport", "player=" + memberId, "result=fail", "partyPull=1");
-                    }
-                });
+                if (plugin.sendPlayerToHubSpawn(target)) {
+                    HubLog.info(plugin, "action=hub_teleport", "player=" + memberId, "result=ok", "partyPull=1");
+                } else {
+                    HubLog.warn(plugin, "action=hub_teleport", "player=" + memberId, "result=fail", "partyPull=1");
+                }
                 if (!isLeader) {
                     target.sendMessage(Component.text(
                             player.getName() + " brought the party to the hub.",
@@ -99,15 +94,11 @@ public final class HubPlayerCommand implements CommandExecutor {
             return true;
         }
 
-        HubWorldApi hubWorld = plugin.hubWorld();
-        player.teleportAsync(loc).thenAccept(ok -> {
-            if (Boolean.TRUE.equals(ok)) {
-                hubWorld.applySurvivalHubLoadoutAfterTemplate(player);
-                HubLog.info(plugin, "action=hub_teleport", "player=" + player.getUniqueId(), "result=ok");
-            } else {
-                HubLog.warn(plugin, "action=hub_teleport", "player=" + player.getUniqueId(), "result=fail");
-            }
-        });
+        if (plugin.sendPlayerToHubSpawn(player)) {
+            HubLog.info(plugin, "action=hub_teleport", "player=" + player.getUniqueId(), "result=ok");
+        } else {
+            HubLog.warn(plugin, "action=hub_teleport", "player=" + player.getUniqueId(), "result=fail");
+        }
         return true;
     }
 }

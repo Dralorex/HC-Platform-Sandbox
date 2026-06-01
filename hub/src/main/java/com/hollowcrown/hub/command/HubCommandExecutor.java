@@ -232,7 +232,7 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
         if (args.length == 3 && args[1].equalsIgnoreCase("worlds")) {
             String p = args[2].toLowerCase(Locale.ROOT);
             List<String> out = new ArrayList<>();
-            for (String c : List.of("help", "list", "reload", "gui", "importhub", "tp", "publish", "delete",
+            for (String c : List.of("help", "list", "reload", "gui", "importhub", "edit", "publish", "delete",
                     "rollback", "snapshots", "toggle", "iconpreview")) {
                 if (c.startsWith(p)) {
                     out.add(c);
@@ -243,7 +243,7 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
         if (args.length == 4 && args[1].equalsIgnoreCase("worlds")) {
             String sub = args[2].toLowerCase(Locale.ROOT);
             boolean needsKey = switch (sub) {
-                case "tp", "publish", "delete", "rollback", "snapshots", "toggle", "iconpreview" -> true;
+                case "edit", "publish", "delete", "rollback", "snapshots", "toggle", "iconpreview" -> true;
                 default -> false;
             };
             if (needsKey) {

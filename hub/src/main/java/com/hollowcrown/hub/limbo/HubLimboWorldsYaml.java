@@ -85,6 +85,37 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
         return "worlds." + templateKey.toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Resolve Hub template key -> canonical Iron Legacy worlds.yml key.
+     * Supports direct key matches and source-world-name matches for cases where Hub key differs
+     * from IL key (common when multiple template worlds are maintained).
+     */
+    private String canonicalTemplateKey(String templateKeyOrWorld) {
+        if (templateKeyOrWorld == null || templateKeyOrWorld.isBlank()) {
+            return null;
+        }
+        String raw = templateKeyOrWorld.trim();
+        synchronized (fileLock) {
+            YamlConfiguration yaml = loadFresh();
+            if (yaml.isConfigurationSection(base(raw))) {
+                return raw.toLowerCase(Locale.ROOT);
+            }
+        }
+        Optional<String> byWorldName = resolveTemplateKeyForWorld(raw);
+        if (byWorldName.isPresent()) {
+            return byWorldName.get().toLowerCase(Locale.ROOT);
+        }
+        String source = plugin.templates().get(raw)
+                .map(e -> e.sourceWorldName())
+                .filter(s -> s != null && !s.isBlank())
+                .map(String::trim)
+                .orElse(null);
+        if (source != null) {
+            return resolveTemplateKeyForWorld(source).orElse(raw.toLowerCase(Locale.ROOT));
+        }
+        return raw.toLowerCase(Locale.ROOT);
+    }
+
     private void notifyIronLegacyReload() {
         if (!plugin.isEnabled()) {
             return;
@@ -161,9 +192,13 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
         if (templateKey == null || templateKey.isBlank()) {
             return Optional.empty();
         }
+        String canon = canonicalTemplateKey(templateKey);
+        if (canon == null || canon.isBlank()) {
+            return Optional.empty();
+        }
         synchronized (fileLock) {
             YamlConfiguration yaml = loadFresh();
-            String b = base(templateKey);
+            String b = base(canon);
             String p1 = b + ".limbo.zone.pos1";
             String p2 = b + ".limbo.zone.pos2";
             if (!yaml.contains(p1 + ".x") || !yaml.contains(p2 + ".x")) {
@@ -235,9 +270,11 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
     @Override
     public int minimumPercentage(String templateKey) {
         if (templateKey == null || templateKey.isBlank()) return 80;
+        String canon = canonicalTemplateKey(templateKey);
+        if (canon == null || canon.isBlank()) return 80;
         synchronized (fileLock) {
             YamlConfiguration yaml = loadFresh();
-            int pct = yaml.getInt(base(templateKey) + ".limbo.minimumPercentage", 80);
+            int pct = yaml.getInt(base(canon) + ".limbo.minimumPercentage", 80);
             return Math.max(1, Math.min(100, pct));
         }
     }
@@ -251,9 +288,11 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
     @Override
     public Optional<IronLegacyWorldsCatalog.LimboSpawn> limboSpawn(String templateKey) {
         if (templateKey == null || templateKey.isBlank()) return Optional.empty();
+        String canon = canonicalTemplateKey(templateKey);
+        if (canon == null || canon.isBlank()) return Optional.empty();
         synchronized (fileLock) {
             YamlConfiguration yaml = loadFresh();
-            String b = base(templateKey);
+            String b = base(canon);
             if (!yaml.contains(b + ".limbo.x")) return Optional.empty();
             String world = yaml.getString(b + ".limbo.world", "");
             return Optional.of(new IronLegacyWorldsCatalog.LimboSpawn(
@@ -270,11 +309,13 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
     @Override
     public String resolveServerTarget(String templateKey) {
         if (templateKey == null || templateKey.isBlank()) return "";
+        String canon = canonicalTemplateKey(templateKey);
+        if (canon == null || canon.isBlank()) return "";
         synchronized (fileLock) {
             YamlConfiguration yaml = loadFresh();
-            String configured = yaml.getString(base(templateKey) + ".serverTarget", "");
+            String configured = yaml.getString(base(canon) + ".serverTarget", "");
             if (configured != null && !configured.isBlank()) return configured.trim();
-            return "game-" + templateKey.toLowerCase(Locale.ROOT);
+            return "game-" + canon.toLowerCase(Locale.ROOT);
         }
     }
 
@@ -284,10 +325,12 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
 
     private boolean editTemplate(String templateKey, YamlEdit edit) {
         if (templateKey == null || templateKey.isBlank()) return false;
+        String canon = canonicalTemplateKey(templateKey);
+        if (canon == null || canon.isBlank()) return false;
         synchronized (fileLock) {
             try {
                 YamlConfiguration yaml = loadFresh();
-                String b = base(templateKey);
+                String b = base(canon);
                 if (!yaml.isConfigurationSection(b)) return false;
                 if (!edit.apply(yaml, b)) return false;
                 save(yaml);
@@ -328,16 +371,11 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
         return editTemplate(templateKey, (yaml, b) -> { yaml.set(b + ".publish.gamerules." + ruleName.trim(), value); return true; });
     }
     @Override public boolean publishTemplate(String templateKey) {
-        boolean ok = editTemplate(templateKey, (yaml, b) -> {
-            yaml.set(b + ".status", "PUBLISHED");
-            yaml.set(b + ".enabled", true);
-            yaml.set(b + ".version", Math.max(0, yaml.getInt(b + ".version", 0)) + 1);
-            return true;
-        });
-        if (ok) {
-            plugin.lobbyService().refreshLobbiesAfterPublish(templateKey);
-        }
-        return ok;
+        String canon = canonicalTemplateKey(templateKey);
+        if (canon == null || canon.isBlank()) return false;
+        return HubIronLegacySupport.ilAdmin()
+                .map(admin -> admin.publish(canon))
+                .orElse(false);
     }
 
     public boolean writeLimboZone(String templateKey, Location pos1, Location pos2) {

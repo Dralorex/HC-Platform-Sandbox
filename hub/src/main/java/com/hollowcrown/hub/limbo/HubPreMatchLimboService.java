@@ -3,7 +3,10 @@ package com.hollowcrown.hub.limbo;
 import com.hollowcrown.api.integration.HubWorldApi;
 import com.hollowcrown.api.integration.IronLegacyLimboBridge;
 import com.hollowcrown.api.integration.PreMatchLimboService;
+import com.hollowcrown.api.party.PartyService;
+import com.hollowcrown.api.party.PartyView;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
+import com.hollowcrown.hub.HubLog;
 import com.hollowcrown.hub.lobby.HubLobbyService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -14,6 +17,7 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -111,7 +115,22 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
                 || lobbyWorldName == null || lobbyWorldName.isBlank()) {
             return false;
         }
-        var info = b.findTemplate(templateKey).orElse(null);
+        String resolvedKey = templateKey;
+        var info = b.findTemplate(resolvedKey).orElse(null);
+        if (info == null) {
+            String source = hub.templates().get(templateKey)
+                    .map(e -> e.sourceWorldName())
+                    .filter(s -> s != null && !s.isBlank())
+                    .map(String::trim)
+                    .orElse(null);
+            if (source != null) {
+                String canon = hub.limboLayout().worldsYaml().resolveTemplateKeyForWorld(source).orElse(null);
+                if (canon != null && !canon.isBlank()) {
+                    resolvedKey = canon;
+                    info = b.findTemplate(resolvedKey).orElse(null);
+                }
+            }
+        }
         if (info == null) {
             return false;
         }
@@ -139,7 +158,56 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
         p.getInventory().setHeldItemSlot(4);
         p.setGameMode(GameMode.ADVENTURE);
         startQueueTaskIfNeeded(s);
+        announceLobbyTeamPrompt(p);
         return true;
+    }
+
+    /**
+     * Title + chat hint sent on lobby-limbo entry so the leader can set up a match team
+     * and the rest of the party knows the team system is engaged.
+     */
+    private void announceLobbyTeamPrompt(Player p) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!p.isOnline() || !isInLimbo(p)) return;
+                PartyView party = resolveParty(p);
+                boolean leader = party != null && party.isLeader(p.getUniqueId());
+                if (leader) {
+                    p.showTitle(Title.title(
+                            Component.text("You're the Party Leader", NamedTextColor.GOLD),
+                            Component.text("Open the Party menu to pick your team color",
+                                    NamedTextColor.YELLOW),
+                            Title.Times.times(Duration.ofMillis(250), Duration.ofSeconds(4), Duration.ofMillis(500))));
+                    p.sendMessage(Component.text(
+                            "You are the party leader. Right-click your party item to set up your match team.",
+                            NamedTextColor.GOLD));
+                } else if (party != null) {
+                    p.showTitle(Title.title(
+                            Component.text("Match Team Ready", NamedTextColor.AQUA),
+                            Component.text("Your party will be your team", NamedTextColor.GRAY),
+                            Title.Times.times(Duration.ofMillis(250), Duration.ofSeconds(3), Duration.ofMillis(500))));
+                    p.sendMessage(Component.text(
+                            "Your party becomes your match team. The leader can pick a color from the party menu.",
+                            NamedTextColor.AQUA));
+                } else {
+                    p.showTitle(Title.title(
+                            Component.text("Solo Lobby", NamedTextColor.YELLOW),
+                            Component.text("A team is assigned at match start", NamedTextColor.GRAY),
+                            Title.Times.times(Duration.ofMillis(250), Duration.ofSeconds(3), Duration.ofMillis(500))));
+                    p.sendMessage(Component.text(
+                            "You're solo. Right-click your party item to invite friends or join an open team.",
+                            NamedTextColor.YELLOW));
+                }
+            }
+        }.runTaskLater(hub, 20L);
+    }
+
+    private PartyView resolveParty(Player p) {
+        RegisteredServiceProvider<PartyService> reg =
+                Bukkit.getServicesManager().getRegistration(PartyService.class);
+        if (reg == null) return null;
+        return reg.getProvider().partyForMember(p.getUniqueId()).orElse(null);
     }
 
     @Override
@@ -238,10 +306,7 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
         for (UUID id : everyone) {
             Player p = Bukkit.getPlayer(id);
             if (p != null && p.isOnline()) {
-                leaveLimbo(p);
-                if (b != null) {
-                    b.sendToLobbyExact(p, true, true);
-                }
+                hub.sendPlayerToHubSpawn(p);
             } else {
                 removeUuidFromLimboSessions(id);
             }
@@ -265,6 +330,7 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
         if (s == null) return false;
         List<Player> online = onlinePlayers(s.players);
         if (online.isEmpty()) return false;
+        s.forceStart = true;
         beginTeleportCountdown(s, online, "Match start triggered.");
         return true;
     }
@@ -332,7 +398,7 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
                     player.sendActionBar(Component.text(current + "/" + max + " Players", NamedTextColor.YELLOW));
                 }
 
-                if (current < required) {
+                if (!s.forceStart && current < required) {
                     if (s.teleportCountdownSeconds >= 0) {
                         cancelMatchStartForLowFill(s, online, true);
                         return;
@@ -418,31 +484,59 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
 
     private void launchSession(LimboSession s) {
         IronLegacyLimboBridge b = bridge();
-        if (b == null) {
-            cleanupSession(s.templateKey);
-            return;
-        }
         Set<UUID> onlinePlayers = new LinkedHashSet<>();
         for (UUID id : s.players) {
             Player p = Bukkit.getPlayer(id);
-            if (p != null && p.isOnline()) onlinePlayers.add(id);
+            if (p != null && p.isOnline()) {
+                onlinePlayers.add(id);
+            }
+        }
+        if (b == null) {
+            evacuatePlayersToHub(onlinePlayers);
+            cleanupLimboSession(s);
+            return;
         }
         if (onlinePlayers.isEmpty()) {
-            cleanupSession(s.templateKey);
+            cleanupLimboSession(s);
             return;
         }
 
-        clearLimboZoneBlocks(s, b);
+        for (UUID id : onlinePlayers) {
+            arenaState.pvpActive().remove(id);
+            arenaState.activateCountdown().remove(id);
+            arenaState.deactivateCountdown().remove(id);
+            arenaState.pendingDeactivateOnDeath().remove(id);
+            arenaState.pvpInvulnerableUntil().remove(id);
+            Player pl = Bukkit.getPlayer(id);
+            if (pl != null) {
+                hub.hubWorld().clearPvpOptInState(pl);
+            }
+        }
         b.assignTeamsForLimboLaunch(s.templateKey, s.teamSizeMax, onlinePlayers);
         World instanceWorld = Bukkit.getWorld(s.worldName);
         boolean ok = b.startGameOnPreparedInstance(instanceWorld, onlinePlayers, true);
         if (!ok) {
+            String err = b.lastGameStartError();
+            boolean spawnPads = err != null && err.toLowerCase(Locale.ROOT).contains("spawn pad");
             for (UUID id : onlinePlayers) {
                 Player p = Bukkit.getPlayer(id);
-                if (p != null) p.sendMessage(ChatColor.RED + "Failed to start match from limbo: " + b.lastGameStartError());
+                if (p == null) {
+                    continue;
+                }
+                if (spawnPads) {
+                    p.sendMessage(Component.text(
+                            "Someone messed up! Go complain to someone that \"SpawnPads\" have NOT been set up correctly!",
+                            NamedTextColor.RED));
+                } else {
+                    p.sendMessage(Component.text(
+                            "Failed to start match from limbo: " + (err == null ? "unknown error" : err),
+                            NamedTextColor.RED));
+                }
             }
-            evacuatePlayersToHub(onlinePlayers, s.worldName, b);
+            evacuatePlayersToHub(onlinePlayers);
         } else {
+            // Match policy scope begins after a successful launch on this instance world.
+            hub.pluginPolicies().markWorldAsMatch(s.worldName);
             hub.lobbyService().onHubLobbyMatchStarted(s.templateKey, s.worldName);
         }
         cleanupLimboSession(s);
@@ -505,19 +599,47 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
         }
     }
 
-    private void clearLimboZoneBlocks(LimboSession s, IronLegacyLimboBridge b) {
-        World w = Bukkit.getWorld(s.worldName);
-        if (w == null) return;
-        var zone = sessionZone(w, s.templateKey, b);
-        if (zone == null) return;
+    @Override
+    public void clearLimboZoneAfterSpawnPads(String instanceWorldName, String templateKey) {
+        if (instanceWorldName == null || instanceWorldName.isBlank()
+                || templateKey == null || templateKey.isBlank()) {
+            return;
+        }
+        Bukkit.getScheduler().runTask(hub, () -> clearLimboZoneInWorld(instanceWorldName, templateKey));
+    }
+
+    /** Removes all blocks (air) and non-player entities inside the configured limbo volume. */
+    private void clearLimboZoneInWorld(String instanceWorldName, String templateKey) {
+        World sessionWorld = Bukkit.getWorld(instanceWorldName);
+        if (sessionWorld == null) {
+            HubLog.warn(hub, "action=limbo_zone_clear_skip", "reason=no_session_world", "world=" + instanceWorldName);
+            return;
+        }
+        LimboZone zone = sessionZone(sessionWorld, templateKey, bridge());
+        if (zone == null) {
+            HubLog.warn(hub, "action=limbo_zone_clear_skip", "reason=no_zone", "templateKey=" + templateKey,
+                    "world=" + instanceWorldName);
+            return;
+        }
+        clearLimboZoneBlocks(sessionWorld, zone);
+        clearLimboZoneEntities(sessionWorld, zone);
+        HubLog.info(hub, "action=limbo_zone_cleared", "templateKey=" + templateKey, "world=" + instanceWorldName);
+    }
+
+    private static void clearLimboZoneBlocks(World w, LimboZone zone) {
         Location p1 = zone.pos1();
         Location p2 = zone.pos2();
-        int minX = Math.min((int) Math.floor(p1.getX()), (int) Math.floor(p2.getX()));
-        int maxX = Math.max((int) Math.floor(p1.getX()), (int) Math.floor(p2.getX()));
-        int minY = Math.min((int) Math.floor(p1.getY()), (int) Math.floor(p2.getY()));
-        int maxY = Math.max((int) Math.floor(p1.getY()), (int) Math.floor(p2.getY()));
-        int minZ = Math.min((int) Math.floor(p1.getZ()), (int) Math.floor(p2.getZ()));
-        int maxZ = Math.max((int) Math.floor(p1.getZ()), (int) Math.floor(p2.getZ()));
+        int minX = Math.min(p1.getBlockX(), p2.getBlockX());
+        int maxX = Math.max(p1.getBlockX(), p2.getBlockX());
+        int minY = Math.min(p1.getBlockY(), p2.getBlockY());
+        int maxY = Math.max(p1.getBlockY(), p2.getBlockY());
+        int minZ = Math.min(p1.getBlockZ(), p2.getBlockZ());
+        int maxZ = Math.max(p1.getBlockZ(), p2.getBlockZ());
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                w.getChunkAt(x >> 4, z >> 4).load(true);
+            }
+        }
         for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
@@ -527,21 +649,35 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
         }
     }
 
-    private void evacuatePlayersToHub(Set<UUID> ids, String fromWorldName, IronLegacyLimboBridge b) {
+    private static void clearLimboZoneEntities(World w, LimboZone zone) {
+        Location p1 = zone.pos1();
+        Location p2 = zone.pos2();
+        double minX = Math.min(p1.getX(), p2.getX());
+        double maxX = Math.max(p1.getX(), p2.getX()) + 1.0;
+        double minY = Math.min(p1.getY(), p2.getY());
+        double maxY = Math.max(p1.getY(), p2.getY()) + 1.0;
+        double minZ = Math.min(p1.getZ(), p2.getZ());
+        double maxZ = Math.max(p1.getZ(), p2.getZ()) + 1.0;
+        for (Entity ent : w.getEntities()) {
+            if (ent instanceof Player) {
+                continue;
+            }
+            Location loc = ent.getLocation();
+            if (loc.getX() < minX || loc.getX() >= maxX
+                    || loc.getY() < minY || loc.getY() >= maxY
+                    || loc.getZ() < minZ || loc.getZ() >= maxZ) {
+                continue;
+            }
+            ent.remove();
+        }
+    }
+
+    private void evacuatePlayersToHub(Set<UUID> ids) {
         for (UUID id : ids) {
             Player p = Bukkit.getPlayer(id);
-            if (p == null || !p.isOnline()) continue;
-            if (p.getWorld() != null && p.getWorld().getName().equalsIgnoreCase(fromWorldName)) {
-                if (b.velocityEnabled() && !b.hubTargetIsThisServer()) {
-                    World safe = Bukkit.getWorlds().stream()
-                            .filter(world -> !world.getName().equalsIgnoreCase(fromWorldName))
-                            .findFirst().orElse(null);
-                    if (safe != null) {
-                        p.teleport(safe.getSpawnLocation());
-                    }
-                }
+            if (p != null && p.isOnline()) {
+                hub.sendPlayerToHubSpawn(p);
             }
-            b.returnToHubOrLobby(p, true, true);
         }
     }
 
@@ -574,8 +710,29 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
     }
 
     private LimboZone sessionZone(World sessionWorld, String templateKey, IronLegacyLimboBridge b) {
+        if (sessionWorld == null || templateKey == null || templateKey.isBlank()) {
+            return null;
+        }
+        Optional<HubLimboWorldsYaml.LimboZone> fromYaml = hub.limboLayout().worldsYaml().limboZone(templateKey);
+        if (fromYaml.isPresent()) {
+            HubLimboWorldsYaml.LimboZone z = fromYaml.get();
+            Location s1 = z.pos1().clone();
+            Location s2 = z.pos2().clone();
+            s1.setWorld(sessionWorld);
+            s2.setWorld(sessionWorld);
+            return new LimboZone(s1, s2);
+        }
+        if (b == null) {
+            return null;
+        }
         var corners = b.limboZoneCorners(templateKey).orElse(null);
-        if (corners == null || sessionWorld == null) return null;
+        if (corners == null) {
+            Optional<String> inferred = hub.limboLayout().worldsYaml().resolveTemplateKeyForWorld(sessionWorld.getName());
+            if (inferred.isPresent() && !inferred.get().equalsIgnoreCase(templateKey)) {
+                return sessionZone(sessionWorld, inferred.get(), b);
+            }
+            return null;
+        }
         Location s1 = new Location(sessionWorld, corners.x1(), corners.y1(), corners.z1());
         Location s2 = new Location(sessionWorld, corners.x2(), corners.y2(), corners.z2());
         return new LimboZone(s1, s2);
@@ -648,6 +805,8 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
         public BukkitTask countdownTask;
         public int queueCountdownSeconds = -1;
         public int teleportCountdownSeconds = -1;
+        /** Admin /il start — skip minimum-fill checks for this countdown. */
+        public boolean forceStart;
 
         public LimboSession(String templateKey, String worldName, int teamSizeMax, int maxPlayers) {
             this.templateKey = templateKey;

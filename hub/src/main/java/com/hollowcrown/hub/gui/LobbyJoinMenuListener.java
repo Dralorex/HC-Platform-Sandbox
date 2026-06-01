@@ -1,6 +1,5 @@
 package com.hollowcrown.hub.gui;
 
-import com.hollowcrown.api.integration.PreMatchLimboService;
 import com.hollowcrown.api.platform.HubSpawn;
 import com.hollowcrown.api.queue.MatchEnqueueResult;
 import com.hollowcrown.hub.HubLog;
@@ -8,8 +7,6 @@ import com.hollowcrown.hub.command.MatchEnqueueMessages;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -160,27 +157,13 @@ public final class LobbyJoinMenuListener implements Listener {
                     player.sendMessage(Component.text("Hub spawn is not set.", NamedTextColor.RED));
                     return;
                 }
-                HubSpawn s = spawnOpt.get();
-                World w = Bukkit.getWorld(s.worldUuid());
-                if (w == null) {
-                    player.sendMessage(Component.text("Hub world is not loaded.", NamedTextColor.RED));
-                    return;
-                }
-                Location loc = new Location(w, s.x(), s.y(), s.z(), s.yaw(), s.pitch());
                 var plug = holder.plugin();
                 Bukkit.getScheduler().runTask(plug, () -> {
                     player.closeInventory();
-                    var limboReg = Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
-                    if (limboReg != null) {
-                        limboReg.getProvider().leaveLimbo(player);
+                    if (plug.sendPlayerToHubSpawn(player)) {
+                        player.sendMessage(Component.text("Returned to the hub.", NamedTextColor.GREEN));
+                        HubLog.info(plug, "action=lobby_leave_gui", "player=" + player.getName());
                     }
-                    player.teleportAsync(loc).thenAccept(ok -> {
-                        if (Boolean.TRUE.equals(ok)) {
-                            plug.hubWorld().applySurvivalHubLoadoutAfterTemplate(player);
-                            player.sendMessage(Component.text("Returned to the hub.", NamedTextColor.GREEN));
-                            HubLog.info(plug, "action=lobby_leave_gui", "player=" + player.getName());
-                        }
-                    });
                 });
             }
             default -> {

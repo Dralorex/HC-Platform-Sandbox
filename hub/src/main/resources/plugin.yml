@@ -15,6 +15,12 @@ commands:
     description: Teleport to Hollow Crown hub spawn
     usage: /hub
     aliases: [lobby, spawnhub]
+  ally:
+    description: Form an alliance with another team in your match
+    usage: /ally <teamName>  |  /ally accept <teamName>
+  enemy:
+    description: Mark another team as a sworn enemy (orange) in your match
+    usage: /enemy <teamName>
 permissions:
   hollowcrownhub.use:
     default: true
