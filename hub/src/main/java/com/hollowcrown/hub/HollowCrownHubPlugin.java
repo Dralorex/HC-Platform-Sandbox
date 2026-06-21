@@ -70,6 +70,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
     private NamespacedKey lobbyJoinInstanceIdKey;
     private NamespacedKey partyInviteKey;
     private NamespacedKey limboWandTemplateKey;
+    private NamespacedKey pvpZoneWandKey;
     private HubLimboLayout hubLimboLayout;
     private HubLimboArenaState hubLimboArenaState;
     private HubPreMatchLimboService hubPreMatchLimboService;
@@ -119,6 +120,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         this.lobbyJoinInstanceIdKey = new NamespacedKey(this, "lobby_join_instance");
         this.partyInviteKey = new NamespacedKey(this, "party_invite_id");
         this.limboWandTemplateKey = new NamespacedKey(this, "limbo_wand_template");
+        this.pvpZoneWandKey = new NamespacedKey(this, "pvp_zone_wand");
         this.hubLimboLayout = new HubLimboLayout(this);
         this.hubLimboArenaState = new HubLimboArenaState();
         this.hubPreMatchLimboService = new HubPreMatchLimboService(this, hubLimboArenaState);
@@ -128,6 +130,8 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new HubMenuListener(), this);
         Bukkit.getPluginManager().registerEvents(new HubPartyListener(this, partyService), this);
         Bukkit.getPluginManager().registerEvents(hubWorldManager, this);
+        Bukkit.getPluginManager().registerEvents(
+                new com.hollowcrown.hub.world.HubPvpZoneWandListener(this, hubWorldManager), this);
 
         Bukkit.getServicesManager().register(
                 GamePlatform.class,
@@ -321,6 +325,11 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
     /** PDC on Hub limbo corner wand items (not the legacy IL namespace). */
     public NamespacedKey limboWandTemplateKey() {
         return limboWandTemplateKey;
+    }
+
+    /** PDC marker on PvP zone selection wand items. */
+    public NamespacedKey pvpZoneWandKey() {
+        return pvpZoneWandKey;
     }
 
     /** Limbo zone/spawn editing + wand listener (writes HCIronLegacy {@code worlds.yml}). */

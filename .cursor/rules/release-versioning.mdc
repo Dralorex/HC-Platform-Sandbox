@@ -1,0 +1,85 @@
+---
+description: Hollow Crown Platform per-plugin release tags and HC-Plugins zip naming
+alwaysApply: true
+---
+
+# Release versioning
+
+Each component has its **own** Maven version (`1.21.4-<release-tag>`). `plugin.yml` uses `${project.version}`.
+
+| Module | Property | `pom.xml` |
+|--------|----------|-----------|
+| API | `hc.api.version` | `api/pom.xml` |
+| Foundation | `hc.foundation.version` | `foundation/pom.xml` |
+| Hub | `hc.hub.version` | `hub/pom.xml` |
+| Iron Legacy | `hc.ironlegacy.version` | `minigames/iron-legacy/pom.xml` |
+
+Root aggregator: `1.21.4-SNAPSHOT`. No shared “hub stack” version.
+
+Deploy bundle (one zip tag, separate from per-plugin tags):
+
+- Property: `hc.plugins.zip.tag` (e.g. `a0.1.4`)
+- Files: **`HC-Plugins-a0.1.4.zip`** and **`HC-Plugins.zip`**
+
+## Same rule for every plugin
+
+**API, Foundation, Hub, Iron Legacy (and future minigames) all use the same policy:**
+
+- Bump a plugin’s release tag **only** when the user **explicitly asks to bump / up tags** (see below) **and** that module had edits in the work being released.
+- Do **not** bump plugins that did not change.
+- Default increment: **patch +1** on that plugin’s tag unless the user specifies otherwise.
+- Always update **both** the root property and that module’s `<version>` in sync.
+
+## Bump tags — only when the user says so
+
+**Do not bump version tags** because the user asked to zip, ship, build, or deploy HC-Plugins.
+
+**Do bump tags** only when the user explicitly asks (e.g. “bump tags”, “up the tag”, “version bump”, “tag release”) or clearly confirms when you ask whether to **up tags**.
+
+When they ask to **up tags**, in one pass:
+
+1. **Detect changed modules** — `git diff`, session edits, or their list.
+2. **Bump every changed plugin** — patch +1 each touched module’s property + `pom.xml` `<version>`.
+3. **Bump `hc.plugins.zip.tag`** — patch +1 on `a0.1.x`.
+4. Update **`CHANGELOG.md`**.
+5. `mvn clean package -DskipTests`.
+
+Rebuild is required after a tag bump; do not leave edited code on old version numbers.
+
+## Zip / ship — no tag bump unless asked
+
+When the user asks only to **zip**, **ship**, or **rebuild HC-Plugins** (without upping tags):
+
+1. `mvn clean package -DskipTests` (if needed).
+2. Create **`HC-Plugins-${hc.plugins.zip.tag}.zip`** at the **current** zip tag (do not increment).
+3. Copy to **`HC-Plugins.zip`**.
+
+Use whatever plugin versions are already in `pom.xml` / root properties.
+
+## When to ask
+
+After **medium** user-visible work, you may ask once: **“Up tags for changed plugins?”**
+
+- **Yes** → tag bump flow (changed plugins + `hc.plugins.zip.tag`, then build).
+- **No** → no version changes unless they ask later.
+- **Zip/ship only** → zip flow only, no tag bumps.
+
+Do not conflate “zip HC-Plugins” with “up tags”.
+
+## Patch format
+
+- Per-plugin: `1.21.4-a0.M.P` — bump the **last** segment unless the user says otherwise.
+- Zip tag: `a0.1.x` — bump the **last** segment only as part of an explicit **up tags** request.
+
+## Example
+
+Session changed `hub/` and `minigames/iron-legacy/`. User says **“up the tag”**:
+
+- Hub: `1.21.4-a0.1.4` → `1.21.4-a0.1.5`
+- Iron Legacy: `1.21.4-a0.3.4` → `1.21.4-a0.3.5`
+- `hc.plugins.zip.tag`: `a0.1.4` → `a0.1.5`
+- API and Foundation: unchanged
+
+Same session, user says **“zip HC-Plugins”** only:
+
+- No tag changes; zip built from current versions at tag `a0.1.4`.

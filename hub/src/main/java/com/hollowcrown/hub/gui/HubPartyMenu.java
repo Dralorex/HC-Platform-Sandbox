@@ -256,7 +256,7 @@ public final class HubPartyMenu extends HubMenuView {
     }
 
     public static final class HubPartyMembersMenu extends HubMenuView {
-        private static final int SLOT_LEAVE = 35;
+        private static final int SLOT_LEAVE = 33;
 
         private final HollowCrownHubPlugin plugin;
         private final PartyService parties;
@@ -334,7 +334,8 @@ public final class HubPartyMenu extends HubMenuView {
                 if (parties.leave(p.getUniqueId())) {
                     p.sendMessage(Component.text("You left the party.", NamedTextColor.YELLOW));
                 }
-                p.openInventory(new HubPartyMenu(plugin, p).getInventory());
+                Bukkit.getScheduler().runTask(plugin, () ->
+                        p.openInventory(new HubPartyMenu(plugin, p).getInventory()));
             }
         }
 

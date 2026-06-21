@@ -1,10 +1,6 @@
 package com.hollowcrown.hub.limbo;
 
 import com.hollowcrown.hub.HollowCrownHubPlugin;
-import com.hollowcrown.hub.command.HubIlWorldInput;
-import com.hollowcrown.hub.integration.HubIronLegacySupport;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
@@ -30,22 +26,13 @@ public final class HubLimboLayout {
     }
 
     /**
-     * CLI resolve order: Iron Legacy row (when loaded), else lowercased raw token if it matches a safe YAML key segment.
+     * Gives a universal limbo wand that resolves the template key dynamically from the player's current world.
      */
-    public boolean giveLimboWand(Player p, String templateKeyRaw) {
-        if (p == null || templateKeyRaw == null || templateKeyRaw.isBlank()) {
+    public boolean giveLimboWand(Player p) {
+        if (p == null) {
             return false;
         }
-        String trimmed = templateKeyRaw.trim();
-        Optional<String> canon = HubIronLegacySupport.ilAdmin().flatMap(a -> HubIlWorldInput.resolveCanonicalKey(a, trimmed));
-        String wandKey = canon.orElse(trimmed.toLowerCase(Locale.ROOT));
-        if (canon.isEmpty() && !HubLimboWorldsYaml.SAFE_TEMPLATE_KEY.matcher(wandKey).matches()) {
-            p.sendMessage(Component.text(
-                    "Invalid limbo key — letters, numbers, underscore or hyphen (max 64). Example: test",
-                    NamedTextColor.RED));
-            return false;
-        }
-        p.getInventory().addItem(HubLimboWandListener.createWand(plugin, wandKey));
+        p.getInventory().addItem(HubLimboWandListener.createWand(plugin));
         return true;
     }
 

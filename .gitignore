@@ -1,4 +1,5 @@
-# Maven
+# Maven (never commit build output)
+**/target/
 target/
 pom.xml.tag
 pom.xml.releaseBackup
@@ -35,3 +36,6 @@ plugins/*.jar
 
 # Import script temp
 scripts/import-stash/
+
+# Local deploy bundles (build with mvn package; zip at repo root)
+HC-Plugins*.zip

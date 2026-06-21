@@ -9,6 +9,7 @@ import com.hollowcrown.api.mechanic.MinigameMechanic;
 import com.hollowcrown.api.party.PartyView;
 import com.hollowcrown.api.platform.HubSpawn;
 import com.hollowcrown.api.queue.MatchEnqueueResult;
+import com.hollowcrown.api.integration.PreMatchLimboService;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.HubLog;
 import com.hollowcrown.hub.command.MatchEnqueueMessages;
@@ -21,6 +22,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.RegisteredServiceProvider;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -31,20 +33,35 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**
- * Creates and tears down lobby instance worlds ({@code <template>-L#} under the server world container).
+ * Creates and tears down lobby instance worlds under {@code hch-worlds/minigames/}.
  */
 public final class HubLobbyService {
 
+    /** Folder under the server world container where Hub lobby instances are stored. */
+    public static final String LOBBY_ROOT = "hch-worlds/minigames";
+
+    public static boolean isHubManagedLobbyWorld(String worldName) {
+        if (worldName == null || worldName.isBlank()) {
+            return false;
+        }
+        String norm = worldName.replace('\\', '/').toLowerCase(Locale.ROOT);
+        return norm.startsWith(LOBBY_ROOT.toLowerCase(Locale.ROOT) + "/");
+    }
     private static final Pattern FOLDER_SAFE = Pattern.compile("^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$");
+    /** Source world folders may be nested under managed roots (e.g. {@code hch-worlds/templates/my_map}). */
+    private static final Pattern SOURCE_FOLDER_SAFE = Pattern.compile(
+            "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}(?:/[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}){0,8}$");
     /** When Iron Legacy rows are unavailable, assume this lobby capacity for fill checks. */
     private static final int DEFAULT_LOBBY_MAX_PLAYERS = 64;
 
@@ -82,17 +99,18 @@ public final class HubLobbyService {
         if (sourceFolder == null || sourceFolder.isBlank()) {
             throw new IOException("Template has no source world folder. Use: /hch template setsource " + entry.templateKey() + " <folderName>");
         }
-        validateFolderName(sourceFolder);
+        validateSourceFolderName(sourceFolder);
         String tk = entry.templateKey();
         int lobbyIndex = nextLobbyIndex(tk);
-        String worldName = tk + "-L" + lobbyIndex;
-        validateFolderName(worldName);
+        String leafName = tk + "-L" + lobbyIndex;
+        validateFolderName(leafName);
+        String worldName = LOBBY_ROOT + "/" + leafName;
 
-        Path worldContainer = Bukkit.getWorldContainer().toPath();
+        Path worldContainer = Bukkit.getWorldContainer().toPath().toAbsolutePath().normalize();
         Path source = worldContainer.resolve(sourceFolder).normalize();
         Path target = worldContainer.resolve(worldName).normalize();
         if (!source.startsWith(worldContainer) || !target.startsWith(worldContainer)) {
-            throw new IOException("Invalid path.");
+            throw new IOException("Invalid path. container=" + worldContainer + " source=" + source);
         }
         if (!Files.isDirectory(source)) {
             throw new IOException("Source folder does not exist: " + source);
@@ -104,6 +122,7 @@ public final class HubLobbyService {
             throw new IOException("World already loaded: " + worldName);
         }
 
+        Files.createDirectories(target.getParent());
         WorldFolderCopier.copyDirectory(source, target);
 
         World world = Bukkit.createWorld(new WorldCreator(worldName));
@@ -126,6 +145,100 @@ public final class HubLobbyService {
 
         HubLog.info(plugin, "action=lobby_create", "id=" + id, "templateKey=" + tk, "worldName=" + worldName);
         return id;
+    }
+
+    /**
+     * Pre-create an OPEN lobby on the main thread when none exist (e.g. after the last lobby starts a match).
+     */
+    public void schedulePrefetchLobby(String templateKey, String reason) {
+        if (templateKey == null || templateKey.isBlank()) {
+            return;
+        }
+        String tk = templateKey.trim();
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!listOpenForTemplate(tk).isEmpty()) {
+                return;
+            }
+            try {
+                String id = createLobby(tk);
+                HubLog.info(plugin, "action=lobby_prefetch", "templateKey=" + tk, "reason=" + reason, "id=" + id);
+            } catch (IOException ex) {
+                HubLog.warn(plugin, "action=lobby_prefetch_failed", "templateKey=" + tk,
+                        "reason=" + reason, "err=" + ex.getMessage());
+            }
+        });
+    }
+
+    /**
+     * When a template is published, tear down all existing lobby instances for it and pre-create a fresh one.
+     */
+    public void refreshLobbiesAfterPublish(String templateKey) {
+        if (templateKey == null || templateKey.isBlank()) {
+            return;
+        }
+        String tk = templateKey.trim();
+        List<String> ids = new ArrayList<>();
+        Set<UUID> playersToNotify = new LinkedHashSet<>();
+        for (HubLobbyInstanceRecord r : instances.all()) {
+            if (!r.templateKey().equalsIgnoreCase(tk)) {
+                continue;
+            }
+            ids.add(r.id());
+            World w = r.loadedWorld();
+            if (w != null) {
+                for (Player p : w.getPlayers()) {
+                    playersToNotify.add(p.getUniqueId());
+                }
+            }
+        }
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            for (String id : ids) {
+                destroyLobby(id, false);
+            }
+            Component publishNotice = Component.text(
+                    "All lobbies for this game were closed because the world was updated. "
+                            + "Please join a new lobby from the game menu.",
+                    NamedTextColor.GOLD);
+            for (UUID playerId : playersToNotify) {
+                Player p = Bukkit.getPlayer(playerId);
+                if (p != null && p.isOnline()) {
+                    p.sendMessage(publishNotice);
+                }
+            }
+            schedulePrefetchLobby(tk, "publish");
+        });
+    }
+
+    /**
+     * Hub lobby world is becoming an active match — drop registry row without unloading the world folder.
+     */
+    public void detachLobbyInstanceForMatchStart(String worldName) {
+        if (worldName == null || worldName.isBlank()) {
+            return;
+        }
+        for (HubLobbyInstanceRecord r : instances.all()) {
+            if (!r.worldName().equalsIgnoreCase(worldName)) {
+                continue;
+            }
+            notifyReleased(r);
+            instances.remove(r.id());
+            HubLog.info(plugin, "action=lobby_detached_for_match", "id=" + r.id(),
+                    "templateKey=" + r.templateKey(), "world=" + r.worldName());
+            return;
+        }
+    }
+
+    /**
+     * After a Hub lobby match starts, ensure another lobby is loading if none remain OPEN.
+     */
+    public void onHubLobbyMatchStarted(String templateKey, String worldName) {
+        if (!isHubManagedLobbyWorld(worldName)) {
+            return;
+        }
+        detachLobbyInstanceForMatchStart(worldName);
+        if (listOpenForTemplate(templateKey).isEmpty()) {
+            schedulePrefetchLobby(templateKey, "match_start");
+        }
     }
 
     /**
@@ -173,6 +286,12 @@ public final class HubLobbyService {
 
         if (world != null) {
             evacuate(world);
+        }
+
+        RegisteredServiceProvider<PreMatchLimboService> limboReg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
+        if (limboReg != null) {
+            limboReg.getProvider().endSessionForWorld(rec.worldName());
         }
 
         notifyReleased(rec);
@@ -263,10 +382,34 @@ public final class HubLobbyService {
             player.sendMessage(Component.text("That lobby world is not loaded.", NamedTextColor.RED));
             return false;
         }
-        player.teleport(w.getSpawnLocation());
+        Location spawn = resolveLobbySpawn(r.templateKey(), w);
+        player.teleport(spawn);
+        registerLobbyLimbo(player, r);
         player.sendMessage(Component.text("Joined " + w.getName(), NamedTextColor.GREEN));
         HubLog.info(plugin, "action=lobby_player_join", "player=" + player.getName(), "id=" + instanceId, "world=" + r.worldName());
         return true;
+    }
+
+    private void registerLobbyLimbo(Player player, HubLobbyInstanceRecord lobby) {
+        RegisteredServiceProvider<PreMatchLimboService> reg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
+        if (reg == null) {
+            return;
+        }
+        boolean ok = reg.getProvider().registerHubLobbyJoin(player, lobby.templateKey(), lobby.worldName());
+        if (!ok) {
+            HubLog.warn(plugin, "action=lobby_limbo_register_failed",
+                    "player=" + player.getName(), "templateKey=" + lobby.templateKey(), "world=" + lobby.worldName());
+        }
+    }
+
+    private Location resolveLobbySpawn(String templateKey, World lobbyWorld) {
+        var spawnOpt = plugin.limboLayout().worldsYaml().limboSpawn(templateKey);
+        if (spawnOpt.isPresent()) {
+            var s = spawnOpt.get();
+            return new Location(lobbyWorld, s.x(), s.y(), s.z(), s.yaw(), s.pitch());
+        }
+        return lobbyWorld.getSpawnLocation();
     }
 
     /**
@@ -511,6 +654,12 @@ public final class HubLobbyService {
     private static void validateFolderName(String name) throws IOException {
         if (name == null || !FOLDER_SAFE.matcher(name).matches()) {
             throw new IOException("Invalid folder/world name: " + name);
+        }
+    }
+
+    private static void validateSourceFolderName(String name) throws IOException {
+        if (name == null || !SOURCE_FOLDER_SAFE.matcher(name).matches()) {
+            throw new IOException("Invalid source folder path: " + name);
         }
     }
 }

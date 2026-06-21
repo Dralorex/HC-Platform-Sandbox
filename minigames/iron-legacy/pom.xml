@@ -11,6 +11,7 @@
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
+  <version>1.21.4-a0.3.4</version>
   <artifactId>hcironlegacy</artifactId>
   <packaging>jar</packaging>
   <name>HCIronLegacy</name>

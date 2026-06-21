@@ -51,6 +51,7 @@ public final class LobbyJoinInstanceMenu {
             inv.setItem(53, navItem(plugin, "jinst_next", Material.ARROW, "Next page"));
         }
         inv.setItem(47, navItem(plugin, "jinst_back", Material.OAK_DOOR, "Back to games"));
+        inv.setItem(50, leaveLobbyItem(plugin));
         inv.setItem(51, navItem(plugin, "jinst_close", Material.BARRIER, "Close"));
 
         player.openInventory(inv);
@@ -72,6 +73,18 @@ public final class LobbyJoinInstanceMenu {
         if (m != null) {
             m.displayName(Component.text(name, NamedTextColor.YELLOW));
             m.getPersistentDataContainer().set(plugin.lobbyJoinActionKey(), PersistentDataType.STRING, action);
+            it.setItemMeta(m);
+        }
+        return it;
+    }
+
+    private static ItemStack leaveLobbyItem(HollowCrownHubPlugin plugin) {
+        ItemStack it = new ItemStack(Material.RED_BED);
+        ItemMeta m = it.getItemMeta();
+        if (m != null) {
+            m.displayName(Component.text("Leave Lobby", NamedTextColor.RED));
+            m.lore(List.of(Component.text("Click to return to the hub", NamedTextColor.GRAY)));
+            m.getPersistentDataContainer().set(plugin.lobbyJoinActionKey(), PersistentDataType.STRING, "jinst_leave");
             it.setItemMeta(m);
         }
         return it;
