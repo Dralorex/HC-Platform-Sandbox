@@ -214,16 +214,19 @@ public class GameManager implements Listener {
         }
 
         List<Location> padsRaw = new ArrayList<>(spawnManager.getSpawnPads());
-        List<Location> pads = new ArrayList<>();
+        List<Location> pads2 = new ArrayList<>();
         for (Location pad : padsRaw) {
             if (pad == null || pad.getWorld() == null) continue;
             Location r = pad.clone();
             if (!r.getWorld().equals(world)) {
                 r.setWorld(world);
             }
-            pads.add(r);
+            pads2.add(r);
         }
-        Collections.shuffle(pads);
+        //This causes random spread around the circle.
+        //Collections.shuffle(pads);
+        //but this next function tries to space out spawn order for any number of pads.
+        List<Location> pads = evenDistribute(pads2);
 
         List<Player> plist = participants.stream()
                 .map(Bukkit::getPlayer)
@@ -342,6 +345,35 @@ public class GameManager implements Listener {
         }
 
         return true;
+    }
+
+    //Tries to evenly distribute spawn locations to be the furthest possible from each other, but with a random starting point
+    private List<Location> evenDistribute(List<Location> spots){
+        ArrayList<Location> temp = new ArrayList<>(spots);
+        ArrayList<Location> result = new ArrayList<>();
+        Random random = new Random();
+        result.add(temp.remove(random.nextInt(temp.size())));
+        while (!temp.isEmpty()){
+            double maxDist = -1;
+            Location furthest = null;
+            double dist;
+            for(Location sample : temp){
+                dist = Double.MAX_VALUE;
+                for(Location existing : result)
+                    //calculate the minimum distance to an already selected point as to optimize for the most isolated one
+                    dist = Math.min(dist, sample.distanceSquared(existing));
+                if(dist > maxDist){
+                    furthest = sample;
+                    maxDist = dist;
+                }
+            }
+            //This probably isn't necessary but might prevent errors
+            if(furthest != null){
+                temp.remove(furthest);
+                result.add(furthest);
+            }
+        }
+        return result;
     }
 
     private void scheduleBorderShrink(List<Player> plist, WorldBorder wb, double end, long shrinkDelay, long shrinkDuration) {
