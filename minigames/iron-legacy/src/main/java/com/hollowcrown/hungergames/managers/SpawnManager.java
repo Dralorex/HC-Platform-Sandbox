@@ -71,8 +71,8 @@ public class SpawnManager {
             double angle = (2 * Math.PI) * i / count;
             double x = base.getX() + radius * Math.cos(angle);
             double z = base.getZ() + radius * Math.sin(angle);
-            int y = center.getWorld().getHighestBlockYAt((int)Math.round(x), (int)Math.round(z)) + 1;
-            Location spot = new Location(center.getWorld(), Math.round(x) + 0.5, y, Math.round(z) + 0.5, 0f, 0f);
+            int y = center.getWorld().getHighestBlockYAt((int)Math.floor(x), (int)Math.floor(z)) + 1;
+            Location spot = new Location(center.getWorld(), Math.floor(x) + 0.5, y, Math.floor(z) + 0.5, 0f, 0f);
             pads.add(spot);
             added.add(spot);
         }
