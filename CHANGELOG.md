@@ -15,6 +15,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- In-game test plan (`docs/IN_GAME_FULL_TEST.md`): per-test **Code path** column tracing command → class → persistence → API/cross-plugin links; generator script `scripts/generate_in_game_test_doc.py`.
 - Lobby prefetch when the last OPEN lobby starts a match.
 - Template publish flow: destroy old lobbies, notify players, pre-create a fresh lobby.
 - `PreMatchLimboService.registerHubLobbyJoin` API for Hub lobby → limbo registration.
