@@ -17,6 +17,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - In-game test plan (`docs/IN_GAME_FULL_TEST.md`): per-test **Code path** column tracing command → class → persistence → API/cross-plugin links; generator script `scripts/generate_in_game_test_doc.py`.
 - Copy-paste QA exports: `docs/IN_GAME_FULL_TEST_CHECKLIST.txt` (plain text) and `docs/IN_GAME_FULL_TEST_CHECKLIST.csv` (spreadsheet); export via `scripts/export_in_game_checklist.py`.
+- Google Sheets QA workbook CSV: `docs/IN_GAME_QA_GoogleSheets.csv` (+ import steps in `docs/IN_GAME_QA_GoogleSheets_IMPORT.txt`); regenerate with `scripts/export_google_sheets_qa.py`.
 - Lobby prefetch when the last OPEN lobby starts a match.
 - Template publish flow: destroy old lobbies, notify players, pre-create a fresh lobby.
 - `PreMatchLimboService.registerHubLobbyJoin` API for Hub lobby → limbo registration.
