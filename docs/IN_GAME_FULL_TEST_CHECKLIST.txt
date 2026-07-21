@@ -1,0 +1,1863 @@
+HOLLOW CROWN PLATFORM — IN-GAME QA CHECKLIST
+================================================================================
+Paper 1.21.4 · two accounts (OP + normal player)
+Mark each line: ✅ pass · ❌ fail · ⚠️ skipped · ⬜ not tested
+
+JARs (order): foundation/target/HC-Foundation-*.jar
+              hub/target/HollowCrownHub-*.jar
+              minigames/iron-legacy/target/HCIronLegacy-*.jar
+Do NOT deploy hollowcrown-api.
+
+KNOWN GAP: /hch queue join enqueues only — no auto limbo/match.
+
+HOW TO USE WHEN SOMETHING FAILS
+1. Find the failing line below.
+2. Read "Code path" left to right (→ = call order).
+3. Check PERSIST / API / IL-HUB segments for cross-plugin issues.
+
+================================================================================
+
+
+⬜  Phase: Phase 0 — Server setup (before joining)
+    Subsection: 0.1 Deploy JARs
+    Test #1: Deploy HC-Foundation JAR
+    Expected: STARTUP enable
+    Code path: foundation/plugin.yml load:STARTUP → HollowCrownApiBootstrap.onEnable:11 · PERSIST: — · API: shades api/ · IL/HUB: Hub+IL depend on HC-Foundation
+
+⬜  Phase: Phase 0 — Server setup (before joining)
+    Subsection: 0.1 Deploy JARs
+    Test #2: Deploy HollowCrownHub JAR
+    Expected: POSTWORLD enable
+    Code path: hub/plugin.yml → HollowCrownHubPlugin.onEnable:84 · PERSIST: plugins/HollowCrownHub/ · API: registers GamePlatform, PartyService, etc. :136-201
+
+⬜  Phase: Phase 0 — Server setup (before joining)
+    Subsection: 0.1 Deploy JARs
+    Test #3: Deploy HCIronLegacy JAR
+    Expected: POSTWORLD enable
+    Code path: iron-legacy/plugin.yml → HungerGamesPlugin.onEnable:118 → MinigameBootstrap → IronLegacyMechanic · IL/HUB: depend Foundation+Hub
+
+⬜  Phase: Phase 0 — Server setup (before joining)
+    Subsection: 0.2 Console on startup
+    Test #1: HC-Foundation log
+    Expected: schema=2
+    Code path: HollowCrownApiBootstrap.onEnable:12 → HollowCrownApiVersion.SCHEMA (api/)
+
+⬜  Phase: Phase 0 — Server setup (before joining)
+    Subsection: 0.2 Console on startup
+    Test #2: Hub enable log
+    Expected: storage YAML/MYSQL
+    Code path: HollowCrownHubPlugin.onEnable:88-94 HubSqlRuntime → HubLog action=hub_enable:234
+
+⬜  Phase: Phase 0 — Server setup (before joining)
+    Subsection: 0.2 Console on startup
+    Test #3: IL mechanic log
+    Expected: id=iron-legacy
+    Code path: DefaultGamePlatform.registerMechanic:71-77 ← IronLegacyMechanic (iron-legacy/integration/)
+
+⬜  Phase: Phase 0 — Server setup (before joining)
+    Subsection: 0.2 Console on startup
+    Test #4: No IL disabled
+    Expected: clean load
+    Code path: HungerGamesPlugin stack assert — plugin.yml depend chain
+
+⬜  Phase: Phase 0 — Server setup (before joining)
+    Subsection: 0.2 Console on startup
+    Test #5: /plugins green
+    Expected: 3 plugins
+    Code path: Bukkit load order: Foundation STARTUP before Hub/IL POSTWORLD
+
+⬜  Phase: Phase 0 — Server setup (before joining)
+    Subsection: 0.3 Fail-fast
+    Test #1: IL disables
+    Expected: missing dep
+    Code path: MinigameBootstrap.assertRunnableStack in HungerGamesPlugin.onEnable
+
+⬜  Phase: Phase 0 — Server setup (before joining)
+    Subsection: 0.3 Fail-fast
+    Test #2: LimboBridge warning
+    Expected: Hub warns
+    Code path: HollowCrownHubPlugin.onEnable:204-210 — no IronLegacyLimboBridge service
+
+⬜  Phase: Phase 0 — Server setup (before joining)
+    Subsection: 0.3 Fail-fast
+    Test #3: MYSQL SEVERE
+    Expected: YAML fallback
+    Code path: HubSqlRuntime.tryConnect null → HollowCrownHubPlugin:92-93
+
+⬜  Phase: Phase 0 — Server setup (before joining)
+    Subsection: 0.4 Environment prep
+    Test #1: Hub world exists
+    Expected: world loaded
+    Code path: Server setup — UUID must match config.yml hub.spawn.world-uuid
+
+⬜  Phase: Phase 0 — Server setup (before joining)
+    Subsection: 0.4 Environment prep
+    Test #2: Source world folder
+    Expected: on disk
+    Code path: HubLobbyService.createLobby:109-116 WorldFolderCopier — templates.yml sourceWorldName
+
+⬜  Phase: Phase 0 — Server setup (before joining)
+    Subsection: 0.4 Environment prep
+    Test #3: OP perms
+    Expected: admin works
+    Code path: hub/plugin.yml hollowcrownhub.admin · iron-legacy/plugin.yml hcironlegacy.admin
+
+⬜  Phase: Phase 0 — Server setup (before joining)
+    Subsection: 0.4 Environment prep
+    Test #4: Non-OP player
+    Expected: protection on
+    Code path: HubWorldManager checks isOp() for build/PvP admin bypass
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.1 Core hub setup
+    Test #1: /hch help
+    Expected: command tree
+    Code path: hub/plugin.yml `/hch` → HollowCrownHubPlugin.onEnable:221-224 → HubCommandExecutor.onCommand:36-53
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.1 Core hub setup
+    Test #2: /hch version
+    Expected: version + schema 2
+    Code path: hub/plugin.yml `/hch` → HollowCrownHubPlugin.onEnable:221-224 → HubCommandExecutor.onCommand:94-98 → GamePlatform.apiSchema()
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.1 Core hub setup
+    Test #3: /hch sethub
+    Expected: spawn saved
+    Code path: hub/plugin.yml `/hch` → HollowCrownHubPlugin.onEnable:221-224 → HubCommandExecutor.onCommand:100-121 → DefaultGamePlatform.setHubSpawn → config.yml hub.spawn · PERM: hollowcrownhub.admin · API: HubSpawn
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.1 Core hub setup
+    Test #4: /hch debug mechanics
+    Expected: lists iron-legacy
+    Code path: hub/plugin.yml `/hch` → HollowCrownHubPlugin.onEnable:221-224 → HubCommandExecutor.onCommand:73-88 → DefaultGamePlatform.registeredMechanicIdStrings · PERM: hollowcrownhub.admin
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.1 Core hub setup
+    Test #5: /hch gui help
+    Expected: GUI help text
+    Code path: hub/plugin.yml `/hch` → HollowCrownHubPlugin.onEnable:221-224 → HubCommandExecutor.onCommand:55-56 → HubGuiCommands.handle
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.2 Template registration
+    Test #6: /hch template list
+    Expected: lists templates
+    Code path: hub/plugin.yml `/hch` → HollowCrownHubPlugin.onEnable:221-224 → HubCommandExecutor.onCommand:58-59 → HubTemplateCommands.handle:30 → list:65 → HubTemplateRegistry.list:49-50 · PERSIST: templates.yml loadFromDisk:165-200 · PERM: hollowcrownhub.admin · API: HubTemplateApiRegistry→TemplateRegistry · IL/HUB: IL join lists
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.2 Template registration
+    Test #7: /hch template set testmap iron-legacy "Test Map"
+    Expected: row created
+    Code path: hub/plugin.yml `/hch` → HollowCrownHubPlugin.onEnable:221-224 → HubCommandExecutor.onCommand template → HubTemplateCommands.hubMechanicTemplateSet:169 → HubTemplateRegistry.upsert:60-78 saveToDisk:203 · API: getMechanic warn :183
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.2 Template registration
+    Test #8: /hch template setsource testmap <folder>
+    Expected: source set
+    Code path: HubTemplateCommands.setSource:203 → HubTemplateRegistry.setSourceWorld:81-90 · PERSIST: templates.yml · used HubLobbyService.createLobby
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.2 Template registration
+    Test #9: /hch template get testmap
+    Expected: row details
+    Code path: HubTemplateCommands.get:131-151 → HubTemplateRegistry.get:53-57 → HubTemplateEntry
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.2 Template registration
+    Test #10: /hch template setqueue maxUnitSize 4
+    Expected: policy saved
+    Code path: HubTemplateCommands.setQueue:218 maxunitsize → HubTemplateRegistry.updateQueuePolicy:123-145 · consumed HubMatchQueueService.enqueue
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.2 Template registration
+    Test #11: /hch template setqueue soloOnly false
+    Expected: saved
+    Code path: setQueue soloOnly branch :234-236 → updateQueuePolicy
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.2 Template registration
+    Test #12: /hch template setqueue soloAutoMerge true
+    Expected: saved
+    Code path: setQueue soloautomerge :238-240
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.2 Template registration
+    Test #13: /hch template setqueue joinQueueFirst false
+    Expected: saved
+    Code path: setQueue joinqueuefirst :242-244 · read LobbyJoinMenuListener:87
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.3 Hub world config
+    Test #14: /hch hubworld size 64
+    Expected: radius saved
+    Code path: hub/plugin.yml `/hch` → HollowCrownHubPlugin.onEnable:221-224 → HubCommandExecutor.onCommand hubworld → HubWorldAdminCommands → HubWorldYaml · PERSIST: hub-world.yml · HubWorldManager.onMove:1031 clamp
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.3 Hub world config
+    Test #15: /hch hubworld hostilemobs false
+    Expected: hostile off
+    Code path: HubWorldAdminCommands → hub-world.yml mobSpawns.hostile → HubWorldManager.onMobSpawn:1119
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.3 Hub world config
+    Test #16: /hch hubworld passivemobs false
+    Expected: passive off
+    Code path: same passive branch → onMobSpawn:1119
+
+⬜  Phase: Phase 1 — Hub bootstrap (OP)
+    Subsection: 1.4 Scaffold template
+    Test #17: /hch template create testmap2
+    Expected: editor world
+    Code path: HubTemplateCommands.createWorld:81 → HubTemplateWorldBootstrap.createIronLegacyEditableWorld · PERSIST: hch-worlds/templates/<key> + templates.yml
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.1 Hub teleport & first join
+    Test #1: /hub
+    Expected: teleport + loadout
+    Code path: hub/plugin.yml `/hub` → HubPlayerCommand.onCommand:36 → DefaultGamePlatform.getHubSpawn:46 → teleportAsync:103 → HubWorldManager.applySurvivalHubLoadoutAfterTemplate · PERM: hollowcrownhub.use · PERSIST: config.yml hub.spawn
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.1 Hub teleport & first join
+    Test #2: Check hotbar
+    Expected: compass/party/sword
+    Code path: HubWorldManager applyHubLoadout — reads hub-world.yml compassSlot/items.hub.party/pvpSwordMaterial
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.1 Hub teleport & first join
+    Test #3: New player join
+    Expected: auto hub TP
+    Code path: HubWorldManager.onJoin:790 — if teleportNewPlayersToHub + spawn set → teleport + loadout
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.2 Join GUI & lobbies
+    Test #4: /hch join
+    Expected: join GUI
+    Code path: hub/plugin.yml `/hch` → HollowCrownHubPlugin.onEnable:221-224 → HubCommandExecutor.onCommand:64-65 → HubJoinCommands.handle:21 → LobbyJoinTemplateMenu.open · PERM: hollowcrownhub.join
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.2 Join GUI & lobbies
+    Test #5: Right-click compass
+    Expected: same GUI
+    Code path: HubWorldManager.onHubCompassUse:1145 → HubPlayerMenus.openJoinTemplateMenu (DefaultHubPlayerMenus) → LobbyJoinTemplateMenu
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.2 Join GUI & lobbies
+    Test #6: Left-click testmap
+    Expected: join/create lobby
+    Code path: LobbyJoinMenuListener.handleTemplateClick jtpl_pick:78 → joinQueueFirst check :87 → HubLobbyService.joinOldestOpenForTemplate · PERSIST: hch-worlds/minigames/<key>-L#
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.2 Join GUI & lobbies
+    Test #7: Right-click testmap
+    Expected: instance picker
+    Code path: LobbyJoinMenuListener:84-85 → LobbyJoinInstanceMenu.open
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.2 Join GUI & lobbies
+    Test #8: Click OPEN instance
+    Expected: teleport L#
+    Code path: LobbyJoinMenuListener.handleInstanceClick → HubLobbyService.teleportPlayerToInstance
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.2 Join GUI & lobbies
+    Test #9: Leave Lobby bed
+    Expected: hub return
+    Code path: LobbyJoinMenuListener leave action → HubPreMatchLimboService.leaveLimbo → HubPlayerCommand spawn
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.2 Join GUI & lobbies
+    Test #10: GUI pagination
+    Expected: prev/next
+    Code path: LobbyJoinTemplateMenu / LobbyJoinInstanceMenu nav items jtpl_prev/jtpl_next PDC keys
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.2 Join GUI & lobbies
+    Test #11: OP template lore
+    Expected: key + mechanic
+    Code path: LobbyJoinTemplateMenu.build — adds lore if player.isOp()
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.3 Party system
+    Test #12: /hch party create
+    Expected: party UUID
+    Code path: hub/plugin.yml `/hch` → HollowCrownHubPlugin.onEnable:221-224 → HubCommandExecutor.onCommand party → HubPartyCommands → HubPartyService.createParty · PERSIST: parties.yml · API: PartyService
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.3 Party system
+    Test #13: /hch party invite
+    Expected: invite paper
+    Code path: HubPartyService.invite → HubPartyListener gives paper PDC partyInviteKey
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.3 Party system
+    Test #14: Left-click invite paper
+    Expected: accept
+    Code path: HubPartyListener.onInteract → HubPartyService.acceptInvite
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.3 Party system
+    Test #15: /hch party accept <id>
+    Expected: accept cmd
+    Code path: HubPartyCommands.accept → HubPartyService.acceptInvite
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.3 Party system
+    Test #16: Leader title
+    Expected: joined notify
+    Code path: HubPartyService.acceptInvite — Title to leader
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.3 Party system
+    Test #17: Right-click party item
+    Expected: party GUI
+    Code path: HubWorldManager locked item interact → DefaultHubPlayerMenus.openPartyMenu → HubPartyMenu
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.3 Party system
+    Test #18: GUI Invite Players
+    Expected: heads paged
+    Code path: HubPartyMenu submenu — excludes self/members
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.3 Party system
+    Test #19: GUI Party Members
+    Expected: roster
+    Code path: HubPartyMenu members view
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.3 Party system
+    Test #20: GUI Pending Invites
+    Expected: papers
+    Code path: HubPartyMenu invites tab
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.3 Party system
+    Test #21: /hch party decline
+    Expected: leader notified
+    Code path: HubPartyService.declineInvite
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.3 Party system
+    Test #22: Accept one auto-declines others
+    Expected: messages
+    Code path: HubPartyService.acceptInvite — clears other invites for target
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.3 Party system
+    Test #23: Invite expires 5min
+    Expected: TTL
+    Code path: HubPartyService tickMaintenance inviteTtlMs :66-67 from config party.inviteTtlSeconds
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.3 Party system
+    Test #24: Leader /hub pulls party
+    Expected: all TP
+    Code path: HubPlayerCommand:60-99 party leader branch → teleportAsync each member
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.3 Party system
+    Test #25: /hch party kick
+    Expected: kicked
+    Code path: HubPartyCommands.kick → HubPartyService.kickMember
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.3 Party system
+    Test #26: /hch party leave
+    Expected: leave/promote
+    Code path: HubPartyService.leaveParty — leader promotion logic
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.3 Party system
+    Test #27: /hch party disband
+    Expected: disbanded
+    Code path: HubPartyCommands.disband → HubPartyService.disband
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.4 Match queue
+    Test #28: /hch queue join testmap
+    Expected: queued position
+    Code path: hub/plugin.yml `/hch` → HollowCrownHubPlugin.onEnable:221-224 → HubCommandExecutor.onCommand queue → HubQueueCommands → HubMatchQueueService.enqueue · PERM: hollowcrownhub.queue · API: MatchEnqueueResult
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.4 Match queue
+    Test #29: /hch queue status
+    Expected: queue dump
+    Code path: HubQueueCommands.status → HubMatchQueueService.listUnits
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.4 Match queue
+    Test #30: /hch queue leave
+    Expected: left queue
+    Code path: HubMatchQueueService.leaveQueue
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.4 Match queue
+    Test #31: Party leader queues
+    Expected: whole unit
+    Code path: HubMatchQueueService.enqueue — party locked unit from PartyService
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.4 Match queue
+    Test #32: Non-leader queue
+    Expected: NOT_PARTY_LEADER
+    Code path: HubMatchQueueService.enqueue leader check · API: MatchEnqueueResult.Status
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.4 Match queue
+    Test #33: Offline member queue
+    Expected: OFFLINE_PARTY_MEMBER
+    Code path: enqueue validates online members
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.4 Match queue
+    Test #34: soloOnly deny
+    Expected: SOLO_ONLY
+    Code path: HubTemplateEntry.queueSoloOnly + HubMatchQueueService · bypass hollowcrownhub.queue.bypass
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.4 Match queue
+    Test #35: Party too large
+    Expected: PARTY_TOO_LARGE
+    Code path: template queueMaxUnitSize vs party size
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.4 Match queue
+    Test #36: OP bypass
+    Expected: gates skipped
+    Code path: HubQueueCommands checks hollowcrownhub.queue.bypass
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.4 Match queue
+    Test #37: Disconnect while queued
+    Expected: removed
+    Code path: HubPartyListener.onQuit → HubMatchQueueService.leaveQueue
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.4 Match queue
+    Test #38: Party leave queue notify
+    Expected: title+actionbar
+    Code path: HubMatchQueueService.leaveQueue → MatchEnqueueMessages
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.5 joinQueueFirst
+    Test #39: Set joinQueueFirst true
+    Expected: saved
+    Code path: HubTemplateRegistry.updateQueuePolicy joinQueueFirst field
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.5 joinQueueFirst
+    Test #40: Left-click enqueues
+    Expected: not lobby
+    Code path: LobbyJoinMenuListener:87-100 queueFirst branch → matchQueueService.enqueue
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.6 IL from hub
+    Test #41: /il help
+    Expected: help text
+    Code path: iron-legacy/plugin.yml `/il` → HungerGamesPlugin.onEnable:228 → HGCommand.onCommand:129 help branch
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.6 IL from hub
+    Test #42: /il party
+    Expected: Hub party menu
+    Code path: HGCommand party:301 → Bukkit HubPlayerMenus.openPartyMenu
+
+⬜  Phase: Phase 2 — Hub player flow (normal player)
+    Subsection: 2.6 IL from hub
+    Test #43: /il leaderboard
+    Expected: top 10 kills
+    Code path: HGCommand lb:312 → KillLeaderboardManager
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.1 CLI lobby
+    Test #1: /hch lobby list
+    Expected: OPEN instances
+    Code path: hub/plugin.yml `/hch` → HollowCrownHubPlugin.onEnable:221-224 → HubCommandExecutor.onCommand lobby → HubLobbyCommands.list → HubLobbyInstanceRegistry.all
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.1 CLI lobby
+    Test #2: /hch lobby create testmap
+    Expected: testmap-L# loads
+    Code path: HubLobbyCommands.create → HubLobbyService.createLobby:92 → WorldFolderCopier · PERSIST: lobby-instances.yml
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.1 CLI lobby
+    Test #3: Console lobby ready
+    Expected: log line
+    Code path: HubLobbyService → HubLog action=lobby_create · IL/HUB: MinigameMechanic.onLobbyInstanceCreated
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.1 CLI lobby
+    Test #4: Player joins instance
+    Expected: teleport
+    Code path: HubLobbyService.joinOldestOpenForTemplate / joinInstance
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.1 CLI lobby
+    Test #5: /hch lobby tp <id>
+    Expected: OP TP
+    Code path: HubLobbyCommands.tp
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.1 CLI lobby
+    Test #6: /hch debug why <player>
+    Expected: snapshot
+    Code path: hub/plugin.yml `/hch` → HollowCrownHubPlugin.onEnable:221-224 → HubCommandExecutor.onCommand debug why → HubDebugWhy.handle — party/queue/lobby/world
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.2 Lobby admin GUI
+    Test #7: /hch lobby gui
+    Expected: chest GUI
+    Code path: HubLobbyCommands.gui → LobbyAdminMenu.open
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.2 Lobby admin GUI
+    Test #8: Click lime OPEN
+    Expected: TP instance
+    Code path: LobbyAdminMenuListener — action TP via lobbyAdminActionKey PDC
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.2 Lobby admin GUI
+    Test #9: Shift+click destroy
+    Expected: destroy
+    Code path: LobbyAdminMenuListener shift → HubLobbyService.destroyLobby
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.2 Lobby admin GUI
+    Test #10: /hch gui lobby
+    Expected: same GUI
+    Code path: HubGuiCommands → DefaultHubAdminGui.openLobby
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.3 Destroy & BROKEN
+    Test #11: /hch lobby destroy
+    Expected: unload+delete
+    Code path: HubLobbyService.destroyLobby — evacuate, end limbo, unload world
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.3 Destroy & BROKEN
+    Test #12: Destroy fails
+    Expected: BROKEN state
+    Code path: HubLobbyService marks LobbyInstanceState.BROKEN on IO failure
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.3 Destroy & BROKEN
+    Test #13: /hch lobby forget
+    Expected: registry row gone
+    Code path: HubLobbyCommands.forget → HubLobbyInstanceRegistry.remove
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.3 Destroy & BROKEN
+    Test #14: BROKEN GUI barrier
+    Expected: forget
+    Code path: LobbyAdminMenuListener barrier action
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.4 Prefetch
+    Test #15: Last lobby starts match
+    Expected: next L# pre-created
+    Code path: HubLobbyService.onMatchStarted / HubPreMatchLimboService.launchSession → prefetch createLobby
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.4 Prefetch
+    Test #16: lobby list after start
+    Expected: new OPEN
+    Code path: HubLobbyInstanceRegistry
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.5 Publish flow
+    Test #17: Players in L#
+    Expected: inside lobby
+    Code path: HubLobbyService.joinInstance
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.5 Publish flow
+    Test #18: /hch template worlds publish
+    Expected: destroys lobbies
+    Code path: HubTemplateWorldsCommands → IronLegacyTemplateAdminImpl.publish → HubLobbyService.destroyLobbiesForTemplate
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.5 Publish flow
+    Test #19: Players notified
+    Expected: rejoin message
+    Code path: HubLobbyService.destroyLobby evacuate message
+
+⬜  Phase: Phase 3 — Hub lobby admin (OP)
+    Subsection: 3.5 Publish flow
+    Test #20: Fresh lobby prefetch
+    Expected: new OPEN
+    Code path: HubLobbyService.createLobby after publish
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #1: /hch template worlds help
+    Expected: docs
+    Code path: hub/plugin.yml `/hch` → HollowCrownHubPlugin.onEnable:221-224 → HubCommandExecutor.onCommand template worlds → HubTemplateWorldsCommands.help
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #2: /hch template worlds list
+    Expected: worlds.yml rows
+    Code path: HubTemplateWorldsCommands.list → IronLegacyTemplateAdminImpl / TemplateWorldManager
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #3: importhub --dry-run
+    Expected: preview
+    Code path: IronLegacyTemplateAdminImpl.importFromHub dry-run
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #4: importhub
+    Expected: import rows
+    Code path: IronLegacyTemplateAdminImpl.importFromHub · PERSIST: plugins/HCIronLegacy/worlds.yml
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #5: worlds reload
+    Expected: IL reload
+    Code path: HubTemplateWorldsCommands.reload → ConfigFilesManager.reloadAll
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #6: /hch gui maps
+    Expected: IL browser
+    Code path: HubGuiCommands → HubIlTemplateListMenu (DefaultHubAdminGui)
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #7: Click template detail
+    Expected: detail GUI
+    Code path: HubIlTemplateDetailMenu
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #8: /hch template worlds tp
+    Expected: creative editor
+    Code path: IronLegacyTemplateAdminImpl.teleportToEditor → TemplateWorldManager
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #9: set display
+    Expected: IL display
+    Code path: HubTemplateCommands routeTemplateSet → HubIlWorldSetCommand.applyWorldFields
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #10: set maxplayers
+    Expected: saved
+    Code path: HubIlWorldSetCommand → WorldSettingsManager
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #11: set teamsize
+    Expected: saved
+    Code path: HubIlWorldSetCommand
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #12: set minimumpercentage
+    Expected: limbo fill %
+    Code path: HubIlWorldSetCommand → worlds.yml · read HubPreMatchLimboService fill gate
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #13: set gamerule
+    Expected: saved
+    Code path: HubIlWorldSetCommand gamerule branch
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #14: set enabled true
+    Expected: join GUI
+    Code path: HubIlWorldSetCommand enabled field
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #15: worlds toggle
+    Expected: flip enabled
+    Code path: IronLegacyTemplateAdminImpl.toggle
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #16: worlds snapshots
+    Expected: list IDs
+    Code path: IronLegacyTemplateAdminImpl.listSnapshots → TemplateWorldManager
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #17: worlds rollback
+    Expected: rollback
+    Code path: TemplateWorldManager.rollback
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.1 IL worlds admin via Hub
+    Test #18: iconpreview
+    Expected: preview chest
+    Code path: HubIlIconPreviewMenu + IconManager
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.2 Limbo zone setup
+    Test #19: /hch template limbo wand
+    Expected: wand item
+    Code path: HubTemplateLimboCommands.wand → gives stick PDC limboWandTemplateKey
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.2 Limbo zone setup
+    Test #20: Left-click corner 1
+    Expected: saved
+    Code path: HubLimboWandListener left click → HubLimboLayout setCorner1
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.2 Limbo zone setup
+    Test #21: Right-click corner 2
+    Expected: saved
+    Code path: HubLimboWandListener right click → setCorner2
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.2 Limbo zone setup
+    Test #22: Shift-right confirm
+    Expected: outline
+    Code path: HubLimboWandListener confirm → HubLimboWorldsYaml write IL worlds.yml limboZone
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.2 Limbo zone setup
+    Test #23: Outline updates
+    Expected: particles
+    Code path: HubLimboWandListener particle task while holding wand
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.2 Limbo zone setup
+    Test #24: limbo spawn in zone
+    Expected: spawn saved
+    Code path: HubTemplateLimboCommands.spawn → HubLimboWorldsYaml limbo spawn
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.2 Limbo zone setup
+    Test #25: spawn outside zone
+    Expected: rejected
+    Code path: HubTemplateLimboCommands zone contains check
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.2 Limbo zone setup
+    Test #26: wand in testmap-L#
+    Expected: auto template key
+    Code path: HubLimboWandListener resolveTemplateFromWorld — HubIlTemplateDetailMenu logic
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.3 Pre-match limbo
+    Test #27: Join via compass
+    Expected: limbo loadout
+    Code path: HubLobbyService.join → HubPreMatchLimboService.registerHubLobbyJoin → HubWorldManager limbo loadout
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.3 Pre-match limbo
+    Test #28: Limbo hotbar items
+    Expected: sword/compass/party/barrier
+    Code path: hub-world.yml items.limbo + items.hub — HubWorldManager.applyLimboLoadout
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.3 Pre-match limbo
+    Test #29: Walk outside zone
+    Expected: clamped
+    Code path: HubPreMatchLimboArenaListener.onMove / HubPreMatchLimboService.onMoveClamp:60-74
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.3 Pre-match limbo
+    Test #30: Action bar fill
+    Expected: N/max Players
+    Code path: HubPreMatchLimboService tickFill actionbar
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.3 Pre-match limbo
+    Test #31: Below minimumpercentage
+    Expected: no auto start
+    Code path: HubPreMatchLimboService fill gate + IronLegacyLimboBridge minimumpercentage
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.3 Pre-match limbo
+    Test #32: Fill threshold
+    Expected: 5min countdown
+    Code path: HubPreMatchLimboService queue countdown timer
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.3 Pre-match limbo
+    Test #33: 10s teleport countdown
+    Expected: titles
+    Code path: HubPreMatchLimboService.tickTeleportCountdown
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.3 Pre-match limbo
+    Test #34: Barrier leave
+    Expected: hub return
+    Code path: HubPreMatchLimboArenaListener barrier interact → leaveLimbo:451
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.3 Pre-match limbo
+    Test #35: Picker red bed leave
+    Expected: hub return
+    Code path: LobbyJoinMenuListener leave lobby bed action
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.3 Pre-match limbo
+    Test #36: /il hostilemobspawn false
+    Expected: no hostiles
+    Code path: HGCommand:326 → IronLegacyLimboBridgeImpl.setLimboHostileMobSpawns → HubPreMatchLimboArenaListener.onMobSpawn
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.3 Pre-match limbo
+    Test #37: /il passivemobspawn false
+    Expected: no passives
+    Code path: HGCommand:351 → passive mob toggle
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.4 Match start & stop
+    Test #38: /il start in limbo
+    Expected: countdown→match
+    Code path: HGCommand:437 → PreMatchLimboService.forceBeginTeleportCountdown → HubPreMatchLimboService → IronLegacyLimboBridge.launchSession
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.4 Match start & stop
+    Test #39: Match instance world
+    Expected: testmap-M#
+    Code path: IronLegacyLimboBridgeImpl → HubIronLegacyMatchInstanceRuntime.createMatchInstance → DefaultGamePlatform.createMatchWorld
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.4 Match start & stop
+    Test #40: Lobby registry detach
+    Expected: row released
+    Code path: HubLobbyService.releaseForMatch → MinigameMechanic.onLobbyInstanceReleased
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.4 Match start & stop
+    Test #41: /il stop
+    Expected: abort to hub
+    Code path: HGCommand:458 → GameManager.stopGame + PreMatchLimboService.abort
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.4 Match start & stop
+    Test #42: /il joingame
+    Expected: OP bypass
+    Code path: HGCommand:376 joingame branch
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.5 Admin shell GUIs
+    Test #43: /hch gui admin
+    Expected: admin home
+    Code path: HubGuiCommands → HubAdminShellMenu
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.5 Admin shell GUIs
+    Test #44: Templates browser
+    Expected: templates.yml read-only
+    Code path: HubHubTemplateBrowserMenu
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.5 Admin shell GUIs
+    Test #45: Queues overview
+    Expected: live depth
+    Code path: HubQueueOverviewMenu → HubMatchQueueService
+
+⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+    Subsection: 4.5 Admin shell GUIs
+    Test #46: /il admin
+    Expected: IL control center
+    Code path: HGCommand:289 → AdminControlCenterMenu
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.1 Hub protection (non-OP)
+    Test #1: Break block
+    Expected: blocked
+    Code path: HollowCrownHubPlugin:132 registerEvents HubWorldManager → onBreak:925 — isInHubProtection + !buildMode → cancel
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.1 Hub protection (non-OP)
+    Test #2: Place block
+    Expected: blocked
+    Code path: onPlace:936
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.1 Hub protection (non-OP)
+    Test #3: Crafting
+    Expected: blocked
+    Code path: onCraft:950 PrepareItemCraftEvent cancel
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.1 Hub protection (non-OP)
+    Test #4: Drop locked item
+    Expected: blocked
+    Code path: onDrop:968 — isLockedUtilityItem
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.1 Hub protection (non-OP)
+    Test #5: Swap locked slots
+    Expected: blocked
+    Code path: onSwapHands:979 / onInventoryClick:999
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.1 Hub protection (non-OP)
+    Test #6: Outside radius
+    Expected: clamped X/Z
+    Code path: onMove:1031 — hub-world.yml protection.radiusBlocks
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.1 Hub protection (non-OP)
+    Test #7: Time/weather
+    Expected: day/no storm
+    Code path: HubWorldManager scheduled task — setTime/storm off in protection
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.1 Hub protection (non-OP)
+    Test #8: Mob spawn toggles
+    Expected: respect settings
+    Code path: onMobSpawn:1119 — hub-world.yml mobSpawns.hostile/passive
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.2 OP build mode
+    Test #9: /hch hubworld buildmode true
+    Expected: creative+snapshot
+    Code path: HubWorldAdminCommands → HubWorldManager.enableBuildMode — buildModeSnapshots:78
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.2 OP build mode
+    Test #10: Build freely
+    Expected: allowed
+    Code path: onBreak/onPlace skip when buildMode contains player
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.2 OP build mode
+    Test #11: buildmode false
+    Expected: survival+loadout
+    Code path: HubWorldManager.disableBuildMode → applySurvivalHubLoadoutAfterTemplate
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.2 OP build mode
+    Test #12: Toggle on again
+    Expected: restore build inv
+    Code path: enableBuildMode restores buildModeSnapshots
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.2 OP build mode
+    Test #13: /hub after limbo
+    Expected: build mode restored
+    Code path: HubPlayerCommand teleport callback → applySurvivalHubLoadoutAfterTemplate checks buildMode
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.3 Hub opt-in PvP
+    Test #14: Hold sword 10 ticks
+    Expected: PVP activated title
+    Code path: HubWorldManager startPvpStateTask — activateCountdown map :75 → pvpActive :74
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.3 Hub opt-in PvP
+    Test #15: Release sword
+    Expected: deactivate countdown
+    Code path: deactivateCountdown :76
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.3 Hub opt-in PvP
+    Test #16: PvP on vs on
+    Expected: damage
+    Code path: onEntityDamageByPlayer:961 — both pvpActive
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.3 Hub opt-in PvP
+    Test #17: PvP on vs off
+    Expected: no damage
+    Code path: onEntityDamageByPlayer cancel if target not pvpActive
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.3 Hub opt-in PvP
+    Test #18: Kill credit
+    Expected: leaderboard++
+    Code path: onDeath hub PvP → ServicesManager IronLegacyHubBridge.recordKill → KillLeaderboardManager
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.3 Hub opt-in PvP
+    Test #19: Die keep inv
+    Expected: keep inventory
+    Code path: onDeath:883 keepInventory keepLevel
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.3 Hub opt-in PvP
+    Test #20: 3s invuln ring
+    Expected: yellow particles
+    Code path: pvpInvulnerableUntil :80 + particle task startInvulnerabilityParticleTask
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.3 Hub opt-in PvP
+    Test #21: Invuln no damage
+    Expected: no damage dealt/received
+    Code path: HubWorldManager.onDamage:840 — pvpInvulnerableUntil check → cancel
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.3 Hub opt-in PvP
+    Test #22: PvP off outside zone
+    Expected: no TP
+    Code path: deactivatePvp — only TP if inPvpZone or has pad
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.3 Hub opt-in PvP
+    Test #23: PvP off in zone/pad
+    Expected: TP hub spawn
+    Code path: deactivatePvp teleport hub spawn branch
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.4 PvP zone admin
+    Test #24: /hch hubworld pvp wand
+    Expected: blaze rod
+    Code path: HubWorldAdminCommands pvp wand → PDC pvpZoneWandKey
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.4 PvP zone admin
+    Test #25: Set corners
+    Expected: hub-world.yml
+    Code path: HubPvpZoneWandListener → HubWorldYaml pvpZone.pos1/pos2
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.4 PvP zone admin
+    Test #26: Outline while holding wand
+    Expected: particles
+    Code path: HubPvpZoneWandListener outline task — recent changelog behavior
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.4 PvP zone admin
+    Test #27: Wand outside protection
+    Expected: rejected
+    Code path: HubPvpZoneWandListener isInHubProtection check
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.4 PvP zone admin
+    Test #28: /hch hubworld pvp setspawn
+    Expected: zone respawn
+    Code path: HubWorldAdminCommands → hub-world.yml pvpZoneSpawn
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.4 PvP zone admin
+    Test #29: Enter zone
+    Expected: auto PvP+sword slot
+    Code path: HubWorldManager inPvpZone check in move/interact handlers
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.4 PvP zone admin
+    Test #30: Die in zone
+    Expected: respawn priority
+    Code path: onRespawn:814 — zone spawn > pad > hub spawn
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.5 PvP pads
+    Test #31: /hch hubworld pvp pad
+    Expected: pressure plate item
+    Code path: HubWorldAdminCommands pvp pad → pvpPadItemKey PDC
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.5 PvP pads
+    Test #32: OP places pad
+    Expected: registered
+    Code path: onPlace pad item → hub-world.yml pvpPads list
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.5 PvP pads
+    Test #33: Step pad PvP ON
+    Expected: respawn activated
+    Code path: onPvpPressurePlate:1082 — pvpRespawnPads :81
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.5 PvP pads
+    Test #34: Repeat step
+    Expected: no spam
+    Code path: lastPvpPlateActivationMs dedupe :82
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.5 PvP pads
+    Test #35: Re-activate PvP step pad
+    Expected: message again
+    Code path: pvpActive transition allows new activation
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.5 PvP pads
+    Test #36: Step pad PvP OFF
+    Expected: not activated hint
+    Code path: onPvpPressurePlate inactive branch
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.5 PvP pads
+    Test #37: OFF warning cooldown
+    Expected: 5min
+    Code path: lastPvpPadInactivePromptAt :83
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.5 PvP pads
+    Test #38: Die with pad
+    Expected: respawn at pad
+    Code path: onRespawn uses pvpRespawnPads
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.6 Limbo PvP
+    Test #39: Sword activation limbo
+    Expected: same countdown
+    Code path: HubPreMatchLimboArenaListener — delegates HubWorldManager PvP state or parallel limbo PvP handlers
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.6 Limbo PvP
+    Test #40: PvP off limbo no TP
+    Expected: stays put
+    Code path: HubPreMatchLimboArenaListener deactivate — no hub teleport
+
+⬜  Phase: Phase 5 — Hub world rules & PvP
+    Subsection: 5.6 Limbo PvP
+    Test #41: PvP off keeps slot
+    Expected: no forced swap
+    Code path: limbo arena listener slot policy
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.1 Template editor
+    Test #1: /hch template worlds tp testmap
+    Expected: creative editor
+    Code path: HubTemplateWorldsCommands → IronLegacyTemplateAdminImpl.teleportToEditor → TemplateWorldManager.teleportEditor · PERM: hollowcrownhub.admin
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.1 Template editor
+    Test #2: Editor world rules
+    Expected: time 1000 no cycles
+    Code path: TemplateWorldManager.applyEditorWorldRules DO_DAYLIGHT_CYCLE/DO_WEATHER_CYCLE false
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.1 Template editor
+    Test #3: Editor inventory memory
+    Expected: restored on re-enter
+    Code path: TemplateWorldManager.saveEditorInventoryIfTemplate / restoreEditorInventory in-memory map
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.1 Template editor
+    Test #4: Publish template
+    Expected: gamerules applied
+    Code path: IronLegacyTemplateAdminImpl.publish → TemplateWorldManager.publishTemplate applyPublishRulesToWorld · PERSIST: worlds.yml
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.1 Template editor
+    Test #5: Delete with players
+    Expected: fails safe
+    Code path: TemplateWorldManager.deleteTemplate players.isEmpty guard
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.1 Template editor
+    Test #6: Delete empty
+    Expected: removed disk+yml
+    Code path: TemplateWorldManager.deleteTemplate unload deleteWorldFolder worldsCfg
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.2 Spawn pads
+    Test #7: /il addspawn
+    Expected: pad at feet
+    Code path: iron-legacy/plugin.yml `/il` → HungerGamesPlugin.onEnable:228 → HGCommand.onCommand:465 → SpawnManager.add · PERSIST: config.yml spawns.pads
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.2 Spawn pads
+    Test #8: /il listspawns
+    Expected: count
+    Code path: HGCommand:480 → SpawnManager.getSpawnPads().size()
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.2 Spawn pads
+    Test #9: /il showpads 10
+    Expected: particles
+    Code path: HGCommand:493 BukkitRunnable Particle.DUST/END_ROD
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.2 Spawn pads
+    Test #10: /il addspawnring 8 20 here
+    Expected: ring
+    Code path: HGCommand:481 → SpawnManager.addRing
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.2 Spawn pads
+    Test #11: /il removespawn
+    Expected: nearest removed
+    Code path: HGCommand:473 → SpawnManager.removeNearest
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.2 Spawn pads
+    Test #12: /il clearspawns
+    Expected: all cleared
+    Code path: HGCommand:472 → SpawnManager.clear
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.3 Game rules & toggles
+    Test #13: /il rules
+    Expected: summary
+    Code path: HGCommand:542 → BuildRuleManager.summaryLines
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.3 Game rules & toggles
+    Test #14: /il crafting on/off
+    Expected: toggle
+    Code path: HGCommand:548 → BuildRuleManager.setCraftingEnabled → RulesListener.onPrepareItemCraft:85
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.3 Game rules & toggles
+    Test #15: /il build *
+    Expected: whitelist
+    Code path: HGCommand:557 → BuildRuleManager → RulesListener place checks
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.3 Game rules & toggles
+    Test #16: /il dig *
+    Expected: whitelist
+    Code path: HGCommand:595 → BuildRuleManager dig → RulesListener break checks
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.3 Game rules & toggles
+    Test #17: /il set teamsize 2
+    Expected: updated
+    Code path: HGCommand:646 → config game.teamSize saveConfig
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.3 Game rules & toggles
+    Test #18: /il set countdown 10
+    Expected: updated
+    Code path: HGCommand:652 → config game.countdownSeconds
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.3 Game rules & toggles
+    Test #19: /il border set ...
+    Expected: configured
+    Code path: HGCommand:678 → config worldborder.* → GameManager.scheduleBorderShrink
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.3 Game rules & toggles
+    Test #20: /il toggle deathmsgs
+    Expected: toggle
+    Code path: HGCommand:705 → game.suppressDeathMessages → GameManager.onDeath
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.3 Game rules & toggles
+    Test #21: /il toggle cannon
+    Expected: toggle
+    Code path: HGCommand:712 → game.playCannonOnDeath
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.3 Game rules & toggles
+    Test #22: /il toggle defaultteams
+    Expected: toggle
+    Code path: HGCommand:719 → ui.openTeamsFirst + GameManager.assignAutoTeamsIfNeeded
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.3 Game rules & toggles
+    Test #23: /il toggle launchonmove
+    Expected: toggle
+    Code path: HGCommand:726 → game.launchOnMove → GameManager.onMove:648
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.3 Game rules & toggles
+    Test #24: /il reload
+    Expected: reload all
+    Code path: HGCommand:405 → ConfigFilesManager.reloadAll SpawnManager BuildRuleManager TemplateWorldManager
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.4 IL admin GUIs
+    Test #25: /il gui
+    Expected: main/teams
+    Code path: HGCommand:254 → MainMenu or TeamsMenu per ui.openTeamsFirst
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.4 IL admin GUIs
+    Test #26: /il admin
+    Expected: control center
+    Code path: HGCommand:289 → AdminControlCenterMenu
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.4 IL admin GUIs
+    Test #27: Core Settings
+    Expected: persist
+    Code path: CoreSettingsAdminMenu.onClick → saveConfig
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.4 IL admin GUIs
+    Test #28: Game Worlds settings
+    Expected: per-map
+    Code path: GameWorldsListMenu → GameWorldSettingsMenu → WorldSettingsManager.save · PERSIST: world-game-settings.yml
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.4 IL admin GUIs
+    Test #29: Worlds Hub Settings
+    Expected: hub integration
+    Code path: WorldsHubSettingsMenu → IronLegacyLimboBridgeImpl mob toggles
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.4 IL admin GUIs
+    Test #30: Team Name Database
+    Expected: CRUD
+    Code path: TeamNameDatabaseAdminMenu → TeamNameDatabaseManager · PERSIST: Hub teams.yml
+
+⬜  Phase: Phase 6 — Iron Legacy admin & template editing
+    Subsection: 6.4 IL admin GUIs
+    Test #31: Back navigation
+    Expected: parent menu
+    Code path: MenuListener.onClick → MenuView back handlers
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.1 Access & scope
+    Test #1: /il envoy gui in hub
+    Expected: fails/warns
+    Code path: HGCommand:195 → TemplateWorldManager.resolveTemplateKeyForWorld empty → error message
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.1 Access & scope
+    Test #2: /il envoy gui in template
+    Expected: map key in title
+    Code path: HGCommand:200 → EnvoyAdminMenu(templateKey)
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.1 Access & scope
+    Test #3: Replenish Admin scope
+    Expected: template world required
+    Code path: AdminControlCenterMenu:129 resolveTemplateKeyForWorld → ReplenishAdminMenu
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.1 Access & scope
+    Test #4: Four tabs
+    Expected: Spawns Types Replenish General
+    Code path: EnvoyAdminMenu.build slots 10/12/14/16
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.2 Envoy setup
+    Test #5: Add spawn GUI/wand
+    Expected: scoped envoys.yml
+    Code path: EnvoySpawnsMenu → AddChestModeManager → EnvoyManager.addLocation · PERSIST: world-envoys/<key>/envoys.yml via WorldEnvoyStorage
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.2 Envoy setup
+    Test #6: Remove spawn GUI
+    Expected: correct coords
+    Code path: EnvoySpawnsMenu → EnvoyManager.removeNearest
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.2 Envoy setup
+    Test #7: Types & packages
+    Expected: scoped yaml
+    Code path: EnvoyTypesMenu EnvoyPackagesMenu EnvoyPackageEditMenu → EnvoyManager.saveYamlTemplate
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.2 Envoy setup
+    Test #8: General settings
+    Expected: persist
+    Code path: EnvoyGeneralSettingsMenu → scoped envoys.yml timing/visuals
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.2 Envoy setup
+    Test #9: /il envoy addloc
+    Expected: adds loc
+    Code path: HGCommand:151 → EnvoyManager.addLocation
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.2 Envoy setup
+    Test #10: /il envoy listlocs
+    Expected: lists
+    Code path: HGCommand:167 → EnvoyManager.getSpawnLocations
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.2 Envoy setup
+    Test #11: /il envoy clearlocs
+    Expected: clears
+    Code path: HGCommand:159 → EnvoyManager.clearLocations
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.2 Envoy setup
+    Test #12: /il envoy wave
+    Expected: without ticker
+    Code path: HGCommand:175 → EnvoyManager.spawnWave
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.2 Envoy setup
+    Test #13: /il envoy random
+    Expected: random drops
+    Code path: HGCommand:185 → EnvoyManager.spawnRandomForagerDrops
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.2 Envoy setup
+    Test #14: /il addchests give+wand
+    Expected: placement mode
+    Code path: HGCommand:214 → AddChestModeManager
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.3 Replenish setup
+    Test #15: Replenish wand
+    Expected: scoped replenish.yml
+    Code path: ReplenishModeManager → ReplenishManager.add → WorldEnvoyStorage.replenishPath
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.3 Replenish setup
+    Test #16: Remove chest GUI
+    Expected: correct world
+    Code path: ReplenishChestsMenu → ReplenishManager.removeNearest
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.3 Replenish setup
+    Test #17: Tier loot T1-T4
+    Expected: persist
+    Code path: replenish.yml tiers.* — ReplenishManager.fillChest reads
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.3 Replenish setup
+    Test #18: General interval/delay
+    Expected: persist
+    Code path: EnvoyGeneralSettingsMenu replenish schedule fields
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.3 Replenish setup
+    Test #19: Toggles forager/tiers
+    Expected: persist
+    Code path: EnvoyGeneralSettingsMenu wave.randomForager tiers.enabled
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.3 Replenish setup
+    Test #20: /il replenish T1
+    Expected: fills chests
+    Code path: HGCommand:240 → ReplenishManager.replenishTier
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.3 Replenish setup
+    Test #21: /il replenish mode give
+    Expected: wand mode
+    Code path: HGCommand:228 → ReplenishModeManager
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.4 Cross-map regression
+    Test #22: Map A vs B separate
+    Expected: own folders
+    Code path: WorldEnvoyStorage.safeFolder per templateKey
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.4 Cross-map regression
+    Test #23: Match Map A only
+    Expected: Map B unaffected
+    Code path: GameManager.startGame ReplenishManager.setMatchContext + EnvoyManager.start scoped key
+
+⬜  Phase: Phase 7 — Envoy & Replenish (per-map scoped)
+    Subsection: 7.4 Cross-map regression
+    Test #24: Hub never refills
+    Expected: no match context
+    Code path: ReplenishManager.startSchedule requires matchTemplateKey · IlGameWorldScopeResolver hub excluded
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.1 Match start sequence
+    Test #1: /il start from limbo
+    Expected: staged countdown
+    Code path: HGCommand:437 → HubPreMatchLimboService.forceBeginTeleportCountdown → launchSession · API: PreMatchLimboService IronLegacyLimboBridge
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.1 Match start sequence
+    Test #2: Pre-teleport 5..1
+    Expected: DO NOT MOVE
+    Code path: GameManager.startGame:326-344 pre countdown titles
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.1 Match start sequence
+    Test #3: Teleport timing
+    Expected: correct moment
+    Code path: HubPreMatchLimboService.tickTeleportCountdown → launchSession → GameManager.doTeleportPhase
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.1 Match start sequence
+    Test #4: Post-teleport freeze delay
+    Expected: hidden delay
+    Code path: GameManager.doTeleportPhase softLeashEndMs + runTaskLater 5*20
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.1 Match start sequence
+    Test #5: Freeze countdown
+    Expected: center numbers
+    Code path: GameManager.beginCountdown sendPrompt per second
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.1 Match start sequence
+    Test #6: launchOnMove
+    Expected: punishment
+    Code path: GameManager.onMove:648 reads launchOnMove toggle
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.1 Match start sequence
+    Test #7: BEGIN prompt
+    Expected: correct moment
+    Code path: GameManager.beginCountdown t<=0 BEGIN title
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.2 Replenish runtime
+    Test #8: Schedule starts
+    Expected: with match
+    Code path: GameManager.doTeleportPhase → ReplenishManager.startSchedule
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.2 Replenish runtime
+    Test #9: First refill ~20s
+    Expected: delay
+    Code path: ReplenishManager.startScheduleInternal firstRefillDelaySeconds
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.2 Replenish runtime
+    Test #10: Subsequent interval
+    Expected: from yaml
+    Code path: replenish.yml schedule.intervalMinutes
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.2 Replenish runtime
+    Test #11: Tier progression
+    Expected: T1→T4
+    Code path: ReplenishManager scheduler tierIndex/repeatsPerTier
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.2 Replenish runtime
+    Test #12: Coords on instance
+    Expected: same XYZ
+    Code path: ReplenishManager.resolveFillWorld + fillChest BlockCoord
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.2 Replenish runtime
+    Test #13: Break replenish chest
+    Expected: blocked
+    Code path: ReplenishChestProtectionListener.onBreak:27
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.2 Replenish runtime
+    Test #14: Explosion on chest
+    Expected: protected
+    Code path: ReplenishChestProtectionListener.onEntityExplode/onBlockExplode
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.3 Envoy runtime
+    Test #15: /il envoy start in match
+    Expected: scoped yaml
+    Code path: HGCommand:142 → EnvoyManager.start yamlForTemplate
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.3 Envoy runtime
+    Test #16: Falling crates
+    Expected: visuals
+    Code path: EnvoyManager ticker → FallingCrate
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.3 Envoy runtime
+    Test #17: Right-click package
+    Expected: opens loot
+    Code path: EnvoyListener.onInteractBlock → EnvoyManager.tryOpen
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.3 Envoy runtime
+    Test #18: Break crate wrong
+    Expected: no loot drop
+    Code path: EnvoyListener.onBlockBreak cancel
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.3 Envoy runtime
+    Test #19: Explosion package
+    Expected: not destroyed
+    Code path: EnvoyListener explode handlers strip package blocks
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.3 Envoy runtime
+    Test #20: Tiered packages
+    Expected: scoped loot
+    Code path: CrateType + envoys.yml tiers
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.4 Death & audio
+    Test #21: Die in match
+    Expected: removed from game
+    Code path: GameManager.onDeath:696 removeFromGame
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.4 Death & audio
+    Test #22: Sent out of world
+    Expected: hub return
+    Code path: GameManager.sendPlayerToHub → HubIntegrationRouting.returnToHubOrLobby
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.4 Death & audio
+    Test #23: Death boom scoped
+    Expected: same world only
+    Code path: GameManager.onDeath playSound loop currentWorld.getPlayers
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.4 Death & audio
+    Test #24: Hub doesn't hear boom
+    Expected: excluded
+    Code path: same loop — hub players not in match world
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.4 Death & audio
+    Test #25: Kill leaderboard
+    Expected: increments
+    Code path: Hub PvP: IronLegacyHubBridge.recordKill · limbo: HubPreMatchLimboArenaListener → KillLeaderboardManager
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.4 Death & audio
+    Test #26: /il giftdrop
+    Expected: gift drops
+    Code path: HGCommand:206 → GiftDropManager → GiftDropListener
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.5 Border & endgame
+    Test #27: Border shrink RUNNING only
+    Expected: scheduled
+    Code path: GameManager.scheduleBorderShrink state==RUNNING guard
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.5 Border & endgame
+    Test #28: Border prompt
+    Expected: styled once
+    Code path: scheduleBorderShrink sendPrompt
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.5 Border & endgame
+    Test #29: Winner title+invuln
+    Expected: last standing
+    Code path: GameManager.evaluateWinCondition showTitle setInvulnerable
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.5 Border & endgame
+    Test #30: Winner hub delay
+    Expected: return
+    Code path: evaluateWinCondition runTaskLater → sendPlayerToHub
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.5 Border & endgame
+    Test #31: Cleanup evacuate
+    Expected: all out
+    Code path: GameManager.stopGame evacuatePlayersFromInstance
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.5 Border & endgame
+    Test #32: Instance destroyed
+    Expected: M# gone
+    Code path: TemplateWorldManager.destroyMatchInstanceByWorld → HubIronLegacyMatchInstanceRuntime
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.5 Border & endgame
+    Test #33: Next match clean
+    Expected: fresh clone
+    Code path: DefaultGamePlatform.createMatchWorld WorldFolderCopier
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.5 Border & endgame
+    Test #34: Limbo reset
+    Expected: next run
+    Code path: HubPreMatchLimboService.cleanupLimboSession
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.5 Border & endgame
+    Test #35: Replenish/envoy stop
+    Expected: on end
+    Code path: GameManager.stopGame ReplenishManager.stopSchedule + envoy stop hook
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.6 Teams
+    Test #36: /il teams in limbo
+    Expected: Hub party menu
+    Code path: HGCommand:273 isInLimbo → HubPlayerMenus.openPartyMenu
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.6 Teams
+    Test #37: Create team limbo
+    Expected: works
+    Code path: TeamsMenu → TeamManager.createTeam → HubTeamService
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.6 Teams
+    Test #38: Invite/join/color menus
+    Expected: paging
+    Code path: InviteMenu JoinTeamMenu TeamColorMenu MenuListener
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.6 Teams
+    Test #39: Team cap
+    Expected: enforced
+    Code path: TeamManager.acceptTeamInvite → HubTeamService memberCap
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.6 Teams
+    Test #40: /il randomteams 2
+    Expected: randomize
+    Code path: HGCommand:633 runRandomTeams wipeAllTeamsHard
+
+⬜  Phase: Phase 8 — Full match gameplay
+    Subsection: 8.6 Teams
+    Test #41: Team chat SPI
+    Expected: prefix/color
+    Code path: IronLegacyTeamChatProvider registered HungerGamesPlugin:203 · API: TeamChatProvider
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.1 Cold restart YAML
+    Test #1: Restart enables all
+    Expected: 3 plugins
+    Code path: Foundation→Hub→IL onEnable chain
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.1 Cold restart YAML
+    Test #2: /hub spawn persists
+    Expected: correct TP
+    Code path: DefaultGamePlatform.reloadHubSpawnFromConfig config.yml hub.spawn
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.1 Cold restart YAML
+    Test #3: templates.yml
+    Expected: testmap row
+    Code path: HubTemplateRegistry loadFromDisk on boot
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.1 Cold restart YAML
+    Test #4: hub-world.yml
+    Expected: pvp/pads/radius
+    Code path: HubWorldYaml load in HubWorldManager ctor
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.1 Cold restart YAML
+    Test #5: parties.yml
+    Expected: party state
+    Code path: HubPartyService loadFromDisk:54
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.1 Cold restart YAML
+    Test #6: lobby-instances.yml
+    Expected: OPEN restored
+    Code path: HubLobbyInstanceRegistry load
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.1 Cold restart YAML
+    Test #7: IL worlds.yml
+    Expected: limbo zone
+    Code path: TemplateWorldManager.reload worlds.yml
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.1 Cold restart YAML
+    Test #8: world-envoys/<key>/
+    Expected: scoped yaml
+    Code path: WorldEnvoyStorage on disk
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.1 Cold restart YAML
+    Test #9: Kill leaderboard
+    Expected: persists
+    Code path: KillLeaderboardManager.reload kills.yml
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.1 Cold restart YAML
+    Test #10: No stale worlds
+    Expected: clean
+    Code path: TemplateWorldManager.recoverStaleInstances HubLobbyService reconciliation
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.2 MySQL optional
+    Test #11: Parties MySQL
+    Expected: survive restart
+    Code path: HubPartyJdbcSync + HubPartyService
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.2 MySQL optional
+    Test #12: Lobby instances MySQL
+    Expected: survive
+    Code path: HubLobbyJdbcSync
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.2 MySQL optional
+    Test #13: Queue snapshots
+    Expected: hc_queue_snapshot
+    Code path: HubMatchQueueService jdbcLoad HubSqlMigrations
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.2 MySQL optional
+    Test #14: MySQL down
+    Expected: YAML fallback
+    Code path: HubSqlRuntime.tryConnect null → HubYamlStorageProvider
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.3 Reconnect edge cases
+    Test #15: All offline 3min disband
+    Expected: party gone
+    Code path: HubPartyService.tickMaintenance allOfflineDisbandSeconds config
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.3 Reconnect edge cases
+    Test #16: Leader offline promote
+    Expected: new leader
+    Code path: tickMaintenance leaderAbandonedPromoteSeconds
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.3 Reconnect edge cases
+    Test #17: Quit while queued
+    Expected: removed
+    Code path: HubPartyListener.onQuit → matchQueueService.leaveQueue
+
+⬜  Phase: Phase 9 — Persistence & restart
+    Subsection: 9.3 Reconnect edge cases
+    Test #18: Build mode reconnect
+    Expected: inv kept
+    Code path: HubWorldManager buildModeSnapshots restore
+
+⬜  Phase: Phase 10 — Optional integrations
+    Subsection: 10.1 Velocity
+    Test #1: velocity.enabled proxy
+    Expected: cross-server
+    Code path: VelocityBridgeManager.connectPlayer BungeeCord Connect · PERSIST: gameflow.yml velocity.*
+
+⬜  Phase: Phase 10 — Optional integrations
+    Subsection: 10.1 Velocity
+    Test #2: Post-match hub route
+    Expected: hubServerId
+    Code path: HubIntegrationRouting.returnToHubOrLobby velocity.connectPlayer
+
+⬜  Phase: Phase 10 — Optional integrations
+    Subsection: 10.1 Velocity
+    Test #3: Same server no hop
+    Expected: direct lobby
+    Code path: HubIntegrationRouting.hubTargetIsThisServer → sendToLobbyExact
+
+⬜  Phase: Phase 10 — Optional integrations
+    Subsection: 10.2 Lobby sharding
+    Test #4: Shard boundaries
+    Expected: clamped
+    Code path: HubShardBoundaryListener.onTeleport LobbyShardManager.assignPlayer
+
+⬜  Phase: Phase 10 — Optional integrations
+    Subsection: 10.2 Lobby sharding
+    Test #5: lobbyShardPlayers cap
+    Expected: new shard
+    Code path: LobbyShardManager.assignPlayer shardCap gameflow.yml
+
+⬜  Phase: Phase 10 — Optional integrations
+    Subsection: 10.3 Resource pack
+    Test #6: Hub return pack prompt
+    Expected: if configured
+    Code path: LobbyManager.sendToLobbyExact → ResourcePackManager.applyIfEnabled · PERSIST: resourcepack.yml
+
+⬜  Phase: Phase 10 — Optional integrations
+    Subsection: 10.4 Environmental Hazards
+    Test #7: Publish/delete cleanup
+    Expected: hazards cleared
+    Code path: EnvironmentalHazardsBridge.onTemplatePublished/onTemplateDeleted · API: EnvironmentalHazardsLifecycle
+
+⬜  Phase: Phase 10 — Optional integrations
+    Subsection: 10.4 Environmental Hazards
+    Test #8: Match end cleanup
+    Expected: hazards cleared
+    Code path: EnvironmentalHazardsBridge.onMatchWorldDestroyed
+
+
+================================================================================
+15-MINUTE SMOKE (minimum)
+⬜ Phase 0 console checks
+⬜ /hch sethub → /hub → /hch join → join lobby
+⬜ /hch party create + invite + accept
+⬜ Compass → Game Lobby → limbo → /il start
+⬜ /il stop → /hub
+
+BUG REPORT TEMPLATE
+What you did:
+Expected:
+Actual:
+Console (Foundation / Hub / IL):
+/plugins:
+Template key / world:
+Checklist test #:
+Code path:
+================================================================================
