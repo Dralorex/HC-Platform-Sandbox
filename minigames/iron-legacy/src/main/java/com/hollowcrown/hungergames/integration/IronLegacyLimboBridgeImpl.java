@@ -139,7 +139,6 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
     public void assignTeamsForLimboLaunch(String templateKey, int teamSizeMax, Set<UUID> onlinePlayerIds) {
         boolean randomize = plugin.files().gameflow().getBoolean("teams.randomizeDefault", false);
         int maxSize = Math.max(1, teamSizeMax);
-        bindPartiesIntoTeams(onlinePlayerIds, maxSize);
         if (randomize) {
             autoCreateRandomTeams(new ArrayList<>(onlinePlayerIds), maxSize);
             return;

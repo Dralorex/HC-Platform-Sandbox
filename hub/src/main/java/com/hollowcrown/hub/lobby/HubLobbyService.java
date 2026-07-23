@@ -179,7 +179,8 @@ public final class HubLobbyService {
         }
         String tk = templateKey.trim();
         Bukkit.getScheduler().runTask(plugin, () -> {
-            if (!listOpenForTemplate(tk).isEmpty()) {
+            List<HubLobbyInstanceRecord> open = listOpenForTemplate(tk);
+            if (!open.isEmpty() && !allOpenLobbiesAboveHalfCapacity(tk, open)) {
                 return;
             }
             try {
@@ -190,6 +191,34 @@ public final class HubLobbyService {
                         "reason=" + reason, "err=" + ex.getMessage());
             }
         });
+    }
+
+    /**
+     * True when every OPEN lobby with a loaded world is strictly above 50% player capacity.
+     */
+    public boolean allOpenLobbiesAboveHalfCapacity(String templateKey, List<HubLobbyInstanceRecord> open) {
+        if (open == null || open.isEmpty()) {
+            return false;
+        }
+        Optional<HubTemplateEntry> entryOpt = templates.get(templateKey);
+        if (entryOpt.isEmpty()) {
+            return false;
+        }
+        LobbyCaps caps = resolveLobbyCaps(entryOpt.get());
+        int max = Math.max(1, caps.maxPlayers);
+        boolean anyLoaded = false;
+        for (HubLobbyInstanceRecord r : open) {
+            World w = r.loadedWorld();
+            if (w == null) {
+                continue;
+            }
+            anyLoaded = true;
+            double fill = (double) w.getPlayerCount() / max;
+            if (fill <= 0.5) {
+                return false;
+            }
+        }
+        return anyLoaded;
     }
 
     /**
@@ -259,9 +288,12 @@ public final class HubLobbyService {
             return;
         }
         detachLobbyInstanceForMatchStart(worldName);
-        if (listOpenForTemplate(templateKey).isEmpty()) {
-            schedulePrefetchLobby(templateKey, "match_start");
-        }
+        schedulePrefetchLobby(templateKey, "match_start");
+    }
+
+    /** Same evacuation as template publish — used after deferred template-policy saves. */
+    public void refreshLobbiesAfterPolicyChange(String templateKey) {
+        refreshLobbiesAfterPublish(templateKey);
     }
 
     /**
@@ -456,7 +488,8 @@ public final class HubLobbyService {
         }
         if (prep.unitSize() > caps.teamSizeMax) {
             player.sendMessage(Component.text(
-                    "Your party is too large for this game (max " + caps.teamSizeMax + " per lobby).",
+                    "Your party is too large for this game (max " + caps.teamSizeMax + " per lobby). "
+                            + "Remove members with /hch party kick.",
                     NamedTextColor.RED));
             return false;
         }
@@ -510,9 +543,7 @@ public final class HubLobbyService {
             return false;
         }
         if (prep.unitSize() > caps.teamSizeMax) {
-            player.sendMessage(Component.text(
-                    "Your party is too large for this game (max " + caps.teamSizeMax + " per lobby).",
-                    NamedTextColor.RED));
+            openPartyTrimGuiOrDeny(player, instanceId, caps.teamSizeMax, prep);
             return false;
         }
 
@@ -596,6 +627,17 @@ public final class HubLobbyService {
             }
         }
         return ok;
+    }
+
+    private void openPartyTrimGuiOrDeny(Player player, String instanceId, int maxUnitSize, PreparedLobbyJoin prep) {
+        if (prep.partyOpt().isPresent() && prep.partyOpt().get().isLeader(player.getUniqueId())) {
+            player.openInventory(new com.hollowcrown.hub.gui.HubPartyLobbyTrimMenu(
+                    plugin, player, instanceId, maxUnitSize).getInventory());
+            return;
+        }
+        player.sendMessage(Component.text(
+                "Your party is too large for this lobby (max " + maxUnitSize + " per party here).",
+                NamedTextColor.RED));
     }
 
     private record LobbyCaps(int maxPlayers, int teamSizeMax) {

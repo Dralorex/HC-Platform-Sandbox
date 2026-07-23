@@ -59,4 +59,10 @@ public interface PreMatchLimboService {
     void setAllowHostileMobSpawns(boolean value);
 
     void setAllowPassiveMobSpawns(boolean value);
+
+    /**
+     * Per-template team size cap while the player is in pre-match limbo ({@code teamSizeMax} from worlds.yml),
+     * or {@code -1} when not in limbo.
+     */
+    int teamSizeMaxFor(Player player);
 }

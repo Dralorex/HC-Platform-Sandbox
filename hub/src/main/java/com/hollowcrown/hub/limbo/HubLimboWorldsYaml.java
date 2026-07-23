@@ -184,8 +184,41 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
                     return Optional.of(key.toLowerCase(Locale.ROOT));
                 }
             }
+            return resolveHubLobbyInstanceTemplateKey(worldFolderName);
+        }
+    }
+
+    /**
+     * Hub lobby instance folders ({@code hch-worlds/minigames/<templateKey>-L<n>}) are not template
+     * editor worlds but share the parent template's policy (nametags, tab, team colors).
+     */
+    private Optional<String> resolveHubLobbyInstanceTemplateKey(String worldFolderName) {
+        if (worldFolderName == null || worldFolderName.isBlank()) {
             return Optional.empty();
         }
+        String norm = worldFolderName.replace('\\', '/');
+        int slash = norm.lastIndexOf('/');
+        String leaf = slash >= 0 ? norm.substring(slash + 1) : norm;
+        int dash = leaf.lastIndexOf("-L");
+        if (dash <= 0) {
+            return Optional.empty();
+        }
+        String indexPart = leaf.substring(dash + 2);
+        if (indexPart.isEmpty() || !indexPart.chars().allMatch(Character::isDigit)) {
+            return Optional.empty();
+        }
+        String templateLeaf = leaf.substring(0, dash);
+        String canon = canonicalTemplateKey(templateLeaf);
+        if (canon == null || canon.isBlank()) {
+            return Optional.empty();
+        }
+        synchronized (fileLock) {
+            YamlConfiguration yaml = loadFresh();
+            if (yaml.isConfigurationSection(base(canon))) {
+                return Optional.of(canon);
+            }
+        }
+        return plugin.templates().get(templateLeaf).map(e -> e.templateKey().toLowerCase(Locale.ROOT));
     }
 
     public Optional<LimboZone> limboZone(String templateKey) {

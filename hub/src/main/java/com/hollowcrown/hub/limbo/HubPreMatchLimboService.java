@@ -5,8 +5,12 @@ import com.hollowcrown.api.integration.IronLegacyLimboBridge;
 import com.hollowcrown.api.integration.PreMatchLimboService;
 import com.hollowcrown.api.party.PartyService;
 import com.hollowcrown.api.party.PartyView;
+import com.hollowcrown.api.team.TeamService;
+import com.hollowcrown.api.team.TeamView;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.HubLog;
+import com.hollowcrown.hub.team.HubLimboTeamFormation;
+import com.hollowcrown.hub.team.HubTeamAutoColors;
 import com.hollowcrown.hub.lobby.HubLobbyService;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -92,6 +96,7 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
             sessions.put(norm, s);
         }
         prepareForLimboJoin(p);
+        HubLimboTeamFormation.resetTeamForLimboEntry(hub, p);
         s.players.add(p.getUniqueId());
         Location limboSpawn = b.resolveLimboSpawn(info, s.worldName);
         if (limboSpawn != null) {
@@ -149,6 +154,7 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
         }
 
         prepareForLimboJoin(p);
+        HubLimboTeamFormation.resetTeamForLimboEntry(hub, p);
         s.players.add(p.getUniqueId());
         b.markJoinIntentCounted(p);
         p.getInventory().clear();
@@ -157,50 +163,55 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
         applyLimboLoadout(p);
         p.getInventory().setHeldItemSlot(4);
         p.setGameMode(GameMode.ADVENTURE);
+        HubLimboTeamFormation.bindPartyTeamOnLobbyJoin(hub, p, s.teamSizeMax);
         startQueueTaskIfNeeded(s);
         announceLobbyTeamPrompt(p);
+        hub.nametags().refreshWorld(lobbyWorld);
         return true;
     }
 
-    /**
-     * Title + chat hint sent on lobby-limbo entry so the leader can set up a match team
-     * and the rest of the party knows the team system is engaged.
-     */
+    /** Title + chat on lobby-limbo entry — parties auto-team; solo players use Match Team. */
     private void announceLobbyTeamPrompt(Player p) {
         new BukkitRunnable() {
             @Override
             public void run() {
                 if (!p.isOnline() || !isInLimbo(p)) return;
-                PartyView party = resolveParty(p);
-                boolean leader = party != null && party.isLeader(p.getUniqueId());
-                if (leader) {
+                RegisteredServiceProvider<TeamService> reg =
+                        Bukkit.getServicesManager().getRegistration(TeamService.class);
+                Optional<TeamView> team = reg == null
+                        ? Optional.empty()
+                        : reg.getProvider().teamOf(p.getUniqueId());
+                if (team.isPresent()) {
+                    String name = team.get().name();
                     p.showTitle(Title.title(
-                            Component.text("You're the Party Leader", NamedTextColor.GOLD),
-                            Component.text("Open the Party menu to pick your team color",
-                                    NamedTextColor.YELLOW),
+                            Component.text(name, NamedTextColor.GOLD),
+                            Component.text("Your party is on this match team", NamedTextColor.GREEN),
                             Title.Times.times(Duration.ofMillis(250), Duration.ofSeconds(4), Duration.ofMillis(500))));
                     p.sendMessage(Component.text(
-                            "You are the party leader. Right-click your party item to set up your match team.",
+                            "You are on " + name + ". Invite others from Match Team (slot 3) if you have room.",
                             NamedTextColor.GOLD));
-                } else if (party != null) {
-                    p.showTitle(Title.title(
-                            Component.text("Match Team Ready", NamedTextColor.AQUA),
-                            Component.text("Your party will be your team", NamedTextColor.GRAY),
-                            Title.Times.times(Duration.ofMillis(250), Duration.ofSeconds(3), Duration.ofMillis(500))));
-                    p.sendMessage(Component.text(
-                            "Your party becomes your match team. The leader can pick a color from the party menu.",
-                            NamedTextColor.AQUA));
-                } else {
-                    p.showTitle(Title.title(
-                            Component.text("Solo Lobby", NamedTextColor.YELLOW),
-                            Component.text("A team is assigned at match start", NamedTextColor.GRAY),
-                            Title.Times.times(Duration.ofMillis(250), Duration.ofSeconds(3), Duration.ofMillis(500))));
-                    p.sendMessage(Component.text(
-                            "You're solo. Right-click your party item to invite friends or join an open team.",
-                            NamedTextColor.YELLOW));
+                    hub.nametags().refreshWorld(p.getWorld());
+                    return;
                 }
+                boolean legacyColors = HubTeamAutoColors.isLegacyColorMode(hub, p);
+                p.showTitle(Title.title(
+                        Component.text("Match Team", NamedTextColor.GOLD),
+                        Component.text("Create or join a team in Match Team (slot 3)",
+                                NamedTextColor.YELLOW),
+                        Title.Times.times(Duration.ofMillis(250), Duration.ofSeconds(4), Duration.ofMillis(500))));
+                p.sendMessage(Component.text(
+                        legacyColors
+                                ? "Create a team and pick a color in Match Team. Invite players up to the team cap."
+                                : "Create Team 1, Team 2, … in Match Team (slot 3) and invite teammates.",
+                        NamedTextColor.GOLD));
             }
         }.runTaskLater(hub, 20L);
+    }
+
+    @Override
+    public int teamSizeMaxFor(Player player) {
+        LimboSession s = sessionForPlayer(player);
+        return s == null ? -1 : Math.max(1, s.teamSizeMax);
     }
 
     private PartyView resolveParty(Player p) {
@@ -378,14 +389,14 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
                     return;
                 }
                 if (s.players.isEmpty()) {
-                    cleanupSession(s.templateKey);
+                    cleanupSession(s.worldName);
                     cancel();
                     return;
                 }
 
                 List<Player> online = onlinePlayers(s.players);
                 if (online.isEmpty()) {
-                    cleanupSession(s.templateKey);
+                    cleanupSession(s.worldName);
                     cancel();
                     return;
                 }
@@ -538,6 +549,9 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
             // Match policy scope begins after a successful launch on this instance world.
             hub.pluginPolicies().markWorldAsMatch(s.worldName);
             hub.lobbyService().onHubLobbyMatchStarted(s.templateKey, s.worldName);
+            if (instanceWorld != null) {
+                hub.nametags().refreshWorld(instanceWorld);
+            }
         }
         cleanupLimboSession(s);
     }
@@ -586,6 +600,7 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
             } catch (Exception ignored) {
             }
         }
+        clearSessionTeams(s);
         IronLegacyLimboBridge b = bridge();
         if (b == null || HubLobbyService.isHubManagedLobbyWorld(s.worldName)) {
             return;
@@ -597,6 +612,19 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
             } catch (Throwable ignored) {
             }
         }
+    }
+
+    /** Drops match teams for everyone tracked in this limbo session (lobby destroy / empty queue). */
+    private void clearSessionTeams(LimboSession s) {
+        if (s == null || s.players.isEmpty()) {
+            return;
+        }
+        RegisteredServiceProvider<TeamService> reg =
+                Bukkit.getServicesManager().getRegistration(TeamService.class);
+        if (reg == null) {
+            return;
+        }
+        reg.getProvider().clearTeamsFor(new ArrayList<>(s.players));
     }
 
     @Override

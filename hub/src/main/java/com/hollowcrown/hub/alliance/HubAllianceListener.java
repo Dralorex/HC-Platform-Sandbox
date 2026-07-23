@@ -1,5 +1,6 @@
 package com.hollowcrown.hub.alliance;
 
+import com.hollowcrown.api.integration.PreMatchLimboService;
 import com.hollowcrown.api.team.TeamService;
 import com.hollowcrown.api.team.TeamView;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
@@ -17,6 +18,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -51,7 +53,7 @@ public final class HubAllianceListener implements Listener {
         if (!(e.getEntity() instanceof Player victim)) return;
         if (!(e.getDamager() instanceof Player attacker)) return;
         if (victim.getUniqueId().equals(attacker.getUniqueId())) return;
-        HubTemplatePolicyService.TemplateConfig cfg = configForMatch(victim);
+        HubTemplatePolicyService.TemplateConfig cfg = configForTemplateWorld(victim);
         if (cfg == null) return;
         TeamService teams = teamsOrNull();
         if (teams == null) return;
@@ -160,12 +162,19 @@ public final class HubAllianceListener implements Listener {
         }
     }
 
-    private HubTemplatePolicyService.TemplateConfig configForMatch(Player p) {
+    private HubTemplatePolicyService.TemplateConfig configForTemplateWorld(Player p) {
         if (p == null || p.getWorld() == null) return null;
-        if (!plugin.pluginPolicies().isMatchWorld(p.getWorld())) return null;
-        String tk = plugin.limboLayout().worldsYaml().resolveTemplateKeyForWorld(p.getWorld().getName()).orElse(null);
+        World w = p.getWorld();
+        if (!plugin.pluginPolicies().isMatchWorld(w) && !isInLimboWorld(w)) return null;
+        String tk = plugin.limboLayout().worldsYaml().resolveTemplateKeyForWorld(w.getName()).orElse(null);
         if (tk == null) return null;
         return plugin.templatePolicies().configFor(tk);
+    }
+
+    private boolean isInLimboWorld(World world) {
+        RegisteredServiceProvider<PreMatchLimboService> reg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
+        return reg != null && reg.getProvider().isInLimboWorld(world);
     }
 
     private TeamService teamsOrNull() {

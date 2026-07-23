@@ -2,6 +2,7 @@ package com.hollowcrown.hub.nametag;
 
 import com.hollowcrown.api.team.TeamService;
 import com.hollowcrown.api.team.TeamView;
+import com.hollowcrown.api.integration.PreMatchLimboService;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.alliance.HubAllianceService;
 import com.hollowcrown.hub.policy.HubTemplatePolicyService;
@@ -13,13 +14,17 @@ import org.bukkit.ChatColor;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -100,10 +105,84 @@ public final class HubNametagService {
         }
     }
 
+    /**
+     * Re-sync every viewer in {@code world} after team create/join/leave/clear.
+     * Runs immediately and again next tick so GUI-driven roster changes stay aligned for all players.
+     */
+    public void onTeamRosterChanged(World world, Collection<UUID> affectedPlayerIds) {
+        if (world == null) {
+            return;
+        }
+        Set<UUID> affected = new HashSet<>();
+        if (affectedPlayerIds != null) {
+            for (UUID id : affectedPlayerIds) {
+                if (id != null) {
+                    affected.add(id);
+                }
+            }
+        }
+        Runnable sync = () -> syncTeamRosterInWorld(world, affected);
+        if (Bukkit.isPrimaryThread()) {
+            sync.run();
+        } else {
+            Bukkit.getScheduler().runTask(plugin, sync);
+        }
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                syncTeamRosterInWorld(world, affected);
+            }
+        }.runTaskLater(plugin, 1L);
+    }
+
+    private void syncTeamRosterInWorld(World world, Set<UUID> affectedPlayerIds) {
+        if (world == null) {
+            return;
+        }
+        refreshWorld(world);
+        if (affectedPlayerIds == null || affectedPlayerIds.isEmpty()) {
+            return;
+        }
+        for (UUID id : affectedPlayerIds) {
+            Player target = Bukkit.getPlayer(id);
+            if (target == null || !target.isOnline() || !world.equals(target.getWorld())) {
+                continue;
+            }
+            for (Player viewer : world.getPlayers()) {
+                ensureViewerReady(viewer);
+                refreshOnePair(viewer, target);
+            }
+            refreshViewer(target);
+        }
+    }
+
+    /** True when nametags should render in this world (active match or pre-match limbo lobby). */
+    public boolean isManagedWorld(World world) {
+        if (world == null) return false;
+        if (plugin.pluginPolicies().isMatchWorld(world)) return true;
+        return isInLimboWorld(world);
+    }
+
     public void refreshAllViewersOfTarget(Player target) {
         if (target == null || target.getWorld() == null) return;
-        for (Player viewer : target.getWorld().getPlayers()) {
+        World world = target.getWorld();
+        for (Player viewer : world.getPlayers()) {
+            ensureViewerReady(viewer);
             refreshOnePair(viewer, target);
+        }
+        refreshViewer(target);
+    }
+
+    /** Ensures {@code viewer} owns a private scoreboard before a single-pair update. */
+    private void ensureViewerReady(Player viewer) {
+        if (viewer == null || !viewer.isOnline() || viewer.getWorld() == null) {
+            return;
+        }
+        if (viewerScoreboards.containsKey(viewer.getUniqueId())) {
+            return;
+        }
+        if (shouldRenderNametags(viewer) && configFor(viewer).isPresent()) {
+            refreshViewer(viewer);
         }
     }
 
@@ -111,7 +190,7 @@ public final class HubNametagService {
         if (viewer == null || !viewer.isOnline() || viewer.getWorld() == null) return;
 
         Optional<HubTemplatePolicyService.TemplateConfig> cfg = configFor(viewer);
-        if (cfg.isEmpty() || !plugin.pluginPolicies().isMatchWorld(viewer.getWorld())) {
+        if (cfg.isEmpty() || !shouldRenderNametags(viewer)) {
             Scoreboard prev = viewerScoreboards.remove(viewer.getUniqueId());
             if (prev != null) {
                 try {
@@ -142,6 +221,7 @@ public final class HubNametagService {
         Optional<HubTemplatePolicyService.TemplateConfig> cfgOpt = configFor(viewer);
         if (cfgOpt.isEmpty()) return;
         HubTemplatePolicyService.TemplateConfig cfg = cfgOpt.get();
+        boolean relationshipColors = useRelationshipColors(cfg, viewer);
 
         TeamView vTeam = teamOf(viewer);
         TeamView tTeam = teamOf(target);
@@ -157,14 +237,14 @@ public final class HubNametagService {
             }
         }
 
-        Component prefix = prefixFor(tTeam, cfg);
+        Component prefix = prefixFor(tTeam, cfg, relationshipColors);
         if (prefix == null) {
             team.prefix(Component.empty());
         } else {
             team.prefix(prefix);
         }
 
-        NamedTextColor nameColor = nameColorFor(viewer, target, vTeam, tTeam, cfg);
+        NamedTextColor nameColor = nameColorFor(viewer, target, vTeam, tTeam, cfg, relationshipColors);
         try {
             team.color(nameColor);
         } catch (Throwable ignored) {
@@ -199,15 +279,20 @@ public final class HubNametagService {
         return true;
     }
 
-    private Component prefixFor(TeamView tTeam, HubTemplatePolicyService.TemplateConfig cfg) {
+    private Component prefixFor(TeamView tTeam, HubTemplatePolicyService.TemplateConfig cfg,
+                                 boolean relationshipColors) {
         if (tTeam == null) return null;
-        TextColor color = resolveTeamPrefixColor(tTeam, cfg);
+        TextColor color = resolveTeamPrefixColor(tTeam, cfg, relationshipColors);
         return Component.text("[" + tTeam.name() + "] ", color);
     }
 
-    private TextColor resolveTeamPrefixColor(TeamView tv, HubTemplatePolicyService.TemplateConfig cfg) {
-        if (cfg.colorMode() == HubTemplatePolicyService.ColorMode.LEGACY) {
+    private TextColor resolveTeamPrefixColor(TeamView tv, HubTemplatePolicyService.TemplateConfig cfg,
+                                              boolean relationshipColors) {
+        if (cfg.colorMode() == HubTemplatePolicyService.ColorMode.LEGACY && !relationshipColors) {
             return chatColorToText(tv.legacyColor(), NamedTextColor.GRAY);
+        }
+        if (relationshipColors && cfg.colorMode() == HubTemplatePolicyService.ColorMode.LEGACY) {
+            return NamedTextColor.GRAY;
         }
         Integer rgb = tv.displayRgb();
         if (rgb != null) {
@@ -217,8 +302,8 @@ public final class HubNametagService {
     }
 
     private NamedTextColor nameColorFor(Player viewer, Player target, TeamView vTeam, TeamView tTeam,
-                                         HubTemplatePolicyService.TemplateConfig cfg) {
-        if (cfg.colorMode() == HubTemplatePolicyService.ColorMode.LEGACY) {
+                                         HubTemplatePolicyService.TemplateConfig cfg, boolean relationshipColors) {
+        if (!relationshipColors) {
             if (tTeam == null) return NamedTextColor.WHITE;
             return chatColorToNamed(tTeam.legacyColor(), NamedTextColor.WHITE);
         }
@@ -268,9 +353,54 @@ public final class HubNametagService {
 
     private Optional<HubTemplatePolicyService.TemplateConfig> configFor(Player player) {
         if (player == null || player.getWorld() == null) return Optional.empty();
-        String tk = plugin.limboLayout().worldsYaml().resolveTemplateKeyForWorld(player.getWorld().getName()).orElse(null);
-        if (tk == null) return Optional.empty();
+        String tk = limboTemplateKey(player);
+        if (tk == null || tk.isBlank()) {
+            tk = plugin.limboLayout().worldsYaml()
+                    .resolveTemplateKeyForWorld(player.getWorld().getName())
+                    .orElse(null);
+        }
+        if (tk == null || tk.isBlank()) return Optional.empty();
         return Optional.of(plugin.templatePolicies().configFor(tk));
+    }
+
+    private static String limboTemplateKey(Player player) {
+        RegisteredServiceProvider<PreMatchLimboService> reg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
+        if (reg == null) {
+            return null;
+        }
+        return reg.getProvider().limboTemplateKey(player);
+    }
+
+    private boolean shouldRenderNametags(Player viewer) {
+        if (viewer == null || viewer.getWorld() == null) return false;
+        if (configFor(viewer).isEmpty()) return false;
+        if (plugin.pluginPolicies().isMatchWorld(viewer.getWorld())) return true;
+        return isInLimbo(viewer);
+    }
+
+    private boolean useRelationshipColors(HubTemplatePolicyService.TemplateConfig cfg, Player viewer) {
+        if (viewer == null || viewer.getWorld() == null) return false;
+        if (isInLimbo(viewer)) return true;
+        return cfg.colorMode() == HubTemplatePolicyService.ColorMode.TEAM;
+    }
+
+    private boolean useRelationshipColors(HubTemplatePolicyService.TemplateConfig cfg, World world) {
+        if (world == null) return false;
+        if (isInLimboWorld(world)) return true;
+        return cfg.colorMode() == HubTemplatePolicyService.ColorMode.TEAM;
+    }
+
+    private boolean isInLimbo(Player player) {
+        RegisteredServiceProvider<PreMatchLimboService> reg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
+        return reg != null && reg.getProvider().isInLimbo(player);
+    }
+
+    private boolean isInLimboWorld(World world) {
+        RegisteredServiceProvider<PreMatchLimboService> reg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
+        return reg != null && reg.getProvider().isInLimboWorld(world);
     }
 
     private static String teamKey(UUID id) {
@@ -284,13 +414,14 @@ public final class HubNametagService {
     public void applyTabVisibility(Player player) {
         if (player == null || !player.isOnline()) return;
         boolean inMatch = plugin.pluginPolicies().isMatchWorld(player.getWorld());
+        boolean inLimbo = isInLimbo(player);
         boolean visible = true;
         Optional<HubTemplatePolicyService.TemplateConfig> cfg = configFor(player);
-        if (cfg.isPresent() && inMatch) {
+        if (cfg.isPresent() && (inMatch || inLimbo)) {
             visible = cfg.get().tabVisible();
         }
         setPlayerListed(player, visible);
-        if (inMatch) {
+        if (inMatch || inLimbo) {
             try {
                 player.playerListName(null);
                 player.displayName(null);
@@ -312,15 +443,18 @@ public final class HubNametagService {
      * chat + death formatting.
      */
     public Component renderPlayerName(Player viewer, Player target) {
-        Optional<HubTemplatePolicyService.TemplateConfig> cfg = configFor(target);
-        if (cfg.isEmpty()) {
+        Optional<HubTemplatePolicyService.TemplateConfig> cfgOpt = configFor(target);
+        if (cfgOpt.isEmpty()) {
             return Component.text(target.getName(), NamedTextColor.WHITE);
         }
-        TeamView vTeam = teamOf(viewer);
+        HubTemplatePolicyService.TemplateConfig cfg = cfgOpt.get();
+        Player context = viewer == null ? target : viewer;
+        boolean relationshipColors = useRelationshipColors(cfg, context.getWorld());
+        TeamView vTeam = teamOf(viewer == null ? target : viewer);
         TeamView tTeam = teamOf(target);
         Component name = Component.text(target.getName(),
-                nameColorFor(viewer == null ? target : viewer, target, vTeam, tTeam, cfg.get()));
-        Component prefix = prefixFor(tTeam, cfg.get());
+                nameColorFor(context, target, vTeam, tTeam, cfg, relationshipColors));
+        Component prefix = prefixFor(tTeam, cfg, relationshipColors);
         if (prefix == null) return name;
         return Component.empty().append(prefix).append(name);
     }

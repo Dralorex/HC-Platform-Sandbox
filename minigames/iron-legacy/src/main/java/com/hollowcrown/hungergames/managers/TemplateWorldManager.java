@@ -45,6 +45,8 @@ public class TemplateWorldManager {
     private static final String SNAPSHOT_ROOT = "template-snapshots";
     private static final String MANAGED_WORLD_ROOT = "hcil-worlds";
     private static final String MANAGED_INSTANCE_DIR = "instances";
+    /** Hub editable template worlds live under the server container at this relative path. */
+    public static final String MANAGED_TEMPLATE_ROOT = "hch-worlds/templates";
     private final HungerGamesPlugin plugin;
     private FileConfiguration worldsCfg;
     private final Map<String, Map<UUID, EditorInventorySnapshot>> editorInventories = new HashMap<>();
@@ -752,6 +754,133 @@ public class TemplateWorldManager {
         if (snap == null) return false;
         applyInventory(p, snap);
         return true;
+    }
+
+    /**
+     * Creates a minimal {@code worlds.yml} row when a folder exists on disk but no row is registered yet.
+     */
+    public boolean ensureTemplateRow(String templateKeyOrWorldFolder) {
+        if (templateKeyOrWorldFolder == null || templateKeyOrWorldFolder.isBlank()) {
+            return false;
+        }
+        String raw = templateKeyOrWorldFolder.trim().replace('\\', '/');
+        while (raw.startsWith("./")) {
+            raw = raw.substring(2);
+        }
+        String keyGuess = leafKeyFromPath(raw).toLowerCase(Locale.ROOT);
+        if (existsTemplate(keyGuess) || existsTemplate(raw.toLowerCase(Locale.ROOT))) {
+            return true;
+        }
+        for (String k : listTemplateNames()) {
+            if (k.equalsIgnoreCase(raw) || k.equalsIgnoreCase(keyGuess)) {
+                return true;
+            }
+            String wn = worldsCfg.getString("worlds." + k + ".worldName", k);
+            if (wn != null && (wn.equalsIgnoreCase(raw) || wn.equalsIgnoreCase(keyGuess)
+                    || wn.replace('\\', '/').equalsIgnoreCase(raw))) {
+                return true;
+            }
+        }
+        Optional<String> found = resolveExistingWorldFolderPath(raw);
+        if (found.isEmpty()) {
+            return false;
+        }
+        String worldName = found.get();
+        String key = leafKeyFromPath(worldName).toLowerCase(Locale.ROOT);
+        registerTemplate(key, worldName);
+        return true;
+    }
+
+    /**
+     * Scans {@link #MANAGED_TEMPLATE_ROOT} for world folders missing from {@code worlds.yml}
+     * and registers them as EDIT rows. Drop a map into {@code hch-worlds/templates/<name>}
+     * then discover (or edit by leaf name) to make it usable.
+     *
+     * @return newly registered template keys (leaf names)
+     */
+    public List<String> discoverManagedTemplateFolders() {
+        Path root = worldFolder(MANAGED_TEMPLATE_ROOT);
+        List<String> registered = new ArrayList<>();
+        if (!Files.isDirectory(root)) {
+            return registered;
+        }
+        try (Stream<Path> children = Files.list(root)) {
+            for (Path child : children.toList()) {
+                if (!Files.isDirectory(child) || !looksLikeMinecraftWorld(child)) {
+                    continue;
+                }
+                String leaf = child.getFileName().toString();
+                String worldName = MANAGED_TEMPLATE_ROOT + "/" + leaf;
+                String key = leaf.toLowerCase(Locale.ROOT);
+                if (existsTemplate(key)) {
+                    continue;
+                }
+                boolean alreadyMapped = false;
+                for (TemplateInfo info : listTemplateInfos()) {
+                    if (info.worldName() != null
+                            && info.worldName().replace('\\', '/').equalsIgnoreCase(worldName)) {
+                        alreadyMapped = true;
+                        break;
+                    }
+                }
+                if (alreadyMapped) {
+                    continue;
+                }
+                registerTemplate(key, worldName);
+                registered.add(key);
+                plugin.getLogger().info("Discovered managed template folder: " + worldName + " (key=" + key + ")");
+            }
+        } catch (IOException ex) {
+            plugin.getLogger().warning("Failed scanning " + MANAGED_TEMPLATE_ROOT + ": " + ex.getMessage());
+        }
+        return registered;
+    }
+
+    /** Resolves an on-disk world folder path under the server container, preferring managed templates. */
+    public Optional<String> resolveExistingWorldFolderPath(String keyOrPath) {
+        if (keyOrPath == null || keyOrPath.isBlank()) {
+            return Optional.empty();
+        }
+        String raw = keyOrPath.trim().replace('\\', '/');
+        while (raw.startsWith("./")) {
+            raw = raw.substring(2);
+        }
+        List<String> candidates = new ArrayList<>();
+        candidates.add(raw);
+        String leaf = leafKeyFromPath(raw);
+        String managed = MANAGED_TEMPLATE_ROOT + "/" + leaf;
+        if (!raw.equalsIgnoreCase(managed)) {
+            candidates.add(managed);
+        }
+        if (!raw.equalsIgnoreCase(leaf)) {
+            candidates.add(leaf);
+        }
+        for (String c : candidates) {
+            Path p = worldFolder(c);
+            if (Files.isDirectory(p) && looksLikeMinecraftWorld(p)) {
+                return Optional.of(c.replace('\\', '/'));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static String leafKeyFromPath(String path) {
+        String n = path.replace('\\', '/');
+        int slash = n.lastIndexOf('/');
+        return slash >= 0 ? n.substring(slash + 1) : n;
+    }
+
+    private static boolean looksLikeMinecraftWorld(Path folder) {
+        if (folder == null || !Files.isDirectory(folder)) {
+            return false;
+        }
+        if (Files.isRegularFile(folder.resolve("level.dat"))
+                || Files.isRegularFile(folder.resolve("level.dat_old"))) {
+            return true;
+        }
+        return Files.isDirectory(folder.resolve("region"))
+                || Files.isDirectory(folder.resolve("DIM-1"))
+                || Files.isDirectory(folder.resolve("DIM1"));
     }
 
     public boolean publishTemplate(String templateName) {

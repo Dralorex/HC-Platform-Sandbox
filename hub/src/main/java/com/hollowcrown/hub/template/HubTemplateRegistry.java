@@ -59,7 +59,10 @@ public final class HubTemplateRegistry {
 
     public void upsert(String templateKey, String mechanicId, String displayName, String sourceWorldName) throws IllegalArgumentException {
         String k = validateKey(templateKey);
-        String m = validateKey(mechanicId);
+        String m = mechanicId == null ? "" : mechanicId.trim();
+        if (!m.isEmpty()) {
+            validateKey(m);
+        }
         String rawSrc = sourceWorldName == null ? "" : sourceWorldName.trim();
         HubTemplateEntry cur = entries.get(k);
         int mu = cur != null ? cur.queueMaxUnitSize() : 8;
@@ -76,6 +79,62 @@ public final class HubTemplateRegistry {
         entries.put(k, entry);
         saveToDisk();
         HubLog.info(plugin, "action=template_upsert", "templateKey=" + k, "mechanicId=" + m);
+    }
+
+    /**
+     * Hub listing row without a mechanic (set later with {@link #setMechanic}).
+     */
+    public void upsertListing(String templateKey, String displayName, String sourceWorldName) throws IllegalArgumentException {
+        upsert(templateKey, "", displayName, sourceWorldName);
+    }
+
+    public void setMechanic(String templateKey, String mechanicId) throws IllegalArgumentException {
+        String k = validateKey(templateKey);
+        HubTemplateEntry cur = entries.get(k);
+        if (cur == null) {
+            throw new IllegalArgumentException("Unknown template: " + templateKey);
+        }
+        String m = mechanicId == null ? "" : mechanicId.trim();
+        if (!m.isEmpty() && !HubMechanics.isVanilla(m)) {
+            validateKey(m);
+        }
+        entries.put(k, cur.withMechanicId(m));
+        saveToDisk();
+        HubLog.info(plugin, "action=template_set_mechanic", "templateKey=" + k, "mechanicId=" + m);
+    }
+
+    /**
+     * Links a managed folder under {@code hch-worlds/templates/<leaf>} as Hub source.
+     * Creates a Hub row if missing; fills empty sourceWorldName if the row already exists.
+     *
+     * @return true if a new row was created or source was updated
+     */
+    public boolean adoptManagedTemplateFolder(String leafFolderName) throws IllegalArgumentException {
+        if (leafFolderName == null || leafFolderName.isBlank()) {
+            throw new IllegalArgumentException("Folder name empty");
+        }
+        String leaf = leafFolderName.trim().replace('\\', '/');
+        int slash = leaf.lastIndexOf('/');
+        if (slash >= 0) {
+            leaf = leaf.substring(slash + 1);
+        }
+        String key = validateTemplateKeySyntax(leaf);
+        String folder = HubTemplateWorldBootstrap.managedFolderPath(key);
+        Optional<HubTemplateEntry> existing = get(key);
+        if (existing.isEmpty()) {
+            upsertListing(key, key, folder);
+            return true;
+        }
+        if (existing.get().sourceWorldName() == null || existing.get().sourceWorldName().isBlank()) {
+            setSourceWorld(key, folder);
+            return true;
+        }
+        String cur = existing.get().sourceWorldName().replace('\\', '/');
+        if (!cur.equalsIgnoreCase(folder)) {
+            // Keep existing explicit source; still count as known.
+            return false;
+        }
+        return false;
     }
 
     public void setSourceWorld(String templateKey, String sourceFolder) throws IllegalArgumentException {

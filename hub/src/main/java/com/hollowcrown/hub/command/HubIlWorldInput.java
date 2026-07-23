@@ -51,18 +51,12 @@ public final class HubIlWorldInput {
         return canonicalKey;
     }
 
-    /** Tab suggestions: world folders + yaml keys (deduped). */
+    /** Tab suggestions: worlds.yml keys only (not folder paths). */
     public static void addCompletionTokens(IronLegacyTemplateAdmin admin, String prefixLc, LinkedHashSet<String> out) {
         if (admin == null || prefixLc == null) {
             return;
         }
         for (var row : admin.listTemplates()) {
-            String wn = row.worldName();
-            if (wn != null && !wn.isBlank()) {
-                if (wn.toLowerCase(Locale.ROOT).startsWith(prefixLc)) {
-                    out.add(wn);
-                }
-            }
             if (row.key().toLowerCase(Locale.ROOT).startsWith(prefixLc)) {
                 out.add(row.key());
             }

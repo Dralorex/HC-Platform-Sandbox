@@ -51,6 +51,10 @@ public final class HubTemplateGeneralSettingsMenu extends HubMenuView {
     private final String templateKey;
     private final Inventory inv;
 
+    public String templateKey() {
+        return templateKey;
+    }
+
     public HubTemplateGeneralSettingsMenu(HollowCrownHubPlugin plugin, String templateKey) {
         this.plugin = plugin;
         this.templateKey = templateKey;
@@ -167,7 +171,7 @@ public final class HubTemplateGeneralSettingsMenu extends HubMenuView {
 
         inv.setItem(SLOT_INFO, btn(Material.IRON_BARS,
                 Component.text("Template: " + templateKey, NamedTextColor.YELLOW),
-                List.of(Component.text("Changes save immediately.", NamedTextColor.GRAY))));
+                List.of(Component.text("Changes save when you close this menu.", NamedTextColor.GRAY))));
         inv.setItem(SLOT_BACK, btn(Material.ARROW,
                 Component.text("Back", NamedTextColor.YELLOW),
                 List.of(Component.text("Template landing", NamedTextColor.GRAY))));

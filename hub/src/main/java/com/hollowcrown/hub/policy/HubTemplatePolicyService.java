@@ -118,6 +118,8 @@ public final class HubTemplatePolicyService {
     private final HollowCrownHubPlugin plugin;
     private final File file;
     private final Map<String, TemplateConfig> templates = new ConcurrentHashMap<>();
+    /** Template keys edited in a policy GUI but not yet flushed to disk. */
+    private final Set<String> deferredDirty = ConcurrentHashMap.newKeySet();
 
     public HubTemplatePolicyService(HollowCrownHubPlugin plugin) {
         this.plugin = plugin;
@@ -235,7 +237,37 @@ public final class HubTemplatePolicyService {
         });
     }
 
+    /** Marks a template as dirty; persisted when the operator closes the policy GUI. */
+    public void markDeferredDirty(String templateKey) {
+        String norm = normalize(templateKey);
+        if (norm != null) {
+            deferredDirty.add(norm);
+        }
+    }
+
+    /**
+     * @return true if anything was written
+     */
+    public boolean flushDeferred(String templateKey) {
+        String norm = normalize(templateKey);
+        if (norm == null || !deferredDirty.remove(norm)) {
+            return false;
+        }
+        save();
+        return true;
+    }
+
     private void update(String templateKey, java.util.function.UnaryOperator<TemplateConfig> mut) {
+        String norm = normalize(templateKey);
+        if (norm == null) return;
+        TemplateConfig cur = configFor(norm);
+        TemplateConfig next = mut.apply(cur);
+        if (next == cur) return;
+        templates.put(norm, next);
+        deferredDirty.add(norm);
+    }
+
+    private void updateAndSave(String templateKey, java.util.function.UnaryOperator<TemplateConfig> mut) {
         String norm = normalize(templateKey);
         if (norm == null) return;
         TemplateConfig cur = configFor(norm);

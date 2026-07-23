@@ -28,6 +28,7 @@ import com.hollowcrown.hub.gui.DefaultHubAdminGui;
 import com.hollowcrown.hub.gui.HubMenuListener;
 import com.hollowcrown.hub.gui.LobbyAdminMenuListener;
 import com.hollowcrown.hub.gui.LobbyJoinMenuListener;
+import com.hollowcrown.hub.integration.HubIronLegacySupport;
 import com.hollowcrown.hub.integration.DefaultHubPlayerMenus;
 import com.hollowcrown.hub.integration.HubIronLegacyMatchInstanceRuntime;
 import com.hollowcrown.hub.limbo.HubLimboArenaState;
@@ -43,6 +44,7 @@ import com.hollowcrown.hub.queue.HubMatchQueueService;
 import com.hollowcrown.hub.template.HubTemplateApiRegistry;
 import com.hollowcrown.hub.template.HubTemplateRegistry;
 import com.hollowcrown.hub.team.HubTeamService;
+import com.hollowcrown.hub.platform.HubHubSpawns;
 import com.hollowcrown.hub.world.HubWorldYaml;
 import com.hollowcrown.hub.world.HubWorldManager;
 import net.kyori.adventure.text.Component;
@@ -81,6 +83,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
     private NamespacedKey lobbyJoinActionKey;
     private NamespacedKey lobbyJoinTemplateKey;
     private NamespacedKey lobbyJoinInstanceIdKey;
+    private NamespacedKey lobbyJoinMechanicKey;
     private NamespacedKey partyInviteKey;
     private NamespacedKey limboWandTemplateKey;
     private NamespacedKey pvpZoneWandKey;
@@ -92,6 +95,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
     private com.hollowcrown.hub.policy.HubTemplatePolicyService templatePolicyService;
     private com.hollowcrown.hub.alliance.HubAllianceService allianceService;
     private com.hollowcrown.hub.nametag.HubNametagService nametagService;
+    private com.hollowcrown.hub.template.HubTemplatePublishPending templatePublishPending;
 
     public static HollowCrownHubPlugin get() {
         return instance;
@@ -135,6 +139,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         this.lobbyJoinActionKey = new NamespacedKey(this, "lobby_join_action");
         this.lobbyJoinTemplateKey = new NamespacedKey(this, "lobby_join_template");
         this.lobbyJoinInstanceIdKey = new NamespacedKey(this, "lobby_join_instance");
+        this.lobbyJoinMechanicKey = new NamespacedKey(this, "lobby_join_mechanic");
         this.partyInviteKey = new NamespacedKey(this, "party_invite_id");
         this.limboWandTemplateKey = new NamespacedKey(this, "limbo_wand_template");
         this.pvpZoneWandKey = new NamespacedKey(this, "pvp_zone_wand");
@@ -145,6 +150,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         this.templatePolicyService = new com.hollowcrown.hub.policy.HubTemplatePolicyService(this);
         this.allianceService = new com.hollowcrown.hub.alliance.HubAllianceService(this);
         this.nametagService = new com.hollowcrown.hub.nametag.HubNametagService(this, allianceService);
+        this.templatePublishPending = new com.hollowcrown.hub.template.HubTemplatePublishPending();
 
         Bukkit.getPluginManager().registerEvents(new LobbyAdminMenuListener(), this);
         Bukkit.getPluginManager().registerEvents(new LobbyJoinMenuListener(), this);
@@ -161,6 +167,10 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
                 new com.hollowcrown.hub.nametag.HubNametagChatListener(nametagService), this);
         Bukkit.getPluginManager().registerEvents(
                 new com.hollowcrown.hub.world.HubPvpZoneWandListener(this, hubWorldManager), this);
+        Bukkit.getPluginManager().registerEvents(
+                new com.hollowcrown.hub.policy.HubTemplatePolicyCloseListener(this), this);
+        Bukkit.getPluginManager().registerEvents(
+                new com.hollowcrown.hub.template.HubTemplatePublishChatListener(this), this);
 
         Bukkit.getServicesManager().register(
                 GamePlatform.class,
@@ -274,7 +284,9 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
             getLogger().severe("Command 'hch' missing from plugin.yml");
         }
         if (getCommand("hub") != null) {
-            getCommand("hub").setExecutor(new HubPlayerCommand(this));
+            HubPlayerCommand hubCmd = new HubPlayerCommand(this);
+            getCommand("hub").setExecutor(hubCmd);
+            getCommand("hub").setTabCompleter(hubCmd);
         } else {
             getLogger().warning("Command 'hub' missing from plugin.yml (optional player teleport).");
         }
@@ -299,7 +311,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
 
         Bukkit.getScheduler().runTaskTimer(this, () -> {
             for (org.bukkit.World w : Bukkit.getWorlds()) {
-                if (pluginPolicyService.isMatchWorld(w)) {
+                if (nametagService.isManagedWorld(w)) {
                     nametagService.refreshWorld(w);
                 }
             }
@@ -380,6 +392,10 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         return templatePolicyService;
     }
 
+    public com.hollowcrown.hub.template.HubTemplatePublishPending templatePublishPending() {
+        return templatePublishPending;
+    }
+
     public com.hollowcrown.hub.alliance.HubAllianceService alliances() {
         return allianceService;
     }
@@ -406,6 +422,10 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
 
     public NamespacedKey lobbyJoinInstanceIdKey() {
         return lobbyJoinInstanceIdKey;
+    }
+
+    public NamespacedKey lobbyJoinMechanicKey() {
+        return lobbyJoinMechanicKey;
     }
 
     public NamespacedKey partyInviteKey() {
@@ -440,14 +460,35 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         }
     }
 
+    private void prepareTemplateEditorLeave(Player player) {
+        HubIronLegacySupport.ilAdmin().ifPresent(admin -> {
+            if (admin.isInTemplateEditorWorld(player)) {
+                admin.prepareLeavingTemplateEditor(player);
+            }
+        });
+    }
+
+    private void finishTemplateEditorReturn(Player player) {
+        HubIronLegacySupport.ilAdmin().ifPresent(admin -> admin.finishHubReturnFromTemplateEditor(player));
+    }
+
     /**
      * Evacuate/kick path: limbo exit + hub spawn (or Velocity hub when configured on Iron Legacy).
      */
     public boolean sendPlayerToHubSpawn(Player player) {
+        return sendPlayerToHubSpawn(player, 1);
+    }
+
+    /**
+     * Teleport to hub spawn. {@code hubNumber} 1 uses {@code /hch sethub}; higher numbers use
+     * {@code hub.instances.<n>} in config.yml when configured.
+     */
+    public boolean sendPlayerToHubSpawn(Player player, int hubNumber) {
         if (player == null || !player.isOnline()) {
             return false;
         }
         exitLimboBeforeHubReturn(player);
+        prepareTemplateEditorLeave(player);
 
         RegisteredServiceProvider<IronLegacyLimboBridge> bridgeReg =
                 Bukkit.getServicesManager().getRegistration(IronLegacyLimboBridge.class);
@@ -459,11 +500,18 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
             }
         }
 
-        Optional<HubSpawn> spawnOpt = platform().getHubSpawn();
+        Optional<HubSpawn> spawnOpt = HubHubSpawns.resolve(this, hubNumber);
         if (spawnOpt.isEmpty()) {
-            player.sendMessage(Component.text(
-                    "Hub spawn is not set. Ask an admin to run /hch sethub.",
-                    NamedTextColor.YELLOW));
+            if (hubNumber <= 1) {
+                player.sendMessage(Component.text(
+                        "Hub spawn is not set. Ask an admin to run /hch sethub.",
+                        NamedTextColor.YELLOW));
+            } else {
+                player.sendMessage(Component.text(
+                        "Hub #" + hubNumber + " is not configured. Ask an admin to add hub.instances."
+                                + hubNumber + " in config.yml.",
+                        NamedTextColor.YELLOW));
+            }
             return false;
         }
         HubSpawn s = spawnOpt.get();
@@ -476,6 +524,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         player.teleportAsync(loc).thenAccept(ok -> {
             if (Boolean.TRUE.equals(ok)) {
                 hubWorldManager.applySurvivalHubLoadoutAfterTemplate(player);
+                finishTemplateEditorReturn(player);
             }
         });
         return true;
@@ -491,6 +540,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
             return false;
         }
         exitLimboBeforeHubReturn(player);
+        prepareTemplateEditorLeave(player);
 
         RegisteredServiceProvider<IronLegacyLimboBridge> bridgeReg =
                 Bukkit.getServicesManager().getRegistration(IronLegacyLimboBridge.class);
@@ -518,6 +568,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         Location loc = new Location(world, s.x(), s.y(), s.z(), s.yaw(), s.pitch());
         player.teleport(loc);
         hubWorldManager.applySurvivalHubLoadoutAfterTemplate(player);
+        finishTemplateEditorReturn(player);
         return true;
     }
 

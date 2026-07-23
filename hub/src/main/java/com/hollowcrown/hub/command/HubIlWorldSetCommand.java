@@ -63,10 +63,14 @@ public final class HubIlWorldSetCommand {
             return true;
         }
         Optional<String> keyOpt = HubIlWorldInput.resolveCanonicalKey(admin, args[2]);
+        if (keyOpt.isEmpty() && admin.ensureWorldTemplateRow(args[2])) {
+            keyOpt = HubIlWorldInput.resolveCanonicalKey(admin, args[2]);
+        }
         if (keyOpt.isEmpty()) {
             sender.sendMessage(Component.text(
                     "Unknown Iron Legacy map \"" + args[2]
-                            + "\". Use the world's folder name from /hch template worlds list.",
+                            + "\". Drop into hch-worlds/templates/ then /hch template worlds discover, "
+                            + "or use a key from /hch template worlds list.",
                     NamedTextColor.RED));
             return true;
         }

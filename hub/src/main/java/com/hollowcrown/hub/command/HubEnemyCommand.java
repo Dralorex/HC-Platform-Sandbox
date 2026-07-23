@@ -78,6 +78,7 @@ public final class HubEnemyCommand implements CommandExecutor, TabCompleter {
         alliances.markDesignatedEnemy(myTeam.name(), other.name());
         alliances.broadcastToTeam(myTeam.name(), Component.text(
                 other.name() + " has been deemed an enemy!", NamedTextColor.GOLD));
+        plugin.nametags().refreshWorld(p.getWorld());
         return true;
     }
 

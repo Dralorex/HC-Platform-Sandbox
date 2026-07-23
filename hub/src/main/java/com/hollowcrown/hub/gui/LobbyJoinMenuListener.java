@@ -29,12 +29,60 @@ public final class LobbyJoinMenuListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onClick(InventoryClickEvent event) {
         InventoryHolder raw = event.getView().getTopInventory().getHolder();
+        if (raw instanceof LobbyJoinMechanicMenuHolder holderMech) {
+            handleMechanicClick(event, holderMech);
+            return;
+        }
         if (raw instanceof LobbyJoinTemplateMenuHolder holderTpl) {
             handleTemplateClick(event, holderTpl);
             return;
         }
         if (raw instanceof LobbyJoinInstanceMenuHolder holderInst) {
             handleInstanceClick(event, holderInst);
+        }
+    }
+
+    private static void handleMechanicClick(InventoryClickEvent event, LobbyJoinMechanicMenuHolder holder) {
+        event.setCancelled(true);
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
+        }
+        if (!player.hasPermission("hollowcrownhub.join")) {
+            player.closeInventory();
+            return;
+        }
+        if (event.getClickedInventory() == null || event.getClickedInventory() != event.getView().getTopInventory()) {
+            return;
+        }
+        ItemStack stack = event.getCurrentItem();
+        if (stack == null || stack.getType().isAir()) {
+            return;
+        }
+        ItemMeta meta = stack.getItemMeta();
+        if (meta == null) {
+            return;
+        }
+        var pdc = meta.getPersistentDataContainer();
+        var actKey = holder.plugin().lobbyJoinActionKey();
+        if (!pdc.has(actKey, PersistentDataType.STRING)) {
+            return;
+        }
+        String action = pdc.get(actKey, PersistentDataType.STRING);
+        if (action == null) {
+            return;
+        }
+        switch (action) {
+            case "jm_prev" -> LobbyJoinMechanicMenu.open(player, holder.plugin(), holder.page() - 1);
+            case "jm_next" -> LobbyJoinMechanicMenu.open(player, holder.plugin(), holder.page() + 1);
+            case "jm_close" -> player.closeInventory();
+            case "jm_pick" -> {
+                String mech = pdc.get(holder.plugin().lobbyJoinMechanicKey(), PersistentDataType.STRING);
+                if (mech != null) {
+                    LobbyJoinTemplateMenu.open(player, holder.plugin(), mech, 0);
+                }
+            }
+            default -> {
+            }
         }
     }
 
@@ -68,8 +116,8 @@ public final class LobbyJoinMenuListener implements Listener {
             return;
         }
         switch (action) {
-            case "jtpl_prev" -> LobbyJoinTemplateMenu.open(player, holder.plugin(), holder.page() - 1);
-            case "jtpl_next" -> LobbyJoinTemplateMenu.open(player, holder.plugin(), holder.page() + 1);
+            case "jtpl_prev" -> LobbyJoinTemplateMenu.open(player, holder.plugin(), holder.mechanicId(), holder.page() - 1);
+            case "jtpl_next" -> LobbyJoinTemplateMenu.open(player, holder.plugin(), holder.mechanicId(), holder.page() + 1);
             case "jtpl_close" -> player.closeInventory();
             case "jtpl_info" -> { /* no-op */ }
             case "jtpl_pick" -> {
@@ -79,7 +127,7 @@ public final class LobbyJoinMenuListener implements Listener {
                 }
                 ClickType ct = event.getClick();
                 if (ct == ClickType.RIGHT || ct == ClickType.SHIFT_RIGHT) {
-                    LobbyJoinInstanceMenu.open(player, holder.plugin(), tk, 0);
+                    LobbyJoinInstanceMenu.open(player, holder.plugin(), tk, holder.mechanicId(), 0);
                 } else if (ct.isLeftClick()) {
                     boolean queueFirst = holder.plugin().templates().get(tk).map(e -> e.joinQueueFirst()).orElse(false);
                     if (queueFirst) {
@@ -136,9 +184,11 @@ public final class LobbyJoinMenuListener implements Listener {
             return;
         }
         switch (action) {
-            case "jinst_prev" -> LobbyJoinInstanceMenu.open(player, holder.plugin(), holder.templateKey(), holder.page() - 1);
-            case "jinst_next" -> LobbyJoinInstanceMenu.open(player, holder.plugin(), holder.templateKey(), holder.page() + 1);
-            case "jinst_back" -> LobbyJoinTemplateMenu.open(player, holder.plugin(), 0);
+            case "jinst_prev" -> LobbyJoinInstanceMenu.open(player, holder.plugin(), holder.templateKey(),
+                    holder.templateMechanicId(), holder.page() - 1);
+            case "jinst_next" -> LobbyJoinInstanceMenu.open(player, holder.plugin(), holder.templateKey(),
+                    holder.templateMechanicId(), holder.page() + 1);
+            case "jinst_back" -> LobbyJoinTemplateMenu.open(player, holder.plugin(), holder.templateMechanicId(), 0);
             case "jinst_close" -> player.closeInventory();
             case "jinst_info" -> { /* no-op */ }
             case "jinst_join" -> {
@@ -174,7 +224,10 @@ public final class LobbyJoinMenuListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onDrag(InventoryDragEvent event) {
         InventoryHolder h = event.getView().getTopInventory().getHolder();
-        if (h instanceof LobbyJoinTemplateMenuHolder || h instanceof LobbyJoinInstanceMenuHolder) {
+        if (h instanceof LobbyJoinMechanicMenuHolder
+                || h instanceof LobbyJoinTemplateMenuHolder
+                || h instanceof LobbyJoinInstanceMenuHolder
+                || h instanceof HubPartyLobbyTrimMenu) {
             event.setCancelled(true);
         }
     }

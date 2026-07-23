@@ -91,7 +91,7 @@ public final class HubTemplateWorldBootstrap {
 
         String display = displayNameJoined == null ? "" : displayNameJoined.trim();
         try {
-            registry.upsert(nk, IRON_LEGACY_MECHANIC_ID, display, folder);
+            registry.upsertListing(nk, display, folder);
         } catch (IllegalArgumentException ex) {
             unloadAndDeleteBestEffort(created, worldDir);
             return Result.fail(ex.getMessage());

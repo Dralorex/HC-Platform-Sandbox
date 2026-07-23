@@ -17,6 +17,7 @@ public final class LobbyJoinInstanceMenuHolder implements InventoryHolder {
 
     private final HollowCrownHubPlugin plugin;
     private final String templateKey;
+    private final String templateMechanicId;
     private final int page;
     private final int totalPages;
     private final Inventory inventory;
@@ -24,11 +25,13 @@ public final class LobbyJoinInstanceMenuHolder implements InventoryHolder {
     public LobbyJoinInstanceMenuHolder(
             HollowCrownHubPlugin plugin,
             String templateKey,
+            String templateMechanicId,
             int page,
             int totalPages
     ) {
         this.plugin = plugin;
         this.templateKey = templateKey;
+        this.templateMechanicId = templateMechanicId == null ? "" : templateMechanicId;
         this.page = page;
         this.totalPages = Math.max(1, totalPages);
         this.inventory = Bukkit.createInventory(
@@ -44,6 +47,10 @@ public final class LobbyJoinInstanceMenuHolder implements InventoryHolder {
 
     public String templateKey() {
         return templateKey;
+    }
+
+    public String templateMechanicId() {
+        return templateMechanicId;
     }
 
     public int page() {

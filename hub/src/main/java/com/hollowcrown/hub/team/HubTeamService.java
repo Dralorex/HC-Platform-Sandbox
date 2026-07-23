@@ -8,10 +8,12 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.RegisteredServiceProvider;
 
 import java.io.File;
 import java.io.IOException;
@@ -89,6 +91,31 @@ public final class HubTeamService implements TeamService {
         return false;
     }
 
+    /**
+     * Allocates {@code Team 1}, {@code Team 2}, … avoiding names already in use.
+     */
+    public String allocateNumberedTeamName() {
+        int max = 0;
+        for (HubTeam t : teams.values()) {
+            String n = t.name;
+            if (n == null) continue;
+            String lower = n.trim().toLowerCase(Locale.ROOT);
+            if (!lower.startsWith("team ")) continue;
+            try {
+                int num = Integer.parseInt(lower.substring(5).trim());
+                max = Math.max(max, num);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        String candidate = "Team " + (max + 1);
+        int bump = max + 1;
+        while (nameTaken(candidate)) {
+            bump++;
+            candidate = "Team " + bump;
+        }
+        return candidate;
+    }
+
     @Override
     public TeamView createTeam(String name, ChatColor legacyColor, UUID ownerId, Integer displayRgb) {
         Objects.requireNonNull(ownerId, "ownerId");
@@ -102,6 +129,7 @@ public final class HubTeamService implements TeamService {
         t.memberJoinOrder.add(ownerId);
         teams.put(n.toLowerCase(Locale.ROOT), t);
         save();
+        notifyTeamRosterChanged(Set.of(ownerId));
         return t.toView();
     }
 
@@ -111,39 +139,137 @@ public final class HubTeamService implements TeamService {
         HubTeam t = teams.get(teamName.toLowerCase(Locale.ROOT));
         if (t == null) throw new IllegalStateException("Unknown team: " + teamName);
         int cap = defaultMemberCap();
+        Player capPlayer = Bukkit.getPlayer(memberId);
+        if (capPlayer != null) {
+            cap = resolveMemberCap(capPlayer);
+        }
         if (t.members.size() >= cap) throw new IllegalStateException("Team is full.");
         if (teamOf(memberId).isPresent()) throw new IllegalStateException("Player already in a team.");
         t.members.add(memberId);
         t.memberJoinOrder.add(memberId);
         clearInvite(memberId, t.name);
         save();
+        notifyTeamRosterChanged(new HashSet<>(t.members));
     }
 
     @Override
     public boolean removeMember(UUID memberId) {
+        return removeMemberInternal(memberId, true);
+    }
+
+    private boolean removeMemberInternal(UUID memberId, boolean notify) {
         if (memberId == null) return false;
         for (var it = teams.entrySet().iterator(); it.hasNext(); ) {
             HubTeam t = it.next().getValue();
-            if (t.members.remove(memberId)) {
-                t.memberJoinOrder.remove(memberId);
-                if (t.members.isEmpty()) {
-                    it.remove();
-                } else if (Objects.equals(t.ownerId, memberId)) {
-                    UUID next = t.nextLeader();
-                    if (next != null) t.ownerId = next;
-                }
-                save();
-                return true;
+            if (!t.members.contains(memberId)) {
+                continue;
             }
+            Set<UUID> affected = new HashSet<>(t.members);
+            t.members.remove(memberId);
+            t.memberJoinOrder.remove(memberId);
+            if (t.members.isEmpty()) {
+                it.remove();
+            } else if (Objects.equals(t.ownerId, memberId)) {
+                UUID next = t.nextLeader();
+                if (next != null) t.ownerId = next;
+            }
+            save();
+            if (notify) {
+                notifyTeamRosterChanged(affected);
+            }
+            return true;
         }
         return false;
     }
 
     @Override
     public void clearAllTeams() {
+        Set<World> worlds = new HashSet<>();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (p.getWorld() != null && teamOf(p.getUniqueId()).isPresent()
+                    && plugin.nametags().isManagedWorld(p.getWorld())) {
+                worlds.add(p.getWorld());
+            }
+        }
         teams.clear();
         invites.clear();
         save();
+        for (World world : worlds) {
+            plugin.nametags().onTeamRosterChanged(world, Set.of());
+        }
+    }
+
+    @Override
+    public void clearTeamsFor(Collection<UUID> playerIds) {
+        if (playerIds == null || playerIds.isEmpty()) {
+            return;
+        }
+        Set<UUID> ids = new HashSet<>();
+        for (UUID id : playerIds) {
+            if (id != null) {
+                ids.add(id);
+            }
+        }
+        if (ids.isEmpty()) {
+            return;
+        }
+        Set<UUID> affected = new HashSet<>(ids);
+        for (UUID id : ids) {
+            teamOf(id).ifPresent(t -> affected.addAll(t.members()));
+            invites.remove(id);
+        }
+        boolean changed = false;
+        for (UUID id : ids) {
+            if (removeMemberInternal(id, false)) {
+                changed = true;
+            }
+        }
+        if (!changed) {
+            save();
+        }
+        notifyTeamRosterChanged(affected);
+    }
+
+    public int resolveMemberCap(Player player) {
+        if (player != null) {
+            RegisteredServiceProvider<com.hollowcrown.api.integration.PreMatchLimboService> reg =
+                    Bukkit.getServicesManager().getRegistration(com.hollowcrown.api.integration.PreMatchLimboService.class);
+            if (reg != null) {
+                int limboCap = reg.getProvider().teamSizeMaxFor(player);
+                if (limboCap > 0) {
+                    return limboCap;
+                }
+            }
+        }
+        return defaultMemberCap();
+    }
+
+    private void notifyTeamRosterChanged(Collection<UUID> affectedPlayerIds) {
+        if (affectedPlayerIds == null || affectedPlayerIds.isEmpty()) {
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (p.getWorld() != null && plugin.nametags().isManagedWorld(p.getWorld())) {
+                    plugin.nametags().onTeamRosterChanged(p.getWorld(), Set.of());
+                }
+            }
+            return;
+        }
+        Map<World, Set<UUID>> byWorld = new HashMap<>();
+        for (UUID id : affectedPlayerIds) {
+            if (id == null) {
+                continue;
+            }
+            Player p = Bukkit.getPlayer(id);
+            if (p == null || !p.isOnline() || p.getWorld() == null) {
+                continue;
+            }
+            if (!plugin.nametags().isManagedWorld(p.getWorld())) {
+                continue;
+            }
+            byWorld.computeIfAbsent(p.getWorld(), k -> new HashSet<>()).add(id);
+        }
+        for (var entry : byWorld.entrySet()) {
+            plugin.nametags().onTeamRosterChanged(entry.getKey(), entry.getValue());
+        }
     }
 
     @Override

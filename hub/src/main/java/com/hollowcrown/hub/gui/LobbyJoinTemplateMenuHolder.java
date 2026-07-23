@@ -16,19 +16,26 @@ public final class LobbyJoinTemplateMenuHolder implements InventoryHolder {
     public static final int INV_SIZE = 54;
 
     private final HollowCrownHubPlugin plugin;
+    private final String mechanicId;
     private final int page;
     private final int totalPages;
     private final Inventory inventory;
 
-    public LobbyJoinTemplateMenuHolder(HollowCrownHubPlugin plugin, int page, int totalPages) {
+    public LobbyJoinTemplateMenuHolder(HollowCrownHubPlugin plugin, String mechanicId, int page, int totalPages) {
         this.plugin = plugin;
+        this.mechanicId = mechanicId == null ? "" : mechanicId;
         this.page = page;
         this.totalPages = Math.max(1, totalPages);
+        String label = com.hollowcrown.hub.template.HubMechanics.displayLabel(this.mechanicId);
         this.inventory = Bukkit.createInventory(
                 this,
                 INV_SIZE,
-                Component.text("Join a game — " + (page + 1) + "/" + this.totalPages)
+                Component.text(label + " — " + (page + 1) + "/" + this.totalPages)
         );
+    }
+
+    public String mechanicId() {
+        return mechanicId;
     }
 
     public HollowCrownHubPlugin plugin() {

@@ -32,6 +32,10 @@ public final class HubTemplateLandingMenu extends HubMenuView {
     private final String templateKey;
     private final Inventory inv;
 
+    public String templateKey() {
+        return templateKey;
+    }
+
     public HubTemplateLandingMenu(HollowCrownHubPlugin plugin, String templateKey) {
         this.plugin = plugin;
         this.templateKey = templateKey;

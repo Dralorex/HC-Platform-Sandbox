@@ -21,7 +21,7 @@ public final class LobbyJoinInstanceMenu {
     private LobbyJoinInstanceMenu() {
     }
 
-    public static void open(Player player, HollowCrownHubPlugin plugin, String templateKey, int page) {
+    public static void open(Player player, HollowCrownHubPlugin plugin, String templateKey, String mechanicId, int page) {
         HubLobbyService svc = plugin.lobbyService();
         List<HubLobbyInstanceRecord> all = new ArrayList<>(svc.listOpenForTemplate(templateKey));
         int totalPages = Math.max(1, (all.size() + LobbyJoinInstanceMenuHolder.PAGE_SIZE - 1) / LobbyJoinInstanceMenuHolder.PAGE_SIZE);
@@ -29,7 +29,7 @@ public final class LobbyJoinInstanceMenu {
         int from = p * LobbyJoinInstanceMenuHolder.PAGE_SIZE;
         int to = Math.min(from + LobbyJoinInstanceMenuHolder.PAGE_SIZE, all.size());
 
-        LobbyJoinInstanceMenuHolder holder = new LobbyJoinInstanceMenuHolder(plugin, templateKey, p, totalPages);
+        LobbyJoinInstanceMenuHolder holder = new LobbyJoinInstanceMenuHolder(plugin, templateKey, mechanicId, p, totalPages);
         var inv = holder.getInventory();
 
         for (int i = 0; i < LobbyJoinInstanceMenuHolder.PAGE_SIZE; i++) {

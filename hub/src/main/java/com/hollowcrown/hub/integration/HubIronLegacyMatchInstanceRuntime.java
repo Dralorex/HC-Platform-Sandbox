@@ -10,6 +10,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.RegisteredServiceProvider;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,6 +57,12 @@ public final class HubIronLegacyMatchInstanceRuntime implements IronLegacyMatchI
     public boolean destroyMatchInstanceByWorld(String worldName) {
         if (worldName == null || worldName.isBlank()) return false;
         World w = Bukkit.getWorld(worldName);
+        java.util.Set<java.util.UUID> occupants = new java.util.HashSet<>();
+        if (w != null) {
+            for (Player p : w.getPlayers()) {
+                occupants.add(p.getUniqueId());
+            }
+        }
 
         if (w != null && !w.getPlayers().isEmpty()) {
             evacuateStragglersToHubSpawn(w);
@@ -63,6 +70,8 @@ public final class HubIronLegacyMatchInstanceRuntime implements IronLegacyMatchI
                 return false;
             }
         }
+
+        clearTeamsForWorldOccupants(occupants);
 
         if (w != null) {
             try {
@@ -122,5 +131,18 @@ public final class HubIronLegacyMatchInstanceRuntime implements IronLegacyMatchI
             }
         } catch (Throwable ignored) {
         }
+    }
+
+    /** Backup team wipe when instance folder teardown runs (primary path is session cleanup on lobby destroy). */
+    private void clearTeamsForWorldOccupants(java.util.Set<java.util.UUID> playerIds) {
+        if (playerIds == null || playerIds.isEmpty()) {
+            return;
+        }
+        RegisteredServiceProvider<com.hollowcrown.api.team.TeamService> reg =
+                org.bukkit.Bukkit.getServicesManager().getRegistration(com.hollowcrown.api.team.TeamService.class);
+        if (reg == null) {
+            return;
+        }
+        reg.getProvider().clearTeamsFor(playerIds);
     }
 }

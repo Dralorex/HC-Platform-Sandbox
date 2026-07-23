@@ -10,7 +10,7 @@ Use this on a **Paper 1.21.4** test server with **three accounts** when possible
 
 Mark each line: ✅ pass · ❌ fail · ⚠️ skipped · ⬜ not tested
 
-**Current bundle tag:** `HC-Plugins-a0.1.7.zip` (Hub `1.21.4-a0.1.7`, Iron Legacy `1.21.4-a0.3.7`, Foundation `1.21.4-a0.1.4`)
+**Current bundle tag:** `HC-Plugins-a0.1.10.zip` (Hub `1.21.4-a0.1.10`, Iron Legacy `1.21.4-a0.3.10`, Foundation `1.21.4-a0.1.4`)
 
 ### Changelog → test phase map
 
@@ -19,30 +19,42 @@ Use this to confirm nothing shipped since the last doc pass is untested.
 | Change (since a0.1.4) | Test phase |
 |------------------------|------------|
 | Lobby worlds under `hch-worlds/minigames/<template>-L#` | 0, 3 |
-| Lobby prefetch after last OPEN lobby starts match | 3b |
+| Lobby prefetch when **all** OPEN lobbies are **≥50%** full | 3b, 3c |
+| Auto-join creates new lobby when no OPEN lobby fits party size | 3c |
+| Party-too-big **trim GUI** (skull heads) on manual lobby join | 3c |
 | Publish destroys lobbies, notifies players, prefetches fresh lobby | 3b, 4e |
+| Publish blocked without mechanic; type **yes** in chat → vanilla + retry | 3b |
 | Limbo spawn on lobby join + pre-match registration | 3, 4b |
-| `/hub` leaves limbo like Leave Lobby | 2, 4a, 4b |
+| `/hub` and `/hub join <n>` leave limbo like Leave Lobby | 2, 2d, 4a, 4b |
+| `/hch sethub [n]` / `/hch clearhub [n]` numbered hub spawns | 1, 2d |
 | Failed lobby / kick / evacuate → hub spawn (leaves limbo) | 4e |
 | Limbo zone clears **after** spawn-pad teleports | 4c |
 | Re-publish takes fresh snapshot every time | 4b-2 |
 | `/hch template worlds edit` only (no `tp` alias) | 4b |
+| `/hch template worlds mechanic <world\|key> <mechanic>` | 1, 4a |
+| `/hch worldsgui` and compass **mechanic tabs** → worlds → lobbies | 4a |
 | Limbo wand auto-detects template from current world | 4b, 4b-3 |
 | `/il start` force-starts below min fill | 4b |
 | Natural countdown cancels on low fill (non-force) | 4b-4 |
 | Spawn-pad misconfig complaint message | 4c |
 | Match spawn: 2.5 bars saturation | 4c |
 | PvP zone wand / setspawn / pad; outline only while holding wand | 5b |
-| PvP deactivate teleports only if in zone or on pad | 5b |
+| PvP: swap **off** sword starts deactivate countdown; death spawn rules | 5, 5b |
 | Hub return restores build mode + inventory snapshot | 2c |
+| `/hch help` hides admin subcommands from non-ops | 2 |
 | Plugin policy command blocking (hub / limbo / match) | 6 |
 | Per-template Match policy overrides global Match | 6b, 6c |
 | Plugin Allocation landing (Hub / Limbo / Match tabs) | 4d, 6 |
+| Template policy GUIs **save on close**; kick from lobbies on change | 6b, 7c |
 | Per-template General Settings + blacklist GUI | 6b, 7 |
-| Alliance `/ally` / `/enemy`, FF toggles, last-group break | 7, 8 |
+| **Team Mode**: auto team colors; **Legacy**: wool picker in limbo | 4b-5 |
+| Match teams **Team 1 / Team 2 / …**; independent team invites in limbo | 4b-5, 4b-7 |
+| Parties separate from teams; team resets each lobby/match | 4b-7, 10 |
+| Party hub return with overflow hubs (`hub.instanceCapacity`) | 2, 2d, 4c |
+| Alliance FF toggles, last-group break (match) | 7, 8 |
 | Per-viewer nametags / TAB / chat / sneak hide | 9 |
 | Party leave limbo drags whole party | 4b |
-| Match Team menu + lobby entry team prompts | 4b, 4b-5 |
+| Match Team menu (slot 3) + lobby entry team prompts | 4b, 4b-5 |
 | Multi-template limbo/publish key resolution | 4b-2 |
 | Auto-register template in `template-policies.yml` on publish | 6b, 10 |
 
@@ -96,14 +108,17 @@ Run in the hub world.
 |------|------------------|----------|
 | 1 | `/hch version` | Shows Hub version + API schema |
 | 2 | `/hch sethub` | Hub spawn saved; no error |
+| 2a | `/hch sethub 2` at a second location | Numbered hub spawn **2** saved |
+| 2b | `/hch clearhub 2` | Spawn **2** removed |
 | 3 | `/hch debug mechanics` | Lists **`iron-legacy`** |
 | 4 | `/hch template list` | Lists templates (may be empty) |
 | 5 | `/hch template set testmap iron-legacy "Test Map"` | Template row created |
 | 6 | `/hch template set testmap2 iron-legacy "Test Map 2"` | Second template row created |
 | 7 | `/hch template setsource testmap <folderA>` | Source world set |
 | 8 | `/hch template setsource testmap2 <folderB>` | Second source world set |
-| 9 | `/hch hubworld` (run help / set radius if needed) | Hub protection config loads |
-| 10 | `/hch gui help` | Admin GUI help text |
+| 9 | `/hch template worlds mechanic testmap iron-legacy` | Mechanic assigned (required before publish) |
+| 10 | `/hch hubworld` (run help / set radius if needed) | Hub protection config loads |
+| 11 | `/hch gui help` | Admin GUI help text |
 
 - ⬜ All Phase 1 steps pass
 
@@ -116,6 +131,7 @@ Account **without** OP.
 | Step | Command / action | Expected |
 |------|------------------|----------|
 | 1 | `/hub` | Teleports to hub spawn; hub hotbar/items apply |
+| 1a | `/hub join 2` (after OP set spawn 2) | Teleports to numbered hub spawn **2** |
 | 2 | `/hch join` | Opens **join template** GUI |
 | 3 | Left-click **testmap** in join GUI | Teleports to lobby **or** creates `testmap-L#` and joins |
 | 4 | Right-click **testmap** | Opens **lobby instance** picker for that template |
@@ -126,12 +142,28 @@ Account **without** OP.
 | 9 | `/hch queue join testmap` | Queued message with position |
 | 10 | `/hch queue status testmap` | Shows queue units |
 | 11 | `/hch queue leave` | Leaves queue |
+| 12 | `/hch help` (non-OP) | Shows **party** help only — no admin subcommands |
+| 13 | `/hch help` (OP) | Full admin help visible |
 
 **Known gap (document, not a fail unless you expect auto-start):**
 
 - ⚠️ Queue does **not** auto-send players to limbo/match yet — enqueue only. Use Game Lobby / limbo flow below for match path.
 
 - ⬜ Phase 2 complete
+
+---
+
+## Phase 2d — Numbered hub spawns (OP + player)
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | OP: `/hch sethub` at main hub point | Default spawn **1** (or primary) saved |
+| 2 | OP: `/hch sethub 2` at a second point | Spawn **2** saved |
+| 3 | Player: `/hub join 2` | Teleports to spawn **2** |
+| 4 | Player: `/hub join 999` (invalid) | Error / fallback to default spawn |
+| 5 | OP: `/hch clearhub 2` | Spawn **2** removed; `/hub join 2` no longer works |
+
+- ⬜ Phase 2d complete
 
 ---
 
@@ -184,13 +216,30 @@ Account **without** OP.
 | 1 | `/hch lobby list testmap` — note only **one** OPEN instance | Baseline |
 | 2 | Fill that lobby; start match (natural or `/il start`) | Match begins; lobby row detached from registry |
 | 3 | `/hch lobby list testmap` shortly after | **New** OPEN lobby prefetched (`match_start` in console: `action=lobby_prefetch`) |
+| 3a | Fill **every** OPEN lobby to **≥50%** capacity (without starting a match) | Another OPEN lobby prefetched (`reason=capacity` or similar in console) |
 | 4 | Put players in a **second** OPEN lobby for same template (if any) | Skip if only one instance exists |
 | 5 | OP: `/hch template worlds publish testmap` (or GUI Publish on template detail) | Old lobby instance(s) destroyed; players in those worlds evacuated to hub |
+| 5a | Publish with **no mechanic** set; type **`yes`** in chat when prompted | Mechanic set to **vanilla**; publish retries and succeeds |
 | 6 | Evacuated players | Chat: **All lobbies for this game were closed because the world was updated. Please join a new lobby from the game menu.** |
 | 7 | `/hch lobby list testmap` after publish | Fresh OPEN lobby exists (prefetch `reason=publish`) |
 | 8 | `/hch lobby forget <id>` on a **BROKEN** row only | Row removed from registry (does not delete disk if already broken) |
 
 - ⬜ Phase 3b complete
+
+---
+
+## Phase 3c — Auto-join capacity & party trim GUI
+
+Requires a party larger than a lobby's remaining slots (or a nearly-full lobby).
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | Create party of 3+; pick a lobby instance with **1–2 slots left** via compass lobby list | Trim GUI opens (skull heads) |
+| 2 | Confirm trim | Last-joined party members kicked until party fits; leader + remainder join |
+| 3 | Party of 2; auto-join when **no** OPEN lobby has room | New lobby created automatically (`testmap-L#`) and party joins |
+| 4 | All OPEN lobbies ≥50% full; auto-join compass flow | Fresh lobby prefetched if needed (see Phase 3b step 3a) |
+
+- ⬜ Phase 3c complete
 
 ---
 
@@ -200,11 +249,15 @@ Account **without** OP.
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | In hub: right-click **compass** (locked hotbar) | **Game Lobby** GUI opens |
-| 2 | Pick **testmap** (enabled template) | Limbo or template lobby flow starts |
-| 3 | `/il help` | Help lists `/hub`, party, admin sections |
-| 4 | `/il party` | Opens **Hub** party menu (not IL-only) |
-| 5 | `/hub` | Same spawn as `/hch sethub`; **leaves limbo** same as Leave Lobby item |
+| 1 | In hub: right-click **compass** (locked hotbar) | **Game Lobby** GUI opens with **mechanic tabs** (e.g. Iron Legacy, Vanilla) |
+| 1a | Select mechanic tab → pick template world | Worlds for that mechanic listed |
+| 1b | Auto-join button on a world | Joins fitting lobby or creates new one |
+| 1c | Lobby list button on a world | Paginated lobby instance picker |
+| 2 | `/hch worldsgui` or `/hch gui worldsgui` | Same worlds browser as compass (admin path) |
+| 3 | Pick **testmap** (enabled template) | Limbo or template lobby flow starts |
+| 4 | `/il help` | Help lists `/hub`, party, admin sections |
+| 5 | `/il party` | Opens **Hub** party menu (not IL-only) |
+| 6 | `/hub` and `/hub join <n>` | Same spawn as `/hch sethub`; **leaves limbo** same as Leave Lobby item |
 
 - ⬜ 4a complete
 
@@ -221,14 +274,15 @@ Account **without** OP.
 | 5 | Stand in zone: `/hch template limbo spawn` or `/hch template set limbo spawn` | Spawn saved |
 | 5a | `/hch template worlds reload` after manual YAML edit | IL picks up changes without full restart |
 | 6 | Join limbo via Game Lobby | Adventure mode, limbo loadout, zone clamp |
-| 7 | **Lobby entry team prompt** (solo / leader / member) | Title + chat tailored to party role (leader → pick team color; member → party is team; solo → assigned at start) |
-| 8 | Party menu in limbo → **Match Team** button | Opens team color menu (leader picks wool swatch; creates Hub team) |
-| 9 | **Leave Lobby** item (leader, party in same session) | **Whole party** pulled to hub; leader: *Left limbo queue. Your party came with you.*; members: *[Leader colored name] took the party back to the hub.* |
-| 10 | Wait for fill **or** `/il start` (OP) | Countdown → match transition |
-| 11 | `/il start` with **below minimum players** | **Force starts** anyway (no "not enough players" cancel) |
-| 12 | Barrier / leave item (solo) | Returns to hub spawn; removed from limbo session |
-| 13 | Limbo hotbar: **Party** item opens Hub party menu | Same menu as `/hch party` / `/il party` |
-| 14 | Limbo hotbar: **Leave Lobby** (non-leader solo) | Solo returns to hub only |
+| 7 | **Lobby entry team prompt** (solo / leader / member) | Title + chat tailored to party role |
+| 8 | Limbo hotbar **slot 3**: **Match Team** item | Opens Match Team menu |
+| 9 | Party menu in limbo → **Match Team** button | Same menu as slot 3 |
+| 10 | **Leave Lobby** item (leader, party in same session) | **Whole party** pulled to hub; leader: *Left limbo queue. Your party came with you.*; members: *[Leader colored name] took the party back to the hub.* |
+| 11 | Wait for fill **or** `/il start` (OP) | Countdown → match transition |
+| 12 | `/il start` with **below minimum players** | **Force starts** anyway (no "not enough players" cancel) |
+| 13 | Barrier / leave item (solo) | Returns to hub spawn; removed from limbo session |
+| 14 | Limbo hotbar: **Party** item opens Hub party menu | Same menu as `/hch party` / `/il party` |
+| 15 | Limbo hotbar: **Leave Lobby** (non-leader solo) | Solo returns to hub only |
 
 - ⬜ 4b complete
 
@@ -243,15 +297,65 @@ Set template **Min fill %** high enough that 1–2 players is below threshold (G
 
 - ⬜ 4b-4 complete
 
-### 4b-5) Match Team menu details (party in limbo)
+### 4b-5) Match Team menu — Team Mode vs Legacy Mode
+
+Teams are **independent from parties**. Use Match Team (slot 3) or Party menu → Match Team.
+
+#### Create & invite (no party required)
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Party **leader** opens Match Team → picks wool color | Leader: **Team color set to …**; members: **[LeaderName] set your team color to …** |
-| 2 | Party **member** opens Match Team | **Only your party leader can pick a team color.** / roster view |
-| 3 | Solo player opens Match Team | Informational; team assigned at match start if no pre-pick |
+| 1 | Solo player opens Match Team | **Create Team** (Team Mode) or wool swatches (Legacy) |
+| 2 | Click **Create Team** (Team Mode) | Becomes **Team 1** (or next free number); nametag `[Team 1] Name` |
+| 3 | Leader: **Invite Players** → pick online player | Target gets chat hint; **Team Invites** shows pending |
+| 4 | Target: Match Team → **Team Invites** → accept | Joins same **Team N**; both see green teammate names |
+| 5 | Invite when team at **teamSizeMax** | **Team is full** — cannot accept more |
+| 6 | Party member **not** auto-added when accepting **party** invite | Must accept **team** invite separately |
+
+#### Team Mode (default)
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | Create team | Name **Team 1**, **Team 2**, … (not usernames) |
+| 2 | Re-enter same lobby after prior match | Fresh **Team N** allocation (old team cleared on lobby join) |
+| 3 | Look at teammate in limbo | **`[Team N]`** prefix + green name |
+
+#### Legacy Mode
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | Create team via wool swatch | **Team N** with chosen legacy color |
+| 2 | **Team Members** / **Leave Team** | Roster and leave work like party menu |
 
 - ⬜ 4b-5 complete
+
+### 4b-7) Party vs team independence
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | A and B in **party** but on **different teams** (or B solo on team) | Allowed |
+| 2 | Match ends (`/il stop` or natural) | **Party persists**; **teams cleared** (`teams.yml` empty) |
+| 3 | Party leader `/hub` after match | Whole party routed to same hub when capacity allows |
+| 4 | Party larger than `hub.instanceCapacity` with 2+ hubs configured | Overflow members sent to next hub (not over cap) |
+| 5 | Re-join lobby limbo | New team must be created/invited; old Team N not reused from prior match |
+
+- ⬜ 4b-7 complete
+
+### 4b-6) Limbo alliances & nametags (before match start)
+
+Requires **Allies** ON in template General Settings. Need **3 teams** (3 party leaders) still in limbo.
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | Team A leader: `/ally Team 2` in limbo | Team 2 leader gets invite + `/ally accept Team 1` hint |
+| 2 | Team 2 leader: `/ally accept Team 1` | Both teams: **An ally has been formed with …**; nametags refresh |
+| 3 | Team A viewers look at Team 2 | **Blue** player names (allies) in limbo |
+| 4 | Team A leader: `/enemy Team 3` | Team A members: **Team 3 has been deemed an enemy!**; Team 3 shows **orange** to Team A |
+| 5 | Allied hit test in limbo (Ally FF **OFF**) | Damage **blocked**; action bar hint |
+| 6 | Start match (`/il start` or natural countdown) | Same `[Team N]` prefixes and ally/enemy colors **carry into match** |
+| 7 | `/ally` or `/enemy` in **hub** (not limbo/match) | **You are not on a team** / config not found — blocked outside template worlds |
+
+- ⬜ 4b-6 complete
 
 ### 4b-2) Multi-template limbo (regression)
 
@@ -315,12 +419,15 @@ Repeat key steps for **testmap2** (second template with different Hub key / IL w
 |------|--------|----------|
 | 1 | Non-OP breaks block in hub | Blocked (unless build mode) |
 | 2 | OP hub build mode (via `/hch hubworld` / hotbar) | Can build if enabled |
-| 3 | Hold **sword** in hub | PvP activation countdown → PvP on |
+| 3 | Hold **sword** in hub **outside** PvP zone | 10-second activation countdown → PvP on |
+| 3a | Swap **off** the PvP sword (different hotbar slot) | Deactivate countdown starts (same as intentional deactivate) |
 | 4 | PvP on: hit another player | Damage works; kill credit behaves |
 | 5 | Golden ring during hub/limbo PvP | Visible while PvP mode active |
-| 6 | Die in **match** (not hub PvP) | **No** golden invulnerability ring after respawn/death |
-| 7 | Drop sword / deactivate | PvP off; teleport to hub spawn (hub rules) |
-| 8 | Golden pressure plate pad (if configured) | Respawn pad messaging |
+| 6 | Die in **hub PvP** while in PvP **zone** | Respawn at PvP zone spawn (not default hub spawn if zone set) |
+| 7 | Die in **hub PvP** outside zone | Respawn at default hub spawn |
+| 8 | Die in **match** (not hub PvP) | **No** golden invulnerability ring after respawn/death |
+| 9 | Drop sword / deactivate | PvP off; teleport to hub spawn only if in zone or on pad (see 5b) |
+| 10 | Golden pressure plate pad (if configured) | Respawn pad messaging |
 
 - ⬜ Phase 5 complete
 
@@ -336,8 +443,10 @@ Repeat key steps for **testmap2** (second template with different Hub key / IL w
 | 4 | Shift-right-click confirm zone | Zone saved to hub config |
 | 5 | `/hch hubworld pvp setspawn` inside zone | PvP respawn point saved |
 | 6 | `/hch hubworld pvp pad` | Golden pressure plate item for respawn pad |
+| 6a | Walk into PvP zone while **selecting the sword** (hotbar slot 1) | PvP activates **immediately** — no 10s countdown |
+| 6b | Deactivate PvP in zone (swap off sword), leave zone, re-enter | Sword selected again + PvP re-activates **every** re-entry |
 | 7 | Activate PvP (hold sword), fight inside zone | PvP works; golden ring while active |
-| 8 | Deactivate PvP **inside** zone | Teleport to hub spawn |
+| 8 | Deactivate PvP **inside** zone (swap off sword; wait for 5s countdown **or** die during countdown) | Teleport to hub spawn; PvP off |
 | 9 | Activate PvP **outside** zone (hub protection but not zone), then deactivate | **No** teleport (only zone/pad triggers return) |
 | 10 | Step on PvP pad without PvP active | Title: **PVP Mode Not Activated** / hold sword hint (rate-limited) |
 
@@ -445,6 +554,19 @@ Open: **Plugin Allocation → Match → [template] → General Settings**
 
 ---
 
+## Phase 7c — Policy save-on-close (OP)
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | Put players in a **testmap** lobby (not in match) | Baseline |
+| 2 | OP: open **General Settings** for testmap; change a toggle (e.g. Allies ON→OFF); **close** GUI without a separate Save button | Changes persisted to `template-policies.yml` |
+| 3 | Players still in testmap lobby after close | Kicked to hub with republish-style message (policy changed) |
+| 4 | Re-open General Settings | Toggle reflects saved value |
+
+- ⬜ Phase 7c complete
+
+---
+
 ## Phase 8 — Alliance system (match, allies enabled)
 
 Requires **Allies** ON in template General Settings. Need **3 teams** (3 party leaders minimum).
@@ -459,10 +581,11 @@ Requires **Allies** ON in template General Settings. Need **3 teams** (3 party l
 | 6 | Exceed max teams per alliance | Alliance rejected / cap enforced |
 | 7 | Only one alliance group left alive | Title + chat: **Only one team will make it out alive.**; further `/ally` disabled |
 | 8 | Allied players hit each other (Ally FF OFF) | Damage **blocked**; action bar hint |
-| 9 | `/ally` or `/enemy` in **hub** (not match) | `/ally`: **Alliances are not enabled in this match.**; `/enemy`: **You are not in a match.** |
-| 10 | Allies **disabled** in template settings; `/ally` in match | **Alliances are not enabled in this match.** |
-| 11 | Pending invite ignored ~60s | Invite expires silently; `/ally accept` says **No pending alliance invite** |
-| 12 | Same-team hit with **Team FF OFF** | Damage blocked |
+| 9 | `/ally` or `/enemy` in **hub** (not limbo/match) | Blocked — not in a template lobby/match world |
+| 10 | `/ally` / `/enemy` in **limbo** (allies enabled) | Works; see Phase **4b-6** for limbo colors + persistence |
+| 11 | Allies **disabled** in template settings; `/ally` in match | **Alliances are not enabled in this match.** |
+| 12 | Pending invite ignored ~60s | Invite expires silently; `/ally accept` says **No pending alliance invite** |
+| 13 | Same-team hit with **Team FF OFF** | Damage blocked |
 
 - ⬜ Phase 8 complete
 
@@ -476,17 +599,31 @@ Requires match started with teams assigned. Test in **Team Mode** first, then **
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Look at teammate | `[TeamName]` prefix in team RGB + **green** player name |
-| 2 | Look at enemy | `[TeamName]` prefix + **red** player name |
+| 1 | Look at teammate | **`[Team 1]`** (or Team 2, …) prefix + **green** player name — **same Team N for all teammates** |
+| 2 | Look at enemy | **`[Team N]`** prefix + **red** player name |
 | 3 | Look at ally (if allies on) | **blue** player name |
 | 4 | Look at designated enemy (`/enemy`) | **orange** player name |
 | 5 | TAB (if TAB visible ON) | Same relationship colors in list |
 | 6 | TAB (if TAB visible OFF) | TAB key shows **no players** |
-| 7 | Chat message | `[TeamName] PlayerName: message` with relationship coloring per viewer |
-| 8 | Death message | Victim name prefixed with `[TeamName]` |
+| 7 | Chat message | **`[Team N] PlayerName:`** message with relationship coloring per viewer |
+| 8 | Death message | Victim name prefixed with **`[Team N]`** |
 | 9 | Sneak (shift hide ON) | Nametag hidden from enemies/allies; **teammates still see name** |
+| 10 | Ally/enemy set in limbo before start | Colors unchanged after match transition (regression with 4b-6 step 6) |
 
 - ⬜ 9a complete
+
+### 9c) Limbo nametags (pre-match)
+
+Same as match relationship rules, but tested **before** `/il start`.
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | Two parties form **Team 1** and **Team 2** in limbo | Each sees own team **green**, other team **red** |
+| 2 | `/ally accept` between teams in limbo | Cross-team names turn **blue** |
+| 3 | `/enemy` marks third team | **Orange** for designated enemy (viewer-side) |
+| 4 | Player with no team yet | Plain name (no `[Team N]` prefix) until assigned |
+
+- ⬜ 9c complete
 
 ### 9b) Legacy Mode
 
@@ -532,14 +669,16 @@ Run sections 5–17 after Phase 4 passes.
 If short on time, only do:
 
 1. Phase 0 console checks + `hch-worlds/minigames/` folder appears after lobby create  
-2. `/hch sethub` → `/hub` → `/hch join` → join lobby (limbo spawn + team prompt)  
-3. `/hch party create` + invite + accept + **leave limbo drags party**  
-4. Party menu → **Match Team** (leader picks color; member sees roster-only)  
-5. Compass → Game Lobby → limbo → natural low-fill cancel **or** `/il start` force start  
-6. Match spawn: 2.5 bars saturation; limbo zone cleared after pads  
-7. Admin → **Plugin policies** → Limbo blacklist vs Match allow (6c) → template General Settings toggle  
-8. Publish template with player in lobby → evacuate message + prefetch (3b)  
-9. `/il stop` → back to hub; lobby folder cleanup; build mode restore if OP (2c)  
+2. `/hch sethub` + `/hch sethub 2` → `/hub` and `/hub join 2`  
+3. `/hch join` or compass **mechanic tab** → join lobby (limbo spawn + team prompt)  
+4. `/hch party create` + invite + accept + **leave limbo drags party**  
+5. Match Team slot 3: **Team 1 / Team 2** naming + limbo nametag colors (4b-5, 9c)  
+6. `/ally accept` + `/enemy` in limbo → colors persist into match (4b-6)  
+7. Natural low-fill cancel **or** `/il start` force start  
+8. Match spawn: 2.5 bars saturation; limbo zone cleared after pads  
+9. Admin → **Plugin policies** → save-on-close kick (7c) → Limbo blacklist vs Match allow (6c)  
+10. Publish with **yes** vanilla + evacuate message + prefetch (3b)  
+11. `/il stop` → back to hub; lobby folder cleanup; build mode restore if OP (2c)  
 
 ---
 

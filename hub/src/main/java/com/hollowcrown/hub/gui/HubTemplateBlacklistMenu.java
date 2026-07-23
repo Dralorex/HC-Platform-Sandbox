@@ -41,6 +41,10 @@ public final class HubTemplateBlacklistMenu extends HubMenuView {
     private final Inventory inv;
     private int page;
 
+    public String templateKey() {
+        return templateKey;
+    }
+
     public HubTemplateBlacklistMenu(HollowCrownHubPlugin plugin, String templateKey, int page) {
         this.plugin = plugin;
         this.templateKey = templateKey;

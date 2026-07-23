@@ -458,7 +458,7 @@ public class GameManager implements Listener {
         hardFreezeActive = false;
         activeMatchTemplateKey = null;
         activeMatchSettings = null;
-        try { teamManager.clearAllTeams(); } catch (Throwable ignored) {}
+        clearMatchTeams();
 
         // Cleanup: remove scoreboard teams we created and reset player display/list names
         try {
@@ -497,13 +497,38 @@ public class GameManager implements Listener {
         try { plugin.leaderboardSidebar().refreshAll(); } catch (Throwable ignored) {}
     }
 
+    /** Clears match teams for this instance only — never wipes other lobbies/sessions. */
+    private void clearMatchTeams() {
+        try {
+            Set<UUID> scoped = new HashSet<>(participants);
+            scoped.addAll(eliminated);
+            if (activeInstanceWorldName != null) {
+                World w = Bukkit.getWorld(activeInstanceWorldName);
+                if (w != null) {
+                    for (Player p : w.getPlayers()) {
+                        scoped.add(p.getUniqueId());
+                    }
+                }
+            }
+            if (!scoped.isEmpty()) {
+                teamManager.clearTeamsFor(scoped);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
     private void evacuatePlayersFromInstance(String instanceWorldName) {
         if (instanceWorldName == null || instanceWorldName.isBlank()) return;
         World instance = Bukkit.getWorld(instanceWorldName);
         if (instance == null) return;
         List<Player> players = new ArrayList<>(instance.getPlayers());
         if (players.isEmpty()) return;
+        Set<UUID> handled = new java.util.HashSet<>();
         for (Player p : players) {
+            if (!handled.add(p.getUniqueId())) continue;
+            plugin.hollowPartyService().flatMap(ps -> ps.partyForMember(p.getUniqueId()))
+                    .filter(pv -> pv.isLeader(p.getUniqueId()))
+                    .ifPresent(pv -> handled.addAll(pv.membersJoinOrder()));
             plugin.lobby().sendToLobbyExact(p, true, true);
         }
     }

@@ -40,6 +40,9 @@ public interface HubWorldApi {
     /** True if the stack matches the configured limbo “leave queue” utility item. */
     boolean isLimboLeaveUtilityItem(ItemStack stack);
 
+    /** True if the stack is the limbo “match team” utility item (hotbar slot 3 by default). */
+    boolean isLimboTeamUtilityItem(Player player, ItemStack stack);
+
     /** Survival + hub hotbar after leaving template edit when player was not in hub creative build mode. */
     void applySurvivalHubLoadoutAfterTemplate(Player player);
 
@@ -69,6 +72,8 @@ public interface HubWorldApi {
 
     /**
      * Leave pre-match limbo if needed and teleport to configured hub spawn ({@code /hch sethub}).
+     * When the player is in a party, routes the whole online party together and splits across numbered
+     * hub instances when one hub would exceed {@code hub.instanceCapacity}.
      * @return false when hub spawn is missing or the world is not loaded
      */
     boolean sendToHubSpawn(Player player);

@@ -6,6 +6,7 @@ import com.hollowcrown.api.party.PartyView;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.party.HubPartyText;
 import com.hollowcrown.hub.party.HubPartyListener;
+import com.hollowcrown.hub.team.HubTeamAutoColors;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -78,7 +79,11 @@ public final class HubPartyMenu extends HubMenuView {
             if (inLimbo) {
                 inv.setItem(SLOT_MATCH_TEAM, button(Material.WHITE_BANNER,
                         Component.text("Match Team", NamedTextColor.YELLOW),
-                        List.of(Component.text("Configure your match team", NamedTextColor.GRAY))));
+                        List.of(Component.text(
+                                HubTeamAutoColors.isLegacyColorMode(plugin, viewer)
+                                        ? "Configure your match team"
+                                        : "View match teams (auto colors)",
+                                NamedTextColor.GRAY))));
             }
             return;
         }
@@ -97,11 +102,14 @@ public final class HubPartyMenu extends HubMenuView {
                 Component.text("Party Invites", NamedTextColor.AQUA),
                 List.of(Component.text("Click to view pending invites", NamedTextColor.GRAY))));
         if (inLimbo) {
+            boolean legacyColors = HubTeamAutoColors.isLegacyColorMode(plugin, viewer);
             inv.setItem(SLOT_MATCH_TEAM, button(Material.WHITE_BANNER,
                     Component.text("Match Team", NamedTextColor.YELLOW),
                     List.of(
                             Component.text(party.isLeader(viewer.getUniqueId())
+                                    ? (legacyColors
                                     ? "Pick a team color before match start"
+                                    : "View your match team (auto colors)")
                                     : "View your match team",
                                     NamedTextColor.GRAY))));
         }
@@ -130,7 +138,7 @@ public final class HubPartyMenu extends HubMenuView {
         PartyView party = parties.partyForMember(p.getUniqueId()).orElse(null);
 
         if (slot == SLOT_MATCH_TEAM) {
-            HubLimboTeamMenu.open(plugin, p);
+            HubTeamMenu.open(plugin, p);
             return;
         }
 

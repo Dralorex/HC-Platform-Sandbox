@@ -38,6 +38,7 @@ remove(hub): deprecated lobby join command alias
 3. **Record user-visible changes** in [CHANGELOG.md](CHANGELOG.md) under `## [Unreleased]`.
 4. **Additions** — note new modules, commands, permissions, config keys.
 5. **Removals** — call out breaking changes explicitly (`BREAKING:` in footer if needed).
+6. **Platform docs** — when commands or user-visible features change, update [docs/PLATFORM_COMMANDS.md](docs/PLATFORM_COMMANDS.md) and/or [docs/PLATFORM_FEATURES.md](docs/PLATFORM_FEATURES.md) in the same change set (see `.cursor/rules/platform-docs.mdc`).
 
 ## GitHub push
 

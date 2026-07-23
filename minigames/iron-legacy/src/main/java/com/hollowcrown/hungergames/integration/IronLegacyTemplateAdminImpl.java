@@ -69,7 +69,43 @@ public record IronLegacyTemplateAdminImpl(HungerGamesPlugin plugin) implements I
     }
 
     @Override
+    public boolean isInTemplateEditorWorld(Player player) {
+        if (player == null || player.getWorld() == null) {
+            return false;
+        }
+        return plugin.templates().getTemplateByWorldName(player.getWorld().getName()) != null;
+    }
+
+    @Override
+    public void prepareLeavingTemplateEditor(Player player) {
+        if (player == null) {
+            return;
+        }
+        plugin.templates().rememberResumeSpotLeavingTemplate(player);
+        plugin.templates().saveEditorInventoryIfTemplate(player);
+    }
+
+    @Override
+    public void finishHubReturnFromTemplateEditor(Player player) {
+        if (player == null) {
+            return;
+        }
+        plugin.templates().restoreLobbyAfterLeavingTemplate(player);
+    }
+
+    @Override
+    public boolean ensureWorldTemplateRow(String templateKey) {
+        return plugin.templates().ensureTemplateRow(templateKey);
+    }
+
+    @Override
+    public List<String> discoverManagedTemplateFolders() {
+        return plugin.templates().discoverManagedTemplateFolders();
+    }
+
+    @Override
     public boolean publish(String templateKey) {
+        plugin.templates().ensureTemplateRow(templateKey);
         boolean ok = plugin.templates().publishTemplate(templateKey);
         if (ok) {
             RegisteredServiceProvider<HubTemplatePublishLifecycle> reg =
@@ -112,6 +148,10 @@ public record IronLegacyTemplateAdminImpl(HungerGamesPlugin plugin) implements I
         try {
             plugin.templates().reload();
         } catch (Throwable ignored) {
+        }
+        List<String> discovered = plugin.templates().discoverManagedTemplateFolders();
+        if (!discovered.isEmpty()) {
+            lines.add("Discovered managed templates: " + String.join(", ", discovered));
         }
         var recovery = plugin.templates().recoverStaleInstances();
         try {

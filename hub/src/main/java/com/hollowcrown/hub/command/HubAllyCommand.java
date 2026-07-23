@@ -175,6 +175,7 @@ public final class HubAllyCommand implements CommandExecutor, TabCompleter {
         alliances.broadcastToTeam(myTeam.name(), msg);
         alliances.broadcastToTeam(inviter.name(), Component.text(
                 "An ally has been formed with " + myTeam.name(), NamedTextColor.AQUA));
+        plugin.nametags().refreshWorld(actor.getWorld());
     }
 
     private Optional<HubTemplatePolicyService.TemplateConfig> resolveConfigFor(Player p) {
