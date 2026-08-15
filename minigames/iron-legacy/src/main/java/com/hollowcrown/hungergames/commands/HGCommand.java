@@ -2,10 +2,7 @@ package com.hollowcrown.hungergames.commands;
 
 import com.hollowcrown.hungergames.HungerGamesPlugin;
 import com.hollowcrown.hungergames.ChatInput;
-import com.hollowcrown.hungergames.managers.GameManager;
-import com.hollowcrown.hungergames.managers.TeamManager;
-import com.hollowcrown.hungergames.managers.SpawnManager;
-import com.hollowcrown.hungergames.managers.ServerRoleManager;
+import com.hollowcrown.hungergames.managers.*;
 import com.hollowcrown.hungergames.gui.MainMenu;
 import com.hollowcrown.hungergames.gui.TeamsMenu;
 import com.hollowcrown.hungergames.gui.AdminControlCenterMenu;
@@ -15,6 +12,9 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.Directional;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -112,6 +112,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " giftdrop"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " envoy <start|stop|addloc|clearlocs|listlocs|wave|random|gui>"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " addchests <start|stop|give>"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " massaddchests <radius> <placeholderblock> <tier>"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " replenish <T1|T2|T3|T4|mode>"));
     }
 
@@ -221,6 +222,96 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                     case "give" -> add.giveWand(p);
                     default -> sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUnknown subcommand."));
                 }
+                return true;
+            }
+            case "massaddchests", "addmanychests" -> { // It's easy to add aliases to commands if you want them. I've gone ahead and added "addmanychests" as an alias to this command, but you can remove it if you want.
+                if (!(sender instanceof Player p) || !p.isOp()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cOPs only.")); return true; }
+                if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " massaddchests <radius> <placeholderblock> <tier>")); return true; }
+                //Extract radius as a number
+                String clean = args[1].replaceAll("[^0-9.-]", "");
+                clean = clean.replaceAll("(?<=.)-", "").replaceFirst("\\.", "D").replaceAll("\\.", "").replace("D", ".");
+                if (clean.isEmpty()){
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cInvalid radius."));
+                    return true;
+                }
+                int radius;
+                try{
+                    radius = (int)(Double.parseDouble(clean)); // Decimal places should be treated as so, but then rounded down and ignored.
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cInvalid radius."));
+                    return true;
+                }
+
+                //Extract material
+                Material material = Material.getMaterial(args[2]);
+                if(material == null || !material.isBlock()) {
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cInvalid placeholder block."));
+                    return true;
+                }
+
+                String tier = args[3];
+                if(!List.of("T1", "T2", "T3", "T4").contains(tier)){ //If you ever decide to make ReplenishManager's tierlist (as found in startScheduleInternal()) public, replace this so it references that instead.
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cInvalid tier."));
+                    return true;
+                }
+
+                World world = p.getLocation().getWorld();
+                int minX = p.getLocation().getBlockX() - radius;
+                int minY = p.getLocation().getBlockY() - radius;
+                int minZ = p.getLocation().getBlockZ() - radius;
+                int maxX = p.getLocation().getBlockX() + radius;
+                int maxY = p.getLocation().getBlockY() + radius;
+                int maxZ = p.getLocation().getBlockZ() + radius;
+                minY = Math.max(minY, -64);
+                maxY = Math.min(maxY, 319);
+                final int[] currentXAndProgress = {minX, 0, 0}; //This is stupid but it lets me increment it while using it in lambda expressions.
+
+                int finalMinY = minY;
+                int finalMaxY = maxY;
+
+                final Runnable[] taskHolder = {null}; //Same trick used to let a lambda reference itself for recursive calls
+                Runnable task = () -> {
+                    for (int y = finalMinY; y <= finalMaxY; y++) {
+                        for (int z = minZ; z <= maxZ; z++) {
+                            Block block = world.getBlockAt(currentXAndProgress[0], y, z);
+                            if(block.getType() == material){
+                                if(block.getBlockData() instanceof Directional directional){
+                                    BlockFace face = directional.getFacing();
+                                    block.setType(Material.CHEST);
+                                    if(block.getBlockData() instanceof Directional directional1){
+                                        directional1.setFacing(face);
+                                    }
+                                }
+                                else{
+                                    block.setType(Material.CHEST);
+                                }
+                                HungerGamesPlugin.get().replenish().add(block.getLocation(), tier);
+                            }
+                        }
+                    }
+                    if(currentXAndProgress[0] < maxX){
+                        currentXAndProgress[0]++;
+                        currentXAndProgress[1]++;
+                        float progress = (currentXAndProgress[1] / ((radius * 2f) + 1f)) * 10;
+                        if((int)progress != currentXAndProgress[2]){
+                            currentXAndProgress[2] = (int)progress;
+                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7a" + (((int)progress) * 10) + "%"));
+                        }
+                        if(taskHolder[0] != null)
+                            Bukkit.getScheduler().runTaskLater(HungerGamesPlugin.get(), taskHolder[0], 1);
+                    }
+                    else{
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aMass place complete!"));
+                    }
+                };
+                taskHolder[0] = task;
+
+                //While an async task would be helpful here, you can't access the world from one.
+                //Instead, this takes the naive approach of pausing every tick after completing a small section of the task, then resuming.
+                //This should prevent crashes from watchdog. They may still occur if the radius is too large. With 1024 radius, that's 786,816 block checks per tick. Be careful!
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aStarting mass place... Estimated:" + (int)(((radius * 2f) + 1f) / 20f) + "s"));
+                Bukkit.getScheduler().runTaskLater(HungerGamesPlugin.get(), taskHolder[0], 1);
+
                 return true;
             }
             case "replenish" -> {
@@ -842,7 +933,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) return partial(args[0], List.of(
                 "help","gui","teams","party","leaderboard","lb","admin","hostilemobspawn","hostilemobspawns","passivemobspawn","passivemobspawns","joingame","start","stop","addspawn","clearspawns","removespawn",
                 "listspawns","addspawnring","showpads","randomteams",
-                "set","border","toggle","reload","envoy","giftdrop","addchests","replenish",
+                "set","border","toggle","reload","envoy","giftdrop","addchests","massaddchests","addmanychests","replenish",
                 "rules","crafting","build","dig"
         ));
         if (args.length == 2 && args[0].equalsIgnoreCase("addchests")) return partial(args[1], List.of("start","stop","give"));
@@ -886,6 +977,28 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 if (n.startsWith(upper)) { out.add(n); if (--cap <= 0) break; }
             }
             return out;
+        }
+
+        if (args.length == 4 && (args[0].equalsIgnoreCase("massaddchests") || args[0].equalsIgnoreCase("addmanychests"))) { //Add more aliases here if you need em
+            return partial(args[3], List.of("T1", "T2", "T3", "T4")); //If you ever decide to make ReplenishManager's tierlist (as found in startScheduleInternal()) public, replace this so it references that instead.
+        }
+
+        if (args.length == 3 && (args[0].equalsIgnoreCase("massaddchests") || args[0].equalsIgnoreCase("addmanychests"))) { //Add more aliases here if you need em
+            String t = args[2];
+            // Copying what you did above with material suggestions
+            List<String> out = new ArrayList<>();
+            String upper = t.toUpperCase();
+            int cap = 40;
+            for (Material m : Material.values()) {
+                String n = m.name();
+                if (!m.isBlock()) continue;
+                if (n.startsWith(upper)) { out.add(n); if (--cap <= 0) break; }
+            }
+            return out;
+        }
+
+        if (args.length == 2 && (args[0].equalsIgnoreCase("massaddchests") || args[0].equalsIgnoreCase("addmanychests"))) { //Add more aliases here if you need em
+            return partial(args[1], List.of("1024")); //Feel free to add as many suggested values here as you want.
         }
 
         if (args.length == 2 && args[0].equalsIgnoreCase("set")) return partial(args[1], List.of("teamsize","countdown","penaltyheight","titlecolor"));
