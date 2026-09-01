@@ -619,9 +619,10 @@ public final class HubWorldManager implements HubWorldApi, Listener {
     private void wipeInventory(Player p) {
         PlayerInventory inv = p.getInventory();
         inv.clear();
-        inv.setArmorContents(null);
-        inv.setExtraContents(null);
-        inv.setItemInOffHand(null);
+        // Paper rejects null arrays / null offhand — use empty slots.
+        inv.setArmorContents(new ItemStack[4]);
+        inv.setExtraContents(new ItemStack[inv.getExtraContents().length]);
+        inv.setItemInOffHand(new ItemStack(Material.AIR));
     }
 
     private boolean isLockedHubItem(ItemStack item) {

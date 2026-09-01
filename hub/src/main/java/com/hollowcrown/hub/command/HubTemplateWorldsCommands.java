@@ -9,6 +9,7 @@ import com.hollowcrown.hub.gui.HubIlTemplateListMenu;
 import com.hollowcrown.hub.integration.HubIronLegacySupport;
 import com.hollowcrown.hub.template.HubMechanics;
 import com.hollowcrown.hub.template.HubTemplatePublishGate;
+import com.hollowcrown.hub.template.HubTemplateWorldBootstrap;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
@@ -69,25 +70,34 @@ public final class HubTemplateWorldsCommands {
         if (raw == null || raw.isBlank()) {
             return false;
         }
-        if (!admin.ensureWorldTemplateRow(raw)) {
+        String token = HubIlWorldInput.stripQuotes(raw.trim());
+        if (token.isBlank()) {
+            return false;
+        }
+        if (!admin.ensureWorldTemplateRow(token)) {
             // Full scan may pick it up if the user used a partial/odd name
             admin.discoverManagedTemplateFolders();
-            if (!admin.ensureWorldTemplateRow(raw)) {
+            if (!admin.ensureWorldTemplateRow(token)) {
                 return false;
             }
         }
-        Optional<String> key = HubIlWorldInput.resolveCanonicalKey(admin, raw);
+        Optional<String> key = HubIlWorldInput.resolveCanonicalKey(admin, token);
         String leaf = key.orElseGet(() -> {
-            String n = raw.trim().replace('\\', '/');
+            String n = token.replace('\\', '/');
             int slash = n.lastIndexOf('/');
             return slash >= 0 ? n.substring(slash + 1) : n;
         });
         try {
             plugin.templates().adoptManagedTemplateFolder(leaf);
+            // IL worlds admin path: bind mechanic so API TemplateEntry / join menus work.
+            var hubRow = plugin.templates().get(leaf);
+            if (hubRow.isPresent() && !hubRow.get().hasMechanicSelected()) {
+                plugin.templates().setMechanic(leaf, HubTemplateWorldBootstrap.IRON_LEGACY_MECHANIC_ID);
+            }
         } catch (IllegalArgumentException ignored) {
             // Key syntax invalid for Hub — worlds.yml row alone is still enough for edit.
         }
-        return HubIlWorldInput.resolveCanonicalKey(admin, raw).isPresent()
+        return HubIlWorldInput.resolveCanonicalKey(admin, token).isPresent()
                 || HubIlWorldInput.resolveCanonicalKey(admin, leaf).isPresent();
     }
 
@@ -236,15 +246,28 @@ public final class HubTemplateWorldsCommands {
                             "Usage: /hch template worlds edit <worldFolder|yamlKey>", NamedTextColor.YELLOW));
                     yield true;
                 }
-                Optional<String> canon = resolveOrTell(plugin, sender, admin, args[3]);
-                if (canon.isEmpty()) {
-                    yield true;
-                }
-                if (admin.teleportToEditor(p, canon.get())) {
+                try {
+                    Optional<String> canon = resolveOrTell(plugin, sender, admin, HubIlWorldInput.stripQuotes(args[3]));
+                    if (canon.isEmpty()) {
+                        yield true;
+                    }
+                    if (admin.teleportToEditor(p, canon.get())) {
+                        p.sendMessage(Component.text(
+                                "Template editor: " + HubIlWorldInput.folderLabel(admin, canon.get()),
+                                NamedTextColor.GREEN));
+                    } else {
+                        p.sendMessage(Component.text(
+                                "Could not open template (unknown key or world folder missing/corrupt?).",
+                                NamedTextColor.RED));
+                    }
+                } catch (Throwable ex) {
+                    plugin.getLogger().log(java.util.logging.Level.SEVERE,
+                            "template worlds edit failed for " + args[3], ex);
                     p.sendMessage(Component.text(
-                            "Template editor: " + HubIlWorldInput.folderLabel(admin, canon.get()), NamedTextColor.GREEN));
-                } else {
-                    p.sendMessage(Component.text("Could not open template (unknown key or world missing?).", NamedTextColor.RED));
+                            "Edit failed: " + ex.getClass().getSimpleName()
+                                    + (ex.getMessage() != null ? " — " + ex.getMessage() : "")
+                                    + " (see console).",
+                            NamedTextColor.RED));
                 }
                 yield true;
             }
@@ -384,6 +407,10 @@ public final class HubTemplateWorldsCommands {
         for (String key : found) {
             try {
                 plugin.templates().adoptManagedTemplateFolder(key);
+                var hubRow = plugin.templates().get(key);
+                if (hubRow.isPresent() && !hubRow.get().hasMechanicSelected()) {
+                    plugin.templates().setMechanic(key, HubTemplateWorldBootstrap.IRON_LEGACY_MECHANIC_ID);
+                }
             } catch (IllegalArgumentException ignored) {
             }
         }

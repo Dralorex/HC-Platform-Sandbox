@@ -249,7 +249,12 @@ public class HungerGamesPlugin extends JavaPlugin {
                 Bukkit.getServicesManager().getRegistration(TemplateRegistry.class);
         if (tplReg != null) {
             this.hollowTemplateRegistry = tplReg.getProvider();
-            getLogger().info("Hub TemplateRegistry: " + hollowTemplateRegistry.list().size() + " template(s).");
+            try {
+                getLogger().info("Hub TemplateRegistry: " + hollowTemplateRegistry.list().size() + " template(s).");
+            } catch (Throwable t) {
+                getLogger().log(java.util.logging.Level.WARNING,
+                        "Hub TemplateRegistry.list() failed (continuing enable): " + t.getMessage(), t);
+            }
         } else {
             this.hollowTemplateRegistry = null;
             getLogger().warning("Hub did not register TemplateRegistry; update HollowCrownHub.");

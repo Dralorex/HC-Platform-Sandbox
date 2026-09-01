@@ -20,14 +20,22 @@ public final class HubIlWorldInput {
         if (admin == null || raw == null || raw.isBlank()) {
             return Optional.empty();
         }
-        String t = raw.trim();
+        String t = stripQuotes(raw.trim());
+        if (t.isBlank()) {
+            return Optional.empty();
+        }
+        String leaf = leafName(t);
         for (var row : admin.listTemplates()) {
-            if (row.key().equalsIgnoreCase(t)) {
+            if (row.key().equalsIgnoreCase(t) || row.key().equalsIgnoreCase(leaf)) {
                 return Optional.of(row.key());
             }
             String wn = row.worldName();
-            if (wn != null && !wn.isBlank() && wn.equalsIgnoreCase(t)) {
-                return Optional.of(row.key());
+            if (wn != null && !wn.isBlank()) {
+                String wnNorm = wn.replace('\\', '/');
+                if (wnNorm.equalsIgnoreCase(t) || leafName(wnNorm).equalsIgnoreCase(t)
+                        || leafName(wnNorm).equalsIgnoreCase(leaf)) {
+                    return Optional.of(row.key());
+                }
             }
         }
         return Optional.empty();
@@ -45,10 +53,28 @@ public final class HubIlWorldInput {
         for (var row : admin.listTemplates()) {
             if (row.key().equalsIgnoreCase(canonicalKey)) {
                 String wn = row.worldName();
-                return (wn != null && !wn.isBlank()) ? wn : row.key();
+                return (wn != null && !wn.isBlank()) ? leafName(wn.replace('\\', '/')) : row.key();
             }
         }
         return canonicalKey;
+    }
+
+    static String stripQuotes(String s) {
+        if (s == null || s.length() < 2) {
+            return s == null ? "" : s;
+        }
+        char a = s.charAt(0);
+        char b = s.charAt(s.length() - 1);
+        if ((a == '"' && b == '"') || (a == '\'' && b == '\'')) {
+            return s.substring(1, s.length() - 1).trim();
+        }
+        return s;
+    }
+
+    private static String leafName(String path) {
+        String n = path.replace('\\', '/');
+        int slash = n.lastIndexOf('/');
+        return slash >= 0 ? n.substring(slash + 1) : n;
     }
 
     /** Tab suggestions: worlds.yml keys only (not folder paths). */

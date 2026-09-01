@@ -61,7 +61,8 @@ public record IronLegacyTemplateAdminImpl(HungerGamesPlugin plugin) implements I
         plugin.templates().applyEditorWorldRules(player.getWorld());
         if (!plugin.templates().restoreEditorInventory(player, templateKey)) {
             player.getInventory().clear();
-            player.getInventory().setArmorContents(null);
+            // Paper rejects null armor arrays — use empty slots.
+            player.getInventory().setArmorContents(new ItemStack[4]);
             player.getInventory().setItemInOffHand(new ItemStack(org.bukkit.Material.AIR));
         }
         player.setGameMode(GameMode.CREATIVE);

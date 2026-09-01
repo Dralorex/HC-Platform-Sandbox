@@ -4,6 +4,8 @@ Use this on a **Paper 1.21.4** test server with **two accounts** (one OP, one no
 
 Mark each line: ✅ pass · ❌ fail · ⚠️ skipped · ⬜ not tested
 
+**Current bundle tag:** `HC-Plugins-a0.1.13.zip` (Hub `1.21.4-a0.1.13`, Iron Legacy `1.21.4-a0.3.13`, Foundation `1.21.4-a0.1.5`)
+
 ## How to read the **Code path** column
 
 Each row traces: **player action → Java entry point → services → disk/API/cross-plugin**.

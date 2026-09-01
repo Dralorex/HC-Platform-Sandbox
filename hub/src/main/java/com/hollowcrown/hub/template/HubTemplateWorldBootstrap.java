@@ -133,7 +133,7 @@ public final class HubTemplateWorldBootstrap {
         p.teleport(spawn);
         p.setGameMode(GameMode.CREATIVE);
         p.getInventory().clear();
-        p.getInventory().setArmorContents(null);
+        p.getInventory().setArmorContents(new ItemStack[4]);
         p.getInventory().setItemInOffHand(new ItemStack(org.bukkit.Material.AIR));
     }
 

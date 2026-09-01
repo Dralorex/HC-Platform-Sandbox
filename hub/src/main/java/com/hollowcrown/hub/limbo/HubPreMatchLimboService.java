@@ -104,7 +104,7 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
         }
         b.markJoinIntentCounted(p);
         p.getInventory().clear();
-        p.getInventory().setArmorContents(null);
+        p.getInventory().setArmorContents(new ItemStack[4]);
         p.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
         applyLimboLoadout(p);
         p.getInventory().setHeldItemSlot(4);
@@ -158,7 +158,7 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
         s.players.add(p.getUniqueId());
         b.markJoinIntentCounted(p);
         p.getInventory().clear();
-        p.getInventory().setArmorContents(null);
+        p.getInventory().setArmorContents(new ItemStack[4]);
         p.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
         applyLimboLoadout(p);
         p.getInventory().setHeldItemSlot(4);

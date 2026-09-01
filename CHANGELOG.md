@@ -9,9 +9,30 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [HC-Plugins-a0.1.13] - 2026-07-23
+
+Tagged plugins: **API a0.1.12**, **Foundation a0.1.5**, **Hub a0.1.13**, **Iron Legacy a0.3.13**.
+
+### Fixed
+
+- HCIronLegacy failed to enable when Hub `templates.yml` had a listing with empty `mechanicId` (disk adopt) — API now allows unset mechanic; Hub list is defensive; IL worlds adopt/discover sets `iron-legacy`.
+
+## [HC-Plugins-a0.1.12] - 2026-07-23
+
+Tagged plugins: **Hub a0.1.12**, **Iron Legacy a0.3.12** (API a0.1.11 and Foundation a0.1.4 unchanged).
+
+### Fixed
+
+- `/hch template worlds edit` crashed with Bukkit's generic "unexpected error" on first open — Paper rejects `setArmorContents(null)`; editor (and other inventory wipes) now clear with empty armor slots.
+
+## [HC-Plugins-a0.1.11] - 2026-07-23
+
+Tagged plugins: **API a0.1.11**, **Hub a0.1.11**, **Iron Legacy a0.3.11** (Foundation unchanged at a0.1.4).
+
 ### Added
 
 - `/hch template worlds discover` — scans `hch-worlds/templates/` for dropped world folders and registers them in IL `worlds.yml` + Hub `templates.yml` (also runs on `list` / `reload`; `edit` auto-adopts a matching folder).
+- Copy-paste platform docs: `docs/PLATFORM_FEATURES.md`, `docs/PLATFORM_COMMANDS.md`, `docs/PLATFORM_REFERENCE.md`.
 
 ### Changed
 

@@ -9,6 +9,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Difficulty;
 import org.bukkit.GameRule;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.inventory.ItemStack;
@@ -656,7 +657,13 @@ public class TemplateWorldManager {
         }
         World w = Bukkit.getWorld(worldName);
         if (w != null) return w;
-        return Bukkit.createWorld(new WorldCreator(worldName));
+        try {
+            return Bukkit.createWorld(new WorldCreator(worldName));
+        } catch (Throwable ex) {
+            plugin.getLogger().log(Level.SEVERE,
+                    "Failed loading template world '" + worldName + "' for key=" + key, ex);
+            return null;
+        }
     }
 
     /** Call before TP into template when coming from hub — records hub build mode for restore on /hub return. */
@@ -845,6 +852,14 @@ public class TemplateWorldManager {
         while (raw.startsWith("./")) {
             raw = raw.substring(2);
         }
+        // Strip wrapping quotes from chat/CLI clients that pass them literally.
+        if (raw.length() >= 2) {
+            char a = raw.charAt(0);
+            char b = raw.charAt(raw.length() - 1);
+            if ((a == '"' && b == '"') || (a == '\'' && b == '\'')) {
+                raw = raw.substring(1, raw.length() - 1).trim();
+            }
+        }
         List<String> candidates = new ArrayList<>();
         candidates.add(raw);
         String leaf = leafKeyFromPath(raw);
@@ -860,6 +875,34 @@ public class TemplateWorldManager {
             if (Files.isDirectory(p) && looksLikeMinecraftWorld(p)) {
                 return Optional.of(c.replace('\\', '/'));
             }
+        }
+        // Case-insensitive match under hch-worlds/templates/ (Linux + mixed-case drops).
+        Optional<String> managedMatch = findManagedTemplateLeafIgnoreCase(leaf);
+        if (managedMatch.isPresent()) {
+            return Optional.of(MANAGED_TEMPLATE_ROOT + "/" + managedMatch.get());
+        }
+        return Optional.empty();
+    }
+
+    private Optional<String> findManagedTemplateLeafIgnoreCase(String leaf) {
+        if (leaf == null || leaf.isBlank()) {
+            return Optional.empty();
+        }
+        Path root = worldFolder(MANAGED_TEMPLATE_ROOT);
+        if (!Files.isDirectory(root)) {
+            return Optional.empty();
+        }
+        try (Stream<Path> children = Files.list(root)) {
+            for (Path child : children.toList()) {
+                if (!Files.isDirectory(child) || !looksLikeMinecraftWorld(child)) {
+                    continue;
+                }
+                String name = child.getFileName().toString();
+                if (name.equalsIgnoreCase(leaf)) {
+                    return Optional.of(name);
+                }
+            }
+        } catch (IOException ignored) {
         }
         return Optional.empty();
     }
@@ -1298,17 +1341,27 @@ public class TemplateWorldManager {
 
     private void applyInventory(Player p, EditorInventorySnapshot snap) {
         PlayerInventory inv = p.getInventory();
-        inv.setContents(cloneItems(snap.contents()));
-        inv.setArmorContents(cloneItems(snap.armor()));
-        inv.setExtraContents(cloneItems(snap.extra()));
-        inv.setItemInOffHand(cloneItem(snap.offHand()));
+        inv.setContents(cloneItemsOrEmpty(snap.contents(), inv.getContents().length));
+        inv.setArmorContents(cloneItemsOrEmpty(snap.armor(), 4));
+        inv.setExtraContents(cloneItemsOrEmpty(snap.extra(), inv.getExtraContents().length));
+        ItemStack off = cloneItem(snap.offHand());
+        inv.setItemInOffHand(off != null ? off : new ItemStack(Material.AIR));
         inv.setHeldItemSlot(Math.max(0, Math.min(8, snap.heldSlot())));
     }
 
     private ItemStack[] cloneItems(ItemStack[] source) {
-        if (source == null) return null;
-        ItemStack[] out = new ItemStack[source.length];
-        for (int i = 0; i < source.length; i++) out[i] = cloneItem(source[i]);
+        return cloneItemsOrEmpty(source, source == null ? 0 : source.length);
+    }
+
+    /** Paper rejects null ItemStack[] on setArmorContents / setContents — never return null. */
+    private ItemStack[] cloneItemsOrEmpty(ItemStack[] source, int minLength) {
+        int len = source == null ? Math.max(0, minLength) : Math.max(source.length, minLength);
+        ItemStack[] out = new ItemStack[len];
+        if (source != null) {
+            for (int i = 0; i < source.length; i++) {
+                out[i] = cloneItem(source[i]);
+            }
+        }
         return out;
     }
 

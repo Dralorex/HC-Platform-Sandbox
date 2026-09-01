@@ -17,7 +17,7 @@ Copy **three** JARs from `mvn package` (each plugin has its own version in `pom.
 2. `hub/target/HollowCrownHub-*.jar`
 3. `minigames/iron-legacy/target/HCIronLegacy-*.jar`
 
-Or use the deploy zip at repo root: **`HC-Plugins-a0.1.10.zip`** (alias: `HC-Plugins.zip`). The zip tag (`a0.1.10`) is the bundle label, not each plugin’s tag.
+Or use the deploy zip at repo root: **`HC-Plugins-a0.1.13.zip`** (alias: `HC-Plugins.zip`). The zip tag (`a0.1.13`) is the bundle label, not each plugin’s tag.
 
 Load order: **HC-Foundation** → **HollowCrownHub** → **HCIronLegacy**.
 

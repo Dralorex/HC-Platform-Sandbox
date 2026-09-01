@@ -306,7 +306,7 @@ public class GameManager implements Listener {
                     // Match launch transition policy for normal counted players.
                     if (countedParticipants.contains(p.getUniqueId())) {
                         p.getInventory().clear();
-                        p.getInventory().setArmorContents(null);
+                        p.getInventory().setArmorContents(new ItemStack[4]);
                         p.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
                         boolean keepAdventure = ws.keepAdventureOnStart();
                         p.setGameMode(keepAdventure ? GameMode.ADVENTURE : GameMode.SURVIVAL);
@@ -924,7 +924,7 @@ public class GameManager implements Listener {
     private void sendPlayerToHub(Player p) {
         if (p == null) return;
         p.getInventory().clear();
-        p.getInventory().setArmorContents(null);
+        p.getInventory().setArmorContents(new ItemStack[4]);
         p.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
         plugin.game().clearJoinIntent(p);
         HubIntegrationRouting.returnToHubOrLobby(plugin, p, true, true);
