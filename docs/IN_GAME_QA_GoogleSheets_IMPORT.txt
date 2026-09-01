@@ -1,0 +1,51 @@
+Google Sheets — import the Hollow Crown in-game QA checklist
+================================================================================
+
+FILE TO UPLOAD
+  docs/IN_GAME_QA_GoogleSheets.csv
+
+IMPORT (recommended)
+  1. Open https://sheets.google.com → Blank spreadsheet
+  2. File → Import → Upload → select IN_GAME_QA_GoogleSheets.csv
+  3. Import location: Replace spreadsheet
+  4. Separator type: Comma
+  5. Convert text to numbers/dates: No
+  6. Click Import data
+
+OPTIONAL CLEANUP IN SHEETS
+  • Freeze header: View → Freeze → 1 row
+  • Freeze Status + Phase: freeze first 3 columns
+  • Filter: Data → Create a filter
+  • Status dropdown:
+      Select column B (Status) → Data → Data validation
+      Criteria: Dropdown
+      Options: Pass, Fail, Skip, Blocked
+  • Conditional formatting (optional):
+      Status = Pass  → green
+      Status = Fail  → red
+      Status = Skip  → gray
+      Status = Blocked → orange
+
+COLUMNS
+  Order          Sort order (1…N)
+  Status         Fill with Pass/Fail/Skip/Blocked
+  Phase          Phase 0–10
+  Subsection     e.g. 1.2 Template registration
+  Test #         Number within subsection
+  Action         What to do in-game
+  Expected       What should happen
+  Code path      Java call chain (→ order)
+  PERSIST        YAML / SQL / world folders
+  PERM           Bukkit permission
+  API contract   api/ SPI if involved
+  IL/HUB link    Cross-plugin note
+  Notes          Free text for bugs
+  Tester         Initials
+  Date           Test date
+
+REGENERATE AFTER DOC EDITS
+  python3 scripts/export_google_sheets_qa.py
+
+SOURCE OF TRUTH
+  docs/IN_GAME_FULL_TEST.md
+================================================================================

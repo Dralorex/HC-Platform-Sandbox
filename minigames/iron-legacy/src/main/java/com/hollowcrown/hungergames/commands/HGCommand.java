@@ -2,19 +2,21 @@ package com.hollowcrown.hungergames.commands;
 
 import com.hollowcrown.hungergames.HungerGamesPlugin;
 import com.hollowcrown.hungergames.ChatInput;
-import com.hollowcrown.hungergames.managers.GameManager;
-import com.hollowcrown.hungergames.managers.TeamManager;
-import com.hollowcrown.hungergames.managers.SpawnManager;
-import com.hollowcrown.hungergames.managers.ServerRoleManager;
+import com.hollowcrown.hungergames.managers.*;
 import com.hollowcrown.hungergames.gui.MainMenu;
 import com.hollowcrown.hungergames.gui.TeamsMenu;
 import com.hollowcrown.hungergames.gui.AdminControlCenterMenu;
+import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.Directional;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -23,6 +25,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -112,6 +117,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " giftdrop"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " envoy <start|stop|addloc|clearlocs|listlocs|wave|random|gui>"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " addchests <start|stop|give>"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " massaddchests <radius> <placeholderblock> <tier>"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " replenish <T1|T2|T3|T4|mode>"));
     }
 
@@ -221,6 +227,193 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                     case "give" -> add.giveWand(p);
                     default -> sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUnknown subcommand."));
                 }
+                return true;
+            }
+            case "massaddchests", "addmanychests" -> { // It's easy to add aliases to commands if you want them. I've gone ahead and added "addmanychests" as an alias to this command, but you can remove it if you want.
+                if (!(sender instanceof Player p) || !p.isOp()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cOPs only.")); return true; }
+                if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " massaddchests <radius> <placeholderblock> <tier>")); return true; }
+                //Extract radius as a number
+                String clean = args[1].replaceAll("[^0-9.-]", "");
+                clean = clean.replaceAll("(?<=.)-", "").replaceFirst("\\.", "D").replaceAll("\\.", "").replace("D", ".");
+                if (clean.isEmpty()){
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cInvalid radius."));
+                    return true;
+                }
+                int radius;
+                try{
+                    radius = (int)(Double.parseDouble(clean)); // Decimal places should be treated as so, but then rounded down and ignored.
+                } catch (NumberFormatException e) {
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cInvalid radius."));
+                    return true;
+                }
+
+                //Extract material
+                Material material = Material.getMaterial(args[2]);
+                if(material == null || !material.isBlock()) {
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cInvalid placeholder block."));
+                    return true;
+                }
+
+                String tier = args[3];
+                if(!List.of("T1", "T2", "T3", "T4").contains(tier)){ //If you ever decide to make ReplenishManager's tierlist (as found in startScheduleInternal()) public, replace this so it references that instead.
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cInvalid tier."));
+                    return true;
+                }
+
+                HungerGamesPlugin.get().getLogger().info("A mass place operation with a radius of " + radius + " is now running. Long tick times may result from chunks being loaded during the mass replacement process. Paper may report that the server has not responded for 10 seconds. Please ignore those messages until after the replacement has been completed.");
+
+                World world = p.getLocation().getWorld();
+                int minX = p.getLocation().getBlockX() - radius;
+                int minY = Math.max(p.getLocation().getBlockY() - radius, -64);
+                int minZ = p.getLocation().getBlockZ() - radius;
+                int maxX = p.getLocation().getBlockX() + radius;
+                int maxY = Math.min(p.getLocation().getBlockY() + radius, 319);
+                int maxZ = p.getLocation().getBlockZ() + radius;
+                int total = (maxY - minY) * ((2 * radius) + 1) * ((2 * radius) + 1);
+                final int[] currentXYZAndProgress = {minX, minY, minZ, 0, 0}; //This is stupid, but it lets me increment it while using it in lambda expressions.
+                final Runnable[] taskHolder = {null}; //Same trick used to let a lambda reference itself for recursive calls
+                Runnable task = () -> {
+                    boolean speedTest = currentXYZAndProgress[0] == minX && currentXYZAndProgress[1] == minY && currentXYZAndProgress[2] == minZ;
+                    Instant instant = null;
+                    if(speedTest)
+                        instant = Instant.now();
+                    int i = 0;
+                    int iterationsPerTick = 262144; //2^18
+                    //while (currentXYZAndProgress[0] <= maxX){
+                    //    while (currentXYZAndProgress[1] <= maxY){
+                    //        while (currentXYZAndProgress[2] <= maxZ){
+                    while (i < iterationsPerTick &&
+                            currentXYZAndProgress[0] <= maxX) {
+
+                        int x = currentXYZAndProgress[0];
+                        int y = currentXYZAndProgress[1];
+                        int z = currentXYZAndProgress[2];
+
+                        Block block = world.getBlockAt(x, y, z);
+
+                        if (block.getType() == material) {
+                            // Your existing block-processing code
+                            //HungerGamesPlugin.get().getLogger().info("Found block at " + currentXYZAndProgress[0] + ", " + currentXYZAndProgress[1] + ", " + currentXYZAndProgress[2]);
+                            if(block.getBlockData() instanceof Directional originalDirectional){
+                                //HungerGamesPlugin.get().getLogger().info("Template is directional");
+                                BlockFace face = originalDirectional.getFacing();
+                                world.setType(currentXYZAndProgress[0], currentXYZAndProgress[1], currentXYZAndProgress[2], Material.CHEST);
+                                BlockData data = world.getBlockData(currentXYZAndProgress[0], currentXYZAndProgress[1], currentXYZAndProgress[2]);
+                                if(data instanceof Directional directional) {
+                                    //HungerGamesPlugin.get().getLogger().info("Chest is directional");
+                                    switch (face) {
+                                        case NORTH -> directional.setFacing(BlockFace.NORTH);
+                                        case EAST -> directional.setFacing(BlockFace.EAST);
+                                        case SOUTH -> directional.setFacing(BlockFace.SOUTH);
+                                        case WEST -> directional.setFacing(BlockFace.WEST);
+                                        case UP -> directional.setFacing(BlockFace.NORTH);
+                                        case DOWN -> directional.setFacing(BlockFace.NORTH);
+                                        case NORTH_EAST -> directional.setFacing(BlockFace.NORTH);
+                                        case NORTH_WEST -> directional.setFacing(BlockFace.NORTH);
+                                        case SOUTH_EAST -> directional.setFacing(BlockFace.SOUTH);
+                                        case SOUTH_WEST -> directional.setFacing(BlockFace.SOUTH);
+                                        case WEST_NORTH_WEST -> directional.setFacing(BlockFace.WEST);
+                                        case NORTH_NORTH_WEST -> directional.setFacing(BlockFace.NORTH);
+                                        case NORTH_NORTH_EAST -> directional.setFacing(BlockFace.NORTH);
+                                        case EAST_NORTH_EAST -> directional.setFacing(BlockFace.EAST);
+                                        case EAST_SOUTH_EAST -> directional.setFacing(BlockFace.EAST);
+                                        case SOUTH_SOUTH_EAST -> directional.setFacing(BlockFace.SOUTH);
+                                        case SOUTH_SOUTH_WEST -> directional.setFacing(BlockFace.SOUTH);
+                                        case WEST_SOUTH_WEST -> directional.setFacing(BlockFace.WEST);
+                                        case SELF -> directional.setFacing(BlockFace.NORTH);
+                                    }
+                                    world.setBlockData(currentXYZAndProgress[0], currentXYZAndProgress[1], currentXYZAndProgress[2], directional);
+                                }
+                            }
+                            else{
+                                //HungerGamesPlugin.get().getLogger().info("Template is not directional: " + block.getBlockData());
+                                world.setType(currentXYZAndProgress[0], currentXYZAndProgress[1], currentXYZAndProgress[2], Material.CHEST);
+                            }
+                        }
+
+                        i++;
+
+                        // Move to the next Z
+                        currentXYZAndProgress[2]++;
+
+                        // Finished this Z row
+                        if (currentXYZAndProgress[2] > maxZ) {
+                            currentXYZAndProgress[2] = minZ;
+                            currentXYZAndProgress[1]++;
+
+                            // Finished this Y column
+                            if (currentXYZAndProgress[1] > maxY) {
+                                currentXYZAndProgress[1] = minY;
+                                currentXYZAndProgress[0]++;
+                            }
+                        }
+                    }
+                                //Block block = world.getBlockAt(currentXYZAndProgress[0], currentXYZAndProgress[1], currentXYZAndProgress[2]);
+                                //if(block.getType() == material){
+                    /*
+                                }
+
+                                i++;
+                                currentXYZAndProgress[2]++;
+                                if(i > iterationsPerTick)
+                                    break;
+                            }
+                            currentXYZAndProgress[1]++;
+                            currentXYZAndProgress[2] = minZ;
+                            if(i > iterationsPerTick)
+                                break;
+                        }
+                        currentXYZAndProgress[0]++;
+                        currentXYZAndProgress[1] = minY;
+                        if(i > iterationsPerTick) {
+                            HungerGamesPlugin.get().getLogger().info("breaking at " + currentXYZAndProgress[0] + ", " + currentXYZAndProgress[1] + ", " + currentXYZAndProgress[2]);
+                            break;
+                        }
+                    }*/
+                    if(speedTest)
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aEstimated Time:" + DurationFormatUtils.formatDurationHMS(Duration.between(instant, Instant.now()).multipliedBy(total / iterationsPerTick).toMillis())));
+                    /*for (int y = finalMinY; y <= finalMaxY; y++) {
+                        for (int z = minZ; z <= maxZ; z++) {
+                            Block block = world.getBlockAt(currentXAndProgress[0], y, z);
+                            if(block.getType() == material){
+                                if(block.getBlockData() instanceof Directional directional){
+                                    BlockFace face = directional.getFacing();
+                                    block.setType(Material.CHEST);
+                                    if(block.getBlockData() instanceof Directional directional1){
+                                        directional1.setFacing(face);
+                                    }
+                                }
+                                else{
+                                    block.setType(Material.CHEST);
+                                }
+                                HungerGamesPlugin.get().replenish().add(block.getLocation(), tier);
+                            }
+                        }
+                    }*/
+                    if(currentXYZAndProgress[0] < maxX){
+                        //currentXYZAndProgress[0]++;
+                        currentXYZAndProgress[3]++;
+                        float progress = (float) ((currentXYZAndProgress[3] / Math.ceil((double) total / iterationsPerTick)) * 100);
+                        if((int)progress != currentXYZAndProgress[4]){
+                            currentXYZAndProgress[4] = (int)progress;
+                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7a" + (((int)progress)) + "%"));
+                        }
+                        if(taskHolder[0] != null)
+                            Bukkit.getScheduler().runTaskLater(HungerGamesPlugin.get(), taskHolder[0], 1);
+                    }
+                    else{
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aMass place complete!"));
+                    }
+                };
+                taskHolder[0] = task;
+
+                //While an async task would be helpful here, you can't access the world from one.
+                //Instead, this takes the naive approach of pausing every tick after completing a small section of the task, then resuming.
+                //This should prevent crashes from watchdog. They may still occur if the radius is too large. With 1024 radius, that's 786,816 block checks per tick. Be careful!
+                //sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aStarting mass place... Estimated:" + (int)(((radius * 2f) + 1f) / 20f) + "s"));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aStarting mass place..."));
+                Bukkit.getScheduler().runTaskLater(HungerGamesPlugin.get(), taskHolder[0], 1);
+
                 return true;
             }
             case "replenish" -> {
@@ -582,10 +775,8 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                         int removed = rules.delBuildAll(mats);
                         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eRemoved " + removed + " entries from BUILD list."));
                     }
-                    case "list" -> {
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A76Build " + rules.getBuildMode() + " list (" + rules.getBuildList().size() + "): "
-                                + "\u00A77" + rules.getBuildList().stream().map(Enum::name).sorted().collect(Collectors.joining(", "))));
-                    }
+                    case "list" -> sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A76Build " + rules.getBuildMode() + " list (" + rules.getBuildList().size() + "): "
+                            + "\u00A77" + rules.getBuildList().stream().map(Enum::name).sorted().collect(Collectors.joining(", "))));
                     default -> {}
                 }
                 return true;
@@ -620,10 +811,8 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                         int removed = rules.delDigAll(mats);
                         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eRemoved " + removed + " entries from DIG list."));
                     }
-                    case "list" -> {
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A76Dig " + rules.getDigMode() + " list (" + rules.getDigList().size() + "): "
-                                + "\u00A77" + rules.getDigList().stream().map(Enum::name).sorted().collect(Collectors.joining(", "))));
-                    }
+                    case "list" -> sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A76Dig " + rules.getDigMode() + " list (" + rules.getDigList().size() + "): "
+                            + "\u00A77" + rules.getDigList().stream().map(Enum::name).sorted().collect(Collectors.joining(", "))));
                     default -> {}
                 }
                 return true;
@@ -842,7 +1031,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) return partial(args[0], List.of(
                 "help","gui","teams","party","leaderboard","lb","admin","hostilemobspawn","hostilemobspawns","passivemobspawn","passivemobspawns","joingame","start","stop","addspawn","clearspawns","removespawn",
                 "listspawns","addspawnring","showpads","randomteams",
-                "set","border","toggle","reload","envoy","giftdrop","addchests","replenish",
+                "set","border","toggle","reload","envoy","giftdrop","addchests","massaddchests","addmanychests","replenish",
                 "rules","crafting","build","dig"
         ));
         if (args.length == 2 && args[0].equalsIgnoreCase("addchests")) return partial(args[1], List.of("start","stop","give"));
@@ -886,6 +1075,28 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 if (n.startsWith(upper)) { out.add(n); if (--cap <= 0) break; }
             }
             return out;
+        }
+
+        if (args.length == 4 && (args[0].equalsIgnoreCase("massaddchests") || args[0].equalsIgnoreCase("addmanychests"))) { //Add more aliases here if you need em
+            return partial(args[3], List.of("T1", "T2", "T3", "T4")); //If you ever decide to make ReplenishManager's tierlist (as found in startScheduleInternal()) public, replace this so it references that instead.
+        }
+
+        if (args.length == 3 && (args[0].equalsIgnoreCase("massaddchests") || args[0].equalsIgnoreCase("addmanychests"))) { //Add more aliases here if you need em
+            String t = args[2];
+            // Copying what you did above with material suggestions
+            List<String> out = new ArrayList<>();
+            String upper = t.toUpperCase();
+            int cap = 40;
+            for (Material m : Material.values()) {
+                String n = m.name();
+                if (!m.isBlock()) continue;
+                if (n.startsWith(upper)) { out.add(n); if (--cap <= 0) break; }
+            }
+            return out;
+        }
+
+        if (args.length == 2 && (args[0].equalsIgnoreCase("massaddchests") || args[0].equalsIgnoreCase("addmanychests"))) { //Add more aliases here if you need em
+            return partial(args[1], List.of("1024")); //Feel free to add as many suggested values here as you want.
         }
 
         if (args.length == 2 && args[0].equalsIgnoreCase("set")) return partial(args[1], List.of("teamsize","countdown","penaltyheight","titlecolor"));

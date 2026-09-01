@@ -25,10 +25,10 @@ Thumbs.db
 
 # Server / local test
 run/
-logs/
+run/logs/
 *.log
 plugins/*.jar
-!plugins/.gitkeep
+!run/plugins/.gitkeep
 
 # Secrets
 .env
