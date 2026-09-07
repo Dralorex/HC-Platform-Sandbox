@@ -32,6 +32,10 @@ ironLegacy:
 teams:
   memberCap: 4
 
+# Drop a Minecraft world into hch-worlds/templates/<name> — on startup Hub + IL register it automatically.
+templates:
+  autoDiscoverOnStartup: true
+
 # Set in-game with /hch sethub [1] (writes world-uuid + coords). Hub #1 = /hub and /hub join 1.
 # Extra hubs: /hch sethub 2, /hch sethub 3, … (writes hub.instances.<n> below).
 hub:

@@ -820,7 +820,8 @@ Permission: `hcironlegacy.use` (default true); admin subcommands require OP / `h
 | `gameflow.yml` | Server role, Velocity, shard caps, team defaults |
 | `lobby.yml` | Legacy lobby coords (migrated toward Hub) |
 | `envoys.yml` + `world-envoys/<key>/` | Envoy definitions per map |
-| `replenish.yml` | Replenish tiers + schedule |
+| `replenish.yml` | Shared replenish tiers + schedule |
+| `world-envoys/<key>/replenish-locations.yml` | Per-map replenish chest coordinates |
 | `categories.yml` | Build/dig material groups |
 | `icons.yml` | Template join GUI icons |
 | `resourcepack.yml` | Optional server resource pack |

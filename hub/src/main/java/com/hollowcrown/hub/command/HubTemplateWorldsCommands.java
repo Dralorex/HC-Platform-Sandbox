@@ -8,6 +8,7 @@ import com.hollowcrown.hub.gui.HubIlIconPreviewMenu;
 import com.hollowcrown.hub.gui.HubIlTemplateListMenu;
 import com.hollowcrown.hub.integration.HubIronLegacySupport;
 import com.hollowcrown.hub.template.HubMechanics;
+import com.hollowcrown.hub.template.HubManagedTemplateBootstrap;
 import com.hollowcrown.hub.template.HubTemplatePublishGate;
 import com.hollowcrown.hub.template.HubTemplateWorldBootstrap;
 import net.kyori.adventure.text.Component;
@@ -403,18 +404,7 @@ public final class HubTemplateWorldsCommands {
     }
 
     private static List<String> discoverAndAdopt(HollowCrownHubPlugin plugin, IronLegacyTemplateAdmin admin) {
-        List<String> found = new ArrayList<>(admin.discoverManagedTemplateFolders());
-        for (String key : found) {
-            try {
-                plugin.templates().adoptManagedTemplateFolder(key);
-                var hubRow = plugin.templates().get(key);
-                if (hubRow.isPresent() && !hubRow.get().hasMechanicSelected()) {
-                    plugin.templates().setMechanic(key, HubTemplateWorldBootstrap.IRON_LEGACY_MECHANIC_ID);
-                }
-            } catch (IllegalArgumentException ignored) {
-            }
-        }
-        return found;
+        return HubManagedTemplateBootstrap.syncFromDisk(plugin, admin).newlyRegisteredIlKeys();
     }
 
     private static List<String> summarize(IronLegacyTemplateAdmin admin) {

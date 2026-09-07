@@ -843,6 +843,46 @@ public class TemplateWorldManager {
         return registered;
     }
 
+    /** Leaf keys (lowercase) for every valid world folder under {@link #MANAGED_TEMPLATE_ROOT}. */
+    public List<String> listManagedTemplateFolderKeys() {
+        Path root = worldFolder(MANAGED_TEMPLATE_ROOT);
+        List<String> keys = new ArrayList<>();
+        if (!Files.isDirectory(root)) {
+            return keys;
+        }
+        try (Stream<Path> children = Files.list(root)) {
+            for (Path child : children.toList()) {
+                if (!Files.isDirectory(child) || !looksLikeMinecraftWorld(child)) {
+                    continue;
+                }
+                keys.add(child.getFileName().toString().toLowerCase(Locale.ROOT));
+            }
+        } catch (IOException ex) {
+            plugin.getLogger().warning("Failed listing " + MANAGED_TEMPLATE_ROOT + ": " + ex.getMessage());
+        }
+        return keys;
+    }
+
+    /**
+     * Ensures every folder under {@link #MANAGED_TEMPLATE_ROOT} is registered in {@code worlds.yml}.
+     *
+     * @return newly registered template keys (lowercase)
+     */
+    public List<String> syncManagedTemplatesFromDisk() {
+        List<String> registered = new ArrayList<>();
+        for (String key : listManagedTemplateFolderKeys()) {
+            if (existsTemplate(key)) {
+                continue;
+            }
+            if (ensureTemplateRow(key)) {
+                registered.add(key);
+                plugin.getLogger().info("Registered managed template folder: "
+                        + MANAGED_TEMPLATE_ROOT + "/" + key + " (key=" + key + ")");
+            }
+        }
+        return registered;
+    }
+
     /** Resolves an on-disk world folder path under the server container, preferring managed templates. */
     public Optional<String> resolveExistingWorldFolderPath(String keyOrPath) {
         if (keyOrPath == null || keyOrPath.isBlank()) {

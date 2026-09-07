@@ -39,6 +39,18 @@ public interface IronLegacyTemplateAdmin {
      */
     List<String> discoverManagedTemplateFolders();
 
+    /**
+     * All valid template folder leaf keys under {@code hch-worlds/templates/} (lowercase).
+     */
+    List<String> listManagedTemplateFolderKeys();
+
+    /**
+     * Ensures every on-disk managed template folder has a {@code worlds.yml} row.
+     *
+     * @return keys newly registered during this call
+     */
+    List<String> syncManagedTemplatesFromDisk();
+
     boolean publish(String templateKey);
 
     boolean delete(String templateKey);

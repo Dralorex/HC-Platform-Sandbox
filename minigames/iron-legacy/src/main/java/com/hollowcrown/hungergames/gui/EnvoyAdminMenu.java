@@ -53,7 +53,8 @@ public class EnvoyAdminMenu extends MenuView {
                 "§eClick: open types")));
         inv.setItem(14, button(Material.BOOK, "§2Replenish", List.of(
                 "§7Tracked chests & schedule",
-                "§7(world-envoys/" + templateKey + "/replenish.yml)",
+                "§7Loot/schedule: plugins/HCIronLegacy/replenish.yml",
+                "§7Chest coords: world-envoys/" + templateKey + "/replenish-locations.yml",
                 "",
                 "§eClick: replenish admin")));
         inv.setItem(16, button(Material.REDSTONE_TORCH, "§eGeneral settings", List.of(

@@ -9,6 +9,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Replenish tier loot and schedule now read from shared `plugins/HCIronLegacy/replenish.yml`; per-map chest coordinates stay in `world-envoys/<key>/replenish-locations.yml`.
+
+### Added
+
+- Startup auto-discover for worlds dropped into `hch-worlds/templates/` — registers IL `worlds.yml` + Hub `templates.yml` with `iron-legacy` mechanic (`templates.autoDiscoverOnStartup` in Hub config, default true).
+
 ## [HC-Plugins-a0.1.13] - 2026-07-23
 
 Tagged plugins: **API a0.1.12**, **Foundation a0.1.5**, **Hub a0.1.13**, **Iron Legacy a0.3.13**.

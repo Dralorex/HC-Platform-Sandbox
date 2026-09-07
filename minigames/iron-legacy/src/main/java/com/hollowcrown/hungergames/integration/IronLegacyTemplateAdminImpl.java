@@ -105,6 +105,16 @@ public record IronLegacyTemplateAdminImpl(HungerGamesPlugin plugin) implements I
     }
 
     @Override
+    public List<String> listManagedTemplateFolderKeys() {
+        return plugin.templates().listManagedTemplateFolderKeys();
+    }
+
+    @Override
+    public List<String> syncManagedTemplatesFromDisk() {
+        return plugin.templates().syncManagedTemplatesFromDisk();
+    }
+
+    @Override
     public boolean publish(String templateKey) {
         plugin.templates().ensureTemplateRow(templateKey);
         boolean ok = plugin.templates().publishTemplate(templateKey);
@@ -150,7 +160,7 @@ public record IronLegacyTemplateAdminImpl(HungerGamesPlugin plugin) implements I
             plugin.templates().reload();
         } catch (Throwable ignored) {
         }
-        List<String> discovered = plugin.templates().discoverManagedTemplateFolders();
+        List<String> discovered = plugin.templates().syncManagedTemplatesFromDisk();
         if (!discovered.isEmpty()) {
             lines.add("Discovered managed templates: " + String.join(", ", discovered));
         }

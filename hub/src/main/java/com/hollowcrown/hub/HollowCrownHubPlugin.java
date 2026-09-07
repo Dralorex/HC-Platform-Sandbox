@@ -42,6 +42,7 @@ import com.hollowcrown.hub.policy.HubPluginPolicyEnforcer;
 import com.hollowcrown.hub.policy.HubPluginPolicyService;
 import com.hollowcrown.hub.queue.HubMatchQueueService;
 import com.hollowcrown.hub.template.HubTemplateApiRegistry;
+import com.hollowcrown.hub.template.HubManagedTemplateBootstrap;
 import com.hollowcrown.hub.template.HubTemplateRegistry;
 import com.hollowcrown.hub.team.HubTeamService;
 import com.hollowcrown.hub.platform.HubHubSpawns;
@@ -260,14 +261,15 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
                     Bukkit.getServicesManager().getRegistration(IronLegacyLimboBridge.class);
             if (bridgeReg == null) {
                 getLogger().warning("IronLegacyLimboBridge not registered (HCIronLegacy disabled?). Limbo arena listeners inactive.");
-                return;
+            } else {
+                IronLegacyLimboBridge bridge = bridgeReg.getProvider();
+                hubPreMatchLimboService.attachBridge(bridge);
+                HubPreMatchLimboArenaListener arena = new HubPreMatchLimboArenaListener(
+                        this, hubLimboArenaState, bridge, hubPreMatchLimboService);
+                arena.startScheduledTasks();
+                Bukkit.getPluginManager().registerEvents(arena, this);
             }
-            IronLegacyLimboBridge bridge = bridgeReg.getProvider();
-            hubPreMatchLimboService.attachBridge(bridge);
-            HubPreMatchLimboArenaListener arena = new HubPreMatchLimboArenaListener(
-                    this, hubLimboArenaState, bridge, hubPreMatchLimboService);
-            arena.startScheduledTasks();
-            Bukkit.getPluginManager().registerEvents(arena, this);
+            HubManagedTemplateBootstrap.syncFromDiskOnStartup(this);
         });
 
         for (var entry : templateRegistry.list()) {

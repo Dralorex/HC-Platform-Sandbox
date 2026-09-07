@@ -93,9 +93,9 @@ Template create
 
 Discover dropped template folders
   Status: Implemented
-  Drop a Minecraft world into hch-worlds/templates/<name>, then /hch template worlds discover
-  (or list/reload/edit). Registers worlds.yml EDIT row + Hub templates.yml source link.
-  Folder needs level.dat (or region/). Edit with /hch template worlds edit <name>.
+  Drop a Minecraft world into hch-worlds/templates/<name> — on server start (templates.autoDiscoverOnStartup)
+  or /hch template worlds discover (also list/reload/edit). Registers worlds.yml EDIT row + Hub templates.yml
+  with iron-legacy mechanic. Folder needs level.dat (or region/). Edit with /hch template worlds edit <name>.
 
 Lobby instances
   Status: Implemented
@@ -490,6 +490,8 @@ HCIRONLEGACY — Replenish
 ================================================================================
 
 Tiers T1–T4, schedule, replenish wand, chest protection, admin GUI
+  Shared loot + schedule: plugins/HCIronLegacy/replenish.yml
+  Per-map chest coords: world-envoys/<key>/replenish-locations.yml (migrates from legacy scoped replenish.yml)
   Status: Implemented
 
 ================================================================================

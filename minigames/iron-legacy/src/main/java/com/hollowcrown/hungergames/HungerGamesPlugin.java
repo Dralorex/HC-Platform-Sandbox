@@ -153,6 +153,15 @@ public class HungerGamesPlugin extends JavaPlugin {
         this.lobbyManager = new LobbyManager(this);
         this.lobbyShardManager = new LobbyShardManager(this);
         this.templateWorldManager = new TemplateWorldManager(this);
+        try {
+            var discovered = this.templateWorldManager.syncManagedTemplatesFromDisk();
+            if (!discovered.isEmpty()) {
+                getLogger().info("Managed template folders registered in worlds.yml: "
+                        + String.join(", ", discovered));
+            }
+        } catch (Throwable t) {
+            getLogger().warning("Managed template folder scan failed: " + t.getMessage());
+        }
         this.ironLegacyLimboBridge = new IronLegacyLimboBridgeImpl(this);
         this.worldSettingsManager = new WorldSettingsManager(this);
         this.teamNameDatabaseManager = new TeamNameDatabaseManager(this);
