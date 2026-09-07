@@ -143,16 +143,19 @@ public class ReplenishManager {
         coordCache.remove(templateKey);
     }
 
-    public void add(Location l, String templateKey) {
-        BlockCoord c = new BlockCoord(
-                Objects.requireNonNull(l.getWorld()).getName(),
-                l.getBlockX(), l.getBlockY(), l.getBlockZ());
-        List<BlockCoord> list = new ArrayList<>(coords(templateKey));
+   public void add(Location l, String templateKey) {
+    BlockCoord c = new BlockCoord(
+            Objects.requireNonNull(l.getWorld()).getName(),
+            l.getBlockX(), l.getBlockY(), l.getBlockZ());
+    
+    coordCache.compute(templateKey, (key, oldList) -> {
+        List<BlockCoord> list = oldList != null ? new ArrayList<>(oldList) : new ArrayList<>();
         list.removeIf(o -> o.worldName().equals(c.worldName()) && o.x() == c.x() && o.y() == c.y() && o.z() == c.z());
         list.add(c);
         persistLocations(templateKey, list);
-        coordCache.put(templateKey, list);
-    }
+        return list;
+    });
+}
 
     public boolean removeNearest(Location ref, String templateKey) {
         List<BlockCoord> list = new ArrayList<>(coords(templateKey));
