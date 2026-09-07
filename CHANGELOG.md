@@ -9,6 +9,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [HC-Plugins-a0.1.14] - 2026-09-07
+
+Tagged plugins: **API a0.1.13**, **Foundation a0.1.5**, **Hub a0.1.14**, **Iron Legacy a0.3.14**.
+
 ### Changed
 
 - Replenish tier loot and schedule now read from shared `plugins/HCIronLegacy/replenish.yml`; per-map chest coordinates stay in `world-envoys/<key>/replenish-locations.yml`.
