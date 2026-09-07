@@ -30,12 +30,12 @@ tiers:
       - { material: WOODEN_SWORD, minStack: 1, maxStack: 1 }
       - { material: WOODEN_PICKAXE, minStack: 1, maxStack: 1 }
       - { material: CHAINMAIL_HELMET, minStack: 1, maxStack: 1 }
-      - { material: CHAIMAIL_CHESTPLATE, minStack: 1, maxStack: 1 }
+      - { material: CHAINMAIL_CHESTPLATE, minStack: 1, maxStack: 1 }
       - { material: CHAINMAIL_LEGGINGS, minStack: 1, maxStack: 1 }
       - { material: CHAINMAIL_BOOTS, minStack: 1, maxStack: 1 }
       - { material: LEATHER_HELMET, minStack: 1, maxStack: 1 }
       - { material: LEATHER_CHESTPLATE, minStack: 1, maxStack: 1 }
-      - { material: LEATHER_LEGGINS, minStack: 1, maxStack: 1 }
+      - { material: LEATHER_LEGGINGS, minStack: 1, maxStack: 1 }
       - { material: LEATHER_BOOTS, minStack: 1, maxStack: 1 }
       - { material: LEATHER_HORSE_ARMOR, minStack: 1, maxStack: 1 }
   T2:
@@ -52,7 +52,7 @@ tiers:
       - { material: ARROW, minStack: 12, maxStack: 32 }
       - { material: FISHING_ROD, minStack: 1, maxStack: 1 }
       - { material: CHAINMAIL_HELMET, minStack: 1, maxStack: 1 }
-      - { material: CHAIMAIL_CHESTPLATE, minStack: 1, maxStack: 1 }
+      - { material: CHAINMAIL_CHESTPLATE, minStack: 1, maxStack: 1 }
       - { material: CHAINMAIL_LEGGINGS, minStack: 1, maxStack: 1 }
       - { material: CHAINMAIL_BOOTS, minStack: 1, maxStack: 1 }
       - { material: IRON_HELMET, minStack: 1, maxStack: 1 }
