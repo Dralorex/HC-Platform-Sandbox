@@ -5,6 +5,9 @@ import java.util.Objects;
 /**
  * Read-only row from Hub template configuration ({@code templates.yml}).
  * Minigames use this type instead of Hub implementation classes.
+ *
+ * <p>{@link #mechanicId()} may be blank when the Hub listing exists but no mechanic
+ * has been chosen yet (publish / join flows require one later).</p>
  */
 public final class TemplateEntry {
 
@@ -36,9 +39,7 @@ public final class TemplateEntry {
         if (this.templateKey.isEmpty()) {
             throw new IllegalArgumentException("templateKey empty");
         }
-        if (this.mechanicId.isEmpty()) {
-            throw new IllegalArgumentException("mechanicId empty");
-        }
+        // mechanicId may be empty until Hub admin assigns one (publish gate / join menus).
         int cap = queueMaxUnitSize;
         if (cap < 1) {
             cap = 1;

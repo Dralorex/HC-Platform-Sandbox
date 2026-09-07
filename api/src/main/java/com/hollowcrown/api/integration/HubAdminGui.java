@@ -17,4 +17,7 @@ public interface HubAdminGui {
     void openQueueOverview(Player player);
 
     void openLobbyAdminShortcut(Player player);
+
+    /** Hub / limbo / match server-plugin whitelist or blacklist. */
+    void openPluginPolicyAdmin(Player player);
 }

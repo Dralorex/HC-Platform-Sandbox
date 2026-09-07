@@ -4,7 +4,11 @@ import com.hollowcrown.api.integration.HubPlayerMenus;
 import com.hollowcrown.api.integration.HubWorldApi;
 import com.hollowcrown.api.integration.IronLegacyLimboBridge;
 import com.hollowcrown.api.integration.PreMatchLimboService;
+import com.hollowcrown.api.party.PartyService;
+import com.hollowcrown.api.party.PartyView;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
+import com.hollowcrown.hub.gui.HubTeamMenu;
+import com.hollowcrown.hub.party.HubPartyText;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -33,6 +37,8 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -199,6 +205,9 @@ public final class HubPreMatchLimboArenaListener implements Listener {
                 long now = System.currentTimeMillis();
                 Map<UUID, Long> pvpInvulnerableUntil = arenaState.pvpInvulnerableUntil();
                 for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (!limbo.isInLimbo(p) || !arenaState.pvpActive().contains(p.getUniqueId())) {
+                        continue;
+                    }
                     Long until = pvpInvulnerableUntil.get(p.getUniqueId());
                     if (until == null || until <= now) continue;
                     Location base = p.getLocation().clone().add(0, 0.1, 0);
@@ -237,7 +246,7 @@ public final class HubPreMatchLimboArenaListener implements Listener {
             public void run() {
                 if (!p.isOnline()) return;
                 p.setNoDamageTicks(60);
-                if (arenaState.pendingDeactivateOnDeath().contains(id) || arenaState.pvpActive().contains(id)) {
+                if (arenaState.pvpActive().contains(id) || arenaState.pendingDeactivateOnDeath().contains(id)) {
                     arenaState.pvpInvulnerableUntil().put(id, System.currentTimeMillis() + 3000L);
                 }
             }
@@ -333,10 +342,12 @@ public final class HubPreMatchLimboArenaListener implements Listener {
             case RIGHT_CLICK_AIR, RIGHT_CLICK_BLOCK -> {
                 RegisteredServiceProvider<HubWorldApi> hubReg = Bukkit.getServicesManager().getRegistration(HubWorldApi.class);
                 if (hubReg != null && hubReg.getProvider().isLimboLeaveUtilityItem(hand)) {
-                    limbo.leaveLimbo(p);
-                    hubReg.getProvider().suppressGameLobbyGuiBriefly(p, 1500L);
-                    bridge.sendToLobbyExact(p, true, true);
-                    p.sendMessage(Component.text("Left limbo queue.", NamedTextColor.YELLOW));
+                    leaveLimboWithParty(p, hubReg.getProvider());
+                    e.setCancelled(true);
+                    return;
+                }
+                if (hubReg != null && hubReg.getProvider().isLimboTeamUtilityItem(p, hand)) {
+                    HubTeamMenu.open(hub, p);
                     e.setCancelled(true);
                     return;
                 }
@@ -387,5 +398,56 @@ public final class HubPreMatchLimboArenaListener implements Listener {
         if (damager instanceof Player pl) return pl;
         if (damager instanceof Projectile proj && proj.getShooter() instanceof Player pl) return pl;
         return null;
+    }
+
+    /**
+     * Leave the limbo queue. When the actor is a party leader with online members in the same
+     * limbo session, drag the whole party back to the hub together.
+     */
+    private void leaveLimboWithParty(Player actor, HubWorldApi hubWorldApi) {
+        Set<UUID> sessionPlayers = limbo.playersInSameTemplateSession(actor);
+        PartyView party = resolvePartyForLeader(actor);
+
+        List<Player> movers = new ArrayList<>();
+        movers.add(actor);
+        if (party != null) {
+            for (UUID memberId : party.membersJoinOrder()) {
+                if (memberId.equals(actor.getUniqueId())) continue;
+                if (!sessionPlayers.isEmpty() && !sessionPlayers.contains(memberId)) continue;
+                Player member = Bukkit.getPlayer(memberId);
+                if (member == null || !member.isOnline()) continue;
+                if (!limbo.isInLimbo(member)) continue;
+                movers.add(member);
+            }
+        }
+
+        boolean dragged = movers.size() > 1;
+        for (Player mover : movers) {
+            limbo.leaveLimbo(mover);
+            if (hubWorldApi != null) {
+                hubWorldApi.suppressGameLobbyGuiBriefly(mover, 1500L);
+            }
+            bridge.sendToLobbyExact(mover, true, true);
+            if (mover.equals(actor)) {
+                mover.sendMessage(Component.text(
+                        dragged ? "Left limbo queue. Your party came with you." : "Left limbo queue.",
+                        NamedTextColor.YELLOW));
+            } else {
+                mover.sendMessage(Component.text()
+                        .append(HubPartyText.coloredPlayerName(hub, actor))
+                        .append(Component.text(" took the party back to the hub.", NamedTextColor.AQUA))
+                        .build());
+            }
+        }
+    }
+
+    private PartyView resolvePartyForLeader(Player actor) {
+        if (actor == null) return null;
+        RegisteredServiceProvider<PartyService> reg =
+                Bukkit.getServicesManager().getRegistration(PartyService.class);
+        if (reg == null) return null;
+        return reg.getProvider().partyForMember(actor.getUniqueId())
+                .filter(v -> v.isLeader(actor.getUniqueId()) && v.memberCount() > 1)
+                .orElse(null);
     }
 }

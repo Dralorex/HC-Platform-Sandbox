@@ -1,0 +1,26 @@
+---
+description: Keep PLATFORM_FEATURES.md and PLATFORM_COMMANDS.md in sync with code changes
+alwaysApply: true
+---
+
+# Platform documentation sync
+
+When you add, remove, or change **user-visible behavior** in this repo, update the platform docs in the **same change set** (same commit when committing):
+
+| Change type | Update |
+|-------------|--------|
+| New/removed/renamed command or alias | `docs/PLATFORM_COMMANDS.md` |
+| Command behavior, permission, or grouping | `docs/PLATFORM_COMMANDS.md` |
+| New/removed/changed feature, GUI flow, policy, integration | `docs/PLATFORM_FEATURES.md` |
+| Both command and feature | Both files + `CHANGELOG.md` under `[Unreleased]` |
+| GUIs, architecture, config file map (detail) | `docs/PLATFORM_REFERENCE.md` when the overview is affected |
+
+**Do not** only update `PLATFORM_REFERENCE.md` when commands or the feature list changed — the copy-paste files are the source of truth for those two lists.
+
+**Files:**
+
+- `docs/PLATFORM_FEATURES.md` — flat, copy-paste feature list by plugin
+- `docs/PLATFORM_COMMANDS.md` — flat, copy-paste command trees and permissions
+- `docs/PLATFORM_REFERENCE.md` — GUIs, integration diagrams, config tables
+
+After tag releases, optionally bump the "Bundle baseline" line at the top of FEATURES and COMMANDS when the user asks to up tags.

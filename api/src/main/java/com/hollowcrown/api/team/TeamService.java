@@ -35,8 +35,14 @@ public interface TeamService {
     /** Removes a member from their team (if any). Deletes empty teams. */
     boolean removeMember(UUID memberId);
 
-    /** Clears all teams and invites. */
+    /** Clears all teams and invites. Admin / stale-recovery backup only — prefer {@link #clearTeamsFor(Collection)} per session. */
     void clearAllTeams();
+
+    /**
+     * Removes the given players from any team (and deletes empty teams). Invites for those players are cleared.
+     * Primary path when a lobby session ends or a match instance tears down.
+     */
+    void clearTeamsFor(Collection<UUID> playerIds);
 
     /** Invite player to a team name (case preserved). */
     void invite(UUID toPlayerId, String teamName);

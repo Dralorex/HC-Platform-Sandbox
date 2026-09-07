@@ -3,7 +3,7 @@ package com.hollowcrown.hub.integration;
 import com.hollowcrown.api.integration.HubPlayerMenus;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.gui.HubPartyMenu;
-import com.hollowcrown.hub.gui.LobbyJoinTemplateMenu;
+import com.hollowcrown.hub.gui.LobbyJoinMechanicMenu;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
@@ -22,7 +22,7 @@ public final class DefaultHubPlayerMenus implements HubPlayerMenus {
             player.sendMessage(Component.text("You cannot use join here.", NamedTextColor.RED));
             return;
         }
-        LobbyJoinTemplateMenu.open(player, plugin, 0);
+        LobbyJoinMechanicMenu.open(player, plugin, 0);
     }
 
     @Override

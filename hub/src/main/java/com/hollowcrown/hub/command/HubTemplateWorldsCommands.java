@@ -7,6 +7,10 @@ import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.gui.HubIlIconPreviewMenu;
 import com.hollowcrown.hub.gui.HubIlTemplateListMenu;
 import com.hollowcrown.hub.integration.HubIronLegacySupport;
+import com.hollowcrown.hub.template.HubMechanics;
+import com.hollowcrown.hub.template.HubManagedTemplateBootstrap;
+import com.hollowcrown.hub.template.HubTemplatePublishGate;
+import com.hollowcrown.hub.template.HubTemplateWorldBootstrap;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
@@ -27,16 +31,75 @@ public final class HubTemplateWorldsCommands {
     private HubTemplateWorldsCommands() {
     }
 
-    /** Resolves YAML key or world folder name to canonical worlds.yml key; prints on failure. */
-    private static Optional<String> resolveOrTell(CommandSender sender, IronLegacyTemplateAdmin admin, String raw) {
+    /**
+     * Resolves YAML key or world folder name to canonical worlds.yml key.
+     * If unknown, tries to adopt an on-disk folder under {@code hch-worlds/templates/}
+     * (or a bare world folder) into worlds.yml + Hub templates.yml, then resolves again.
+     */
+    private static Optional<String> resolveOrTell(
+            HollowCrownHubPlugin plugin,
+            CommandSender sender,
+            IronLegacyTemplateAdmin admin,
+            String raw
+    ) {
         Optional<String> k = HubIlWorldInput.resolveCanonicalKey(admin, raw);
-        if (k.isEmpty()) {
-            sender.sendMessage(Component.text(
-                    "Unknown Iron Legacy map \"" + raw + "\". Use the world folder name or worlds.yml key "
-                            + "(/hch template worlds list).",
-                    NamedTextColor.RED));
+        if (k.isPresent()) {
+            return k;
         }
-        return k;
+        if (tryAdoptDiskFolder(plugin, admin, raw)) {
+            k = HubIlWorldInput.resolveCanonicalKey(admin, raw);
+            if (k.isPresent()) {
+                sender.sendMessage(Component.text(
+                        "Registered on-disk template: " + HubIlWorldInput.folderLabel(admin, k.get()),
+                        NamedTextColor.YELLOW));
+                return k;
+            }
+        }
+        sender.sendMessage(Component.text(
+                "Unknown Iron Legacy map \"" + raw + "\". Drop a world into hch-worlds/templates/<name> "
+                        + "then run /hch template worlds discover — or use /hch template create <key>.",
+                NamedTextColor.RED));
+        return Optional.empty();
+    }
+
+    /** Registers worlds.yml + Hub row when the folder exists on disk but is not listed yet. */
+    private static boolean tryAdoptDiskFolder(
+            HollowCrownHubPlugin plugin,
+            IronLegacyTemplateAdmin admin,
+            String raw
+    ) {
+        if (raw == null || raw.isBlank()) {
+            return false;
+        }
+        String token = HubIlWorldInput.stripQuotes(raw.trim());
+        if (token.isBlank()) {
+            return false;
+        }
+        if (!admin.ensureWorldTemplateRow(token)) {
+            // Full scan may pick it up if the user used a partial/odd name
+            admin.discoverManagedTemplateFolders();
+            if (!admin.ensureWorldTemplateRow(token)) {
+                return false;
+            }
+        }
+        Optional<String> key = HubIlWorldInput.resolveCanonicalKey(admin, token);
+        String leaf = key.orElseGet(() -> {
+            String n = token.replace('\\', '/');
+            int slash = n.lastIndexOf('/');
+            return slash >= 0 ? n.substring(slash + 1) : n;
+        });
+        try {
+            plugin.templates().adoptManagedTemplateFolder(leaf);
+            // IL worlds admin path: bind mechanic so API TemplateEntry / join menus work.
+            var hubRow = plugin.templates().get(leaf);
+            if (hubRow.isPresent() && !hubRow.get().hasMechanicSelected()) {
+                plugin.templates().setMechanic(leaf, HubTemplateWorldBootstrap.IRON_LEGACY_MECHANIC_ID);
+            }
+        } catch (IllegalArgumentException ignored) {
+            // Key syntax invalid for Hub — worlds.yml row alone is still enough for edit.
+        }
+        return HubIlWorldInput.resolveCanonicalKey(admin, token).isPresent()
+                || HubIlWorldInput.resolveCanonicalKey(admin, leaf).isPresent();
     }
 
     public static boolean handle(HollowCrownHubPlugin plugin, CommandSender sender, String[] args) {
@@ -67,21 +130,76 @@ public final class HubTemplateWorldsCommands {
                 for (String line : admin.reloadAll(actor)) {
                     sender.sendMessage(Component.text(line, NamedTextColor.GRAY));
                 }
+                List<String> found = discoverAndAdopt(plugin, admin);
+                if (!found.isEmpty()) {
+                    sender.sendMessage(Component.text(
+                            "Discovered " + found.size() + " managed template folder(s): " + found,
+                            NamedTextColor.GREEN));
+                }
                 sender.sendMessage(Component.text("Reload finished.", NamedTextColor.GREEN));
                 yield true;
             }
             case "list" -> {
+                discoverAndAdopt(plugin, admin);
                 for (String line : summarize(admin)) {
                     sender.sendMessage(Component.text(line, NamedTextColor.GRAY));
                 }
                 yield true;
             }
+            case "discover" -> {
+                List<String> found = discoverAndAdopt(plugin, admin);
+                if (found.isEmpty()) {
+                    sender.sendMessage(Component.text(
+                            "No new folders under hch-worlds/templates/ (need level.dat or region/). "
+                                    + "Already registered maps are unchanged.",
+                            NamedTextColor.YELLOW));
+                } else {
+                    sender.sendMessage(Component.text(
+                            "Registered " + found.size() + " template(s) from disk: " + String.join(", ", found),
+                            NamedTextColor.GREEN));
+                    sender.sendMessage(Component.text(
+                            "Edit with /hch template worlds edit <key> — set mechanic before publish.",
+                            NamedTextColor.GRAY));
+                }
+                yield true;
+            }
             case "gui" -> {
-                if (!(sender instanceof Player p)) {
-                    sender.sendMessage(Component.text("Players only.", NamedTextColor.RED));
+                sender.sendMessage(Component.text(
+                        "Use /hch worldsgui instead of /hch template worlds gui.",
+                        NamedTextColor.YELLOW));
+                yield true;
+            }
+            case "mechanic" -> {
+                if (args.length < 5) {
+                    sender.sendMessage(Component.text(
+                            "Usage: /hch template worlds mechanic <world|key> <mechanicName>",
+                            NamedTextColor.YELLOW));
+                    sender.sendMessage(Component.text(
+                            "Use mechanic id \"vanilla\" for non-minigame worlds.", NamedTextColor.GRAY));
                     yield true;
                 }
-                p.openInventory(new HubIlTemplateListMenu(plugin, admin, 0).getInventory());
+                Optional<String> canonMech = resolveOrTell(plugin, sender, admin, args[3]);
+                if (canonMech.isEmpty()) {
+                    yield true;
+                }
+                String mechanicId = args[4].trim().toLowerCase(Locale.ROOT);
+                Optional<com.hollowcrown.hub.template.HubTemplateEntry> hubRow =
+                        HubTemplatePublishGate.resolveHubRow(plugin, admin, canonMech.get());
+                if (hubRow.isEmpty()) {
+                    sender.sendMessage(Component.text(
+                            "No Hub template linked to that world. Run /hch template setsource <hubKey> "
+                                    + HubIlWorldInput.folderLabel(admin, canonMech.get()) + " first.",
+                            NamedTextColor.RED));
+                    yield true;
+                }
+                try {
+                    plugin.templates().setMechanic(hubRow.get().templateKey(), mechanicId);
+                    sender.sendMessage(Component.text(
+                            "Mechanic for " + hubRow.get().templateKey() + " set to " + mechanicId + ".",
+                            NamedTextColor.GREEN));
+                } catch (IllegalArgumentException ex) {
+                    sender.sendMessage(Component.text(ex.getMessage(), NamedTextColor.RED));
+                }
                 yield true;
             }
             case "importhub" -> {
@@ -119,25 +237,38 @@ public final class HubTemplateWorldsCommands {
                 }
                 yield true;
             }
-            case "tp", "teleport", "edit" -> {
+            case "edit" -> {
                 if (!(sender instanceof Player p)) {
                     sender.sendMessage(Component.text("Players only.", NamedTextColor.RED));
                     yield true;
                 }
                 if (args.length < 4) {
                     sender.sendMessage(Component.text(
-                            "Usage: /hch template worlds tp <worldFolder|yamlKey>", NamedTextColor.YELLOW));
+                            "Usage: /hch template worlds edit <worldFolder|yamlKey>", NamedTextColor.YELLOW));
                     yield true;
                 }
-                Optional<String> canon = resolveOrTell(sender, admin, args[3]);
-                if (canon.isEmpty()) {
-                    yield true;
-                }
-                if (admin.teleportToEditor(p, canon.get())) {
+                try {
+                    Optional<String> canon = resolveOrTell(plugin, sender, admin, HubIlWorldInput.stripQuotes(args[3]));
+                    if (canon.isEmpty()) {
+                        yield true;
+                    }
+                    if (admin.teleportToEditor(p, canon.get())) {
+                        p.sendMessage(Component.text(
+                                "Template editor: " + HubIlWorldInput.folderLabel(admin, canon.get()),
+                                NamedTextColor.GREEN));
+                    } else {
+                        p.sendMessage(Component.text(
+                                "Could not open template (unknown key or world folder missing/corrupt?).",
+                                NamedTextColor.RED));
+                    }
+                } catch (Throwable ex) {
+                    plugin.getLogger().log(java.util.logging.Level.SEVERE,
+                            "template worlds edit failed for " + args[3], ex);
                     p.sendMessage(Component.text(
-                            "Template editor: " + HubIlWorldInput.folderLabel(admin, canon.get()), NamedTextColor.GREEN));
-                } else {
-                    p.sendMessage(Component.text("Could not open template (unknown key or world missing?).", NamedTextColor.RED));
+                            "Edit failed: " + ex.getClass().getSimpleName()
+                                    + (ex.getMessage() != null ? " — " + ex.getMessage() : "")
+                                    + " (see console).",
+                            NamedTextColor.RED));
                 }
                 yield true;
             }
@@ -147,8 +278,16 @@ public final class HubTemplateWorldsCommands {
                             "Usage: /hch template worlds publish <worldFolder|yamlKey>", NamedTextColor.YELLOW));
                     yield true;
                 }
-                Optional<String> canonPub = resolveOrTell(sender, admin, args[3]);
+                Optional<String> canonPub = resolveOrTell(plugin, sender, admin, args[3]);
                 if (canonPub.isEmpty()) {
+                    yield true;
+                }
+                admin.ensureWorldTemplateRow(canonPub.get());
+                if (!HubTemplatePublishGate.canPublish(plugin, admin, canonPub.get())) {
+                    HubTemplatePublishGate.sendMechanicRequired(sender);
+                    if (sender instanceof org.bukkit.entity.Player pl) {
+                        plugin.templatePublishPending().register(pl.getUniqueId(), canonPub.get());
+                    }
                     yield true;
                 }
                 if (admin.publish(canonPub.get())) {
@@ -166,7 +305,7 @@ public final class HubTemplateWorldsCommands {
                             "Usage: /hch template worlds delete <worldFolder|yamlKey>", NamedTextColor.YELLOW));
                     yield true;
                 }
-                Optional<String> canonDel = resolveOrTell(sender, admin, args[3]);
+                Optional<String> canonDel = resolveOrTell(plugin, sender, admin, args[3]);
                 if (canonDel.isEmpty()) {
                     yield true;
                 }
@@ -185,7 +324,7 @@ public final class HubTemplateWorldsCommands {
                             NamedTextColor.YELLOW));
                     yield true;
                 }
-                Optional<String> canonRb = resolveOrTell(sender, admin, args[3]);
+                Optional<String> canonRb = resolveOrTell(plugin, sender, admin, args[3]);
                 if (canonRb.isEmpty()) {
                     yield true;
                 }
@@ -205,7 +344,7 @@ public final class HubTemplateWorldsCommands {
                             "Usage: /hch template worlds snapshots <worldFolder|yamlKey>", NamedTextColor.YELLOW));
                     yield true;
                 }
-                Optional<String> canonSn = resolveOrTell(sender, admin, args[3]);
+                Optional<String> canonSn = resolveOrTell(plugin, sender, admin, args[3]);
                 if (canonSn.isEmpty()) {
                     yield true;
                 }
@@ -228,7 +367,7 @@ public final class HubTemplateWorldsCommands {
                             "Usage: /hch template worlds toggle <worldFolder|yamlKey>", NamedTextColor.YELLOW));
                     yield true;
                 }
-                Optional<String> canonTg = resolveOrTell(sender, admin, args[3]);
+                Optional<String> canonTg = resolveOrTell(plugin, sender, admin, args[3]);
                 if (canonTg.isEmpty()) {
                     yield true;
                 }
@@ -264,6 +403,10 @@ public final class HubTemplateWorldsCommands {
         };
     }
 
+    private static List<String> discoverAndAdopt(HollowCrownHubPlugin plugin, IronLegacyTemplateAdmin admin) {
+        return HubManagedTemplateBootstrap.syncFromDisk(plugin, admin).newlyRegisteredIlKeys();
+    }
+
     private static List<String> summarize(IronLegacyTemplateAdmin admin) {
         List<String> lines = new ArrayList<>();
         var list = admin.listTemplates();
@@ -282,11 +425,20 @@ public final class HubTemplateWorldsCommands {
     private static void help(CommandSender sender) {
         sender.sendMessage(Component.text("Iron Legacy worlds (/hch template worlds)", NamedTextColor.GOLD));
         sender.sendMessage(Component.text(
-                " list · reload · gui · importhub [key] [--dry-run] [--sync]",
+                " list · discover · reload · importhub [key] [--dry-run] [--sync]",
                 NamedTextColor.GRAY));
         sender.sendMessage(Component.text(
-                " tp <world|key> · publish <world|key> · delete <world|key> · rollback <world|key> [snap]",
+                " discover — scan hch-worlds/templates/ and register dropped world folders",
+                NamedTextColor.DARK_GRAY));
+        sender.sendMessage(Component.text(
+                " edit <world|key> · publish <world|key> · mechanic <world|key> <id>",
                 NamedTextColor.GRAY));
+        sender.sendMessage(Component.text(
+                " delete <world|key> · rollback <world|key> [snap]",
+                NamedTextColor.GRAY));
+        sender.sendMessage(Component.text(
+                " GUI: /hch worldsgui  (replaces template worlds gui)",
+                NamedTextColor.DARK_GRAY));
         sender.sendMessage(Component.text(
                 " snapshots <world|key> · toggle <world|key> · iconpreview [iconKey]",
                 NamedTextColor.GRAY));

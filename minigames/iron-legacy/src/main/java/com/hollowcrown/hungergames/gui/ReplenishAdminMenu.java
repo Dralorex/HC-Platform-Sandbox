@@ -47,7 +47,7 @@ public class ReplenishAdminMenu extends MenuView {
         inv.setItem(12, button(Material.PAPER, "§aTrigger T3", null));
         inv.setItem(13, button(Material.PAPER, "§aTrigger T4", null));
         inv.setItem(14, button(Material.CLOCK, "§bStart Schedule", List.of(
-                "§7Uses your current world + this map's replenish.yml",
+                "§7Loot from replenish.yml · coords per map",
                 "§7(first refill delay + interval)")));
         inv.setItem(15, button(Material.BARRIER, "§cStop Schedule", null));
         inv.setItem(16, button(Material.CHEST, "§6Chests", List.of("§7View/remove tracked chests")));

@@ -40,6 +40,7 @@ import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
@@ -81,6 +82,10 @@ public final class HubWorldManager implements HubWorldApi, Listener {
     private final Map<UUID, Location> pvpRespawnPads = new HashMap<>();
     private final Map<UUID, Long> lastPvpPlateActivationMs = new HashMap<>();
     private final Map<UUID, Long> lastPvpPadInactivePromptAt = new HashMap<>();
+    /** Players who were inside the hub PvP zone when PvP was last active (for respawn routing). */
+    private final Set<UUID> pvpZoneParticipants = new HashSet<>();
+    /** Previous tick: was the player inside the PvP zone (for re-entry detection). */
+    private final Map<UUID, Boolean> pvpZoneWasInside = new HashMap<>();
     private final Map<UUID, Long> suppressGameLobbyGuiOpenUntil = new HashMap<>();
 
     private Location pvpZonePos1;
@@ -173,11 +178,21 @@ public final class HubWorldManager implements HubWorldApi, Listener {
                 && loc.getZ() >= minZ && loc.getZ() <= maxZ;
     }
 
-    /** Respawn location for PvP: pad > zone spawn > hub spawn. */
+    /**
+     * Respawn while hub PvP is active: pad (if chosen) &gt; zone spawn (if they fought in-zone) &gt; hub spawn.
+     * Outside the PvP zone, hub spawn is always used.
+     */
     private Location resolvePvpRespawnLocation(UUID id) {
+        if (!pvpActive.contains(id)) {
+            return hubCenterLocation().orElse(null);
+        }
         Location pad = pvpRespawnPads.get(id);
-        if (pad != null) return pad;
-        if (pvpZoneSpawn != null) return pvpZoneSpawn;
+        if (pad != null) {
+            return pad;
+        }
+        if (pvpZoneParticipants.contains(id) && pvpZoneSpawn != null) {
+            return pvpZoneSpawn;
+        }
         return hubCenterLocation().orElse(null);
     }
 
@@ -243,6 +258,11 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         buildMode.remove(id);
         player.setGameMode(GameMode.SURVIVAL);
         applyHubUtilityLoadout(player, true, true);
+    }
+
+    @Override
+    public boolean sendToHubSpawn(Player player) {
+        return com.hollowcrown.hub.platform.HubHubRouting.sendToHubWithPartyRouting(plugin, player);
     }
 
     @Override
@@ -335,17 +355,32 @@ public final class HubWorldManager implements HubWorldApi, Listener {
             return;
         }
         var partySpec = readHubPartySpec();
+        var teamSpec = readLimboTeamSpec();
         Map<Integer, ItemStack> expected = new HashMap<>();
         expected.put(0, lobbySword());
         if (isCompassEnabled()) {
             expected.put(getCompassSlotIndex(), lobbyCompass());
         }
+        expected.put(teamSpec.slotIndex(), utilityItem(teamSpec));
         expected.put(partySpec.slotIndex(), utilityItem(partySpec));
         var leaveSpec = readLimboLeaveSpec();
         expected.put(leaveSpec.slotIndex(), utilityItem(leaveSpec));
         normalizeExpectedLockedHotbar(player, expected);
         int held = Math.max(0, Math.min(8, hotbarSlotAfterApply));
         player.getInventory().setHeldItemSlot(held);
+    }
+
+    @Override
+    public boolean isLimboTeamUtilityItem(Player player, ItemStack stack) {
+        if (player == null || stack == null || stack.getType() == Material.AIR) {
+            return false;
+        }
+        if (!isLockedHubItem(stack)) {
+            return false;
+        }
+        var spec = readLimboTeamSpec();
+        return player.getInventory().getHeldItemSlot() == spec.slotIndex()
+                && stack.getType() == spec.material();
     }
 
     @Override
@@ -436,6 +471,20 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         int slot = Math.max(1, Math.min(9, c.getInt("items.hub.party.slot", 9)));
         String materialRaw = c.getString("items.hub.party.material", "NETHER_STAR");
         String name = c.getString("items.hub.party.name", "Party");
+        Material material;
+        try {
+            material = Material.valueOf(materialRaw.toUpperCase());
+        } catch (Exception ignored) {
+            material = Material.NETHER_STAR;
+        }
+        return new UtilityItemSpec(slot - 1, material, name);
+    }
+
+    private UtilityItemSpec readLimboTeamSpec() {
+        FileConfiguration c = hw();
+        int slot = Math.max(1, Math.min(9, c.getInt("items.limbo.team.slot", 3)));
+        String materialRaw = c.getString("items.limbo.team.material", "NETHER_STAR");
+        String name = c.getString("items.limbo.team.name", "Match Team");
         Material material;
         try {
             material = Material.valueOf(materialRaw.toUpperCase());
@@ -570,9 +619,10 @@ public final class HubWorldManager implements HubWorldApi, Listener {
     private void wipeInventory(Player p) {
         PlayerInventory inv = p.getInventory();
         inv.clear();
-        inv.setArmorContents(null);
-        inv.setExtraContents(null);
-        inv.setItemInOffHand(null);
+        // Paper rejects null arrays / null offhand — use empty slots.
+        inv.setArmorContents(new ItemStack[4]);
+        inv.setExtraContents(new ItemStack[inv.getExtraContents().length]);
+        inv.setItemInOffHand(new ItemStack(Material.AIR));
     }
 
     private boolean isLockedHubItem(ItemStack item) {
@@ -583,9 +633,9 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         return flag != null && flag == (byte) 1;
     }
 
-    private boolean isHoldingLobbySword(Player p) {
+    private boolean isHoldingHubPvpSword(Player p) {
         ItemStack main = p.getInventory().getItemInMainHand();
-        return main != null && main.getType() == swordMaterial();
+        return main != null && isLockedHubItem(main) && main.getType() == swordMaterial();
     }
 
     private boolean canModifyHub(Player p) {
@@ -637,6 +687,9 @@ public final class HubWorldManager implements HubWorldApi, Listener {
     private void activatePvp(Player p) {
         UUID id = p.getUniqueId();
         pvpActive.add(id);
+        if (isInPvpZone(p)) {
+            pvpZoneParticipants.add(id);
+        }
         activateCountdown.remove(id);
         deactivateCountdown.remove(id);
         pendingDeactivateOnDeath.remove(id);
@@ -649,6 +702,7 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         activateCountdown.remove(id);
         deactivateCountdown.remove(id);
         pendingDeactivateOnDeath.remove(id);
+        pvpZoneParticipants.remove(id);
 
         boolean hadPad = pvpRespawnPads.containsKey(id);
         pvpRespawnPads.remove(id);
@@ -694,6 +748,76 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         ));
     }
 
+    /** Inside the PvP zone while PvP is off: select sword and activate immediately. */
+    private void activatePvpOnZoneReentry(Player p) {
+        if (p == null || !p.isOnline() || canModifyHub(p) || !isInHubProtection(p)) {
+            return;
+        }
+        if (!isInPvpZone(p)) {
+            return;
+        }
+        UUID id = p.getUniqueId();
+        if (pvpActive.contains(id)) {
+            return;
+        }
+        p.getInventory().setHeldItemSlot(0);
+        activateCountdown.remove(id);
+        deactivateCountdown.remove(id);
+        pendingDeactivateOnDeath.remove(id);
+        activatePvp(p);
+    }
+
+    private void trackPvpZoneBoundary(Player p) {
+        if (p == null || canModifyHub(p) || !isInHubProtection(p)) {
+            return;
+        }
+        UUID id = p.getUniqueId();
+        boolean inside = isInPvpZone(p);
+        boolean wasInside = pvpZoneWasInside.getOrDefault(id, false);
+        pvpZoneWasInside.put(id, inside);
+        if (inside && !wasInside) {
+            activatePvpOnZoneReentry(p);
+        }
+    }
+
+    private void processHubPvpOptIn(Player p) {
+        UUID id = p.getUniqueId();
+        boolean holding = isHoldingHubPvpSword(p);
+        boolean inZone = isInPvpZone(p);
+
+        if (holding) {
+            deactivateCountdown.remove(id);
+            pendingDeactivateOnDeath.remove(id);
+            if (!pvpActive.contains(id)) {
+                if (inZone) {
+                    activatePvp(p);
+                } else {
+                    int left = activateCountdown.getOrDefault(id, 10);
+                    if (left <= 0) {
+                        activatePvp(p);
+                    } else {
+                        sendPvpStatusLine(p, "PVP mode Activated in: " + left, NamedTextColor.YELLOW);
+                        activateCountdown.put(id, left - 1);
+                    }
+                }
+            }
+            return;
+        }
+
+        activateCountdown.remove(id);
+        if (!pvpActive.contains(id)) {
+            return;
+        }
+        int left = deactivateCountdown.getOrDefault(id, 5);
+        pendingDeactivateOnDeath.add(id);
+        if (left <= 0) {
+            deactivatePvp(p, true);
+        } else {
+            sendPvpStatusLine(p, "PVP mode Deactivated in: " + left, NamedTextColor.YELLOW);
+            deactivateCountdown.put(id, left - 1);
+        }
+    }
+
     private void startPvpStateTask() {
         new BukkitRunnable() {
             @Override public void run() {
@@ -721,49 +845,28 @@ public final class HubWorldManager implements HubWorldApi, Listener {
                         }
                     });
 
-                    UUID id = p.getUniqueId();
-                    boolean inZone = isInPvpZone(p);
-
-                    if (inZone && !canModifyHub(p)) {
-                        if (!pvpActive.contains(id)) {
-                            activatePvp(p);
-                            p.getInventory().setHeldItemSlot(0);
-                        }
-                        activateCountdown.remove(id);
-                        deactivateCountdown.remove(id);
-                        pendingDeactivateOnDeath.remove(id);
-                        continue;
-                    }
-
-                    boolean holding = isHoldingLobbySword(p);
-
-                    if (holding) {
-                        deactivateCountdown.remove(id);
-                        pendingDeactivateOnDeath.remove(id);
-                        if (pvpActive.contains(id)) continue;
-                        int left = activateCountdown.getOrDefault(id, 10);
-                        if (left <= 0) {
-                            activatePvp(p);
-                        } else {
-                            sendPvpStatusLine(p, "PVP mode Activated in: " + left, NamedTextColor.YELLOW);
-                            activateCountdown.put(id, left - 1);
-                        }
-                        continue;
-                    }
-
-                    activateCountdown.remove(id);
-                    if (!pvpActive.contains(id)) continue;
-                    int left = deactivateCountdown.getOrDefault(id, 5);
-                    pendingDeactivateOnDeath.add(id);
-                    if (left <= 0) {
-                        deactivatePvp(p, true);
-                    } else {
-                        sendPvpStatusLine(p, "PVP mode Deactivated in: " + left, NamedTextColor.YELLOW);
-                        deactivateCountdown.put(id, left - 1);
+                    if (!canModifyHub(p)) {
+                        trackPvpZoneBoundary(p);
+                        processHubPvpOptIn(p);
                     }
                 }
             }
         }.runTaskTimer(plugin, 20L, 20L);
+    }
+
+    /** Clears hub PvP opt-in / respawn invulnerability (e.g. when leaving limbo for a match). */
+    public void clearPvpOptInState(Player player) {
+        if (player == null) {
+            return;
+        }
+        UUID id = player.getUniqueId();
+        pvpActive.remove(id);
+        activateCountdown.remove(id);
+        deactivateCountdown.remove(id);
+        pendingDeactivateOnDeath.remove(id);
+        pvpZoneParticipants.remove(id);
+        pvpZoneWasInside.remove(id);
+        pvpInvulnerableUntil.remove(id);
     }
 
     private void startInvulnerabilityParticleTask() {
@@ -771,6 +874,9 @@ public final class HubWorldManager implements HubWorldApi, Listener {
             @Override public void run() {
                 long now = System.currentTimeMillis();
                 for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (!isInHubProtection(p) || !pvpActive.contains(p.getUniqueId())) {
+                        continue;
+                    }
                     Long until = pvpInvulnerableUntil.get(p.getUniqueId());
                     if (until == null || until <= now) continue;
                     Location base = p.getLocation().clone().add(0, 0.1, 0);
@@ -816,18 +922,17 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         UUID id = p.getUniqueId();
 
         boolean inHub = isInHubProtection(p) || isLocationInHubProtection(e.getRespawnLocation());
-        if (inHub || pendingDeactivateOnDeath.contains(id) || pvpActive.contains(id) || pvpRespawnPads.containsKey(id)) {
+        if (inHub || pendingDeactivateOnDeath.contains(id) || pvpActive.contains(id)) {
             Location resp = resolvePvpRespawnLocation(id);
-            if (resp == null) {
-                hubCenterLocation().ifPresent(loc -> e.setRespawnLocation(loc));
-            } else {
-                e.setRespawnLocation(resp);
-            }
+            hubCenterLocation().ifPresent(loc -> e.setRespawnLocation(resp != null ? resp : loc));
+            boolean grantInvuln = pvpActive.contains(id) || pendingDeactivateOnDeath.contains(id);
             new BukkitRunnable() {
                 @Override public void run() {
                     if (!p.isOnline()) return;
                     p.setNoDamageTicks(60);
-                    pvpInvulnerableUntil.put(id, System.currentTimeMillis() + 3000L);
+                    if (grantInvuln) {
+                        pvpInvulnerableUntil.put(id, System.currentTimeMillis() + 3000L);
+                    }
                     if (pvpActive.contains(id)) {
                         p.getInventory().setHeldItemSlot(0);
                     }
@@ -1025,6 +1130,31 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         if (isLockedHubItem(e.getOldCursor())) {
             e.setCancelled(true);
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onItemHeldForZonePvp(PlayerItemHeldEvent e) {
+        Player p = e.getPlayer();
+        if (!isInHubProtection(p) || canModifyHub(p) || !isInPvpZone(p)) {
+            return;
+        }
+        if (e.getNewSlot() != 0) {
+            return;
+        }
+        activatePvpOnZoneReentry(p);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onMoveIntoPvpZone(PlayerMoveEvent e) {
+        if (!isInHubProtection(e.getPlayer()) || canModifyHub(e.getPlayer())) {
+            return;
+        }
+        Location from = e.getFrom();
+        Location to = e.getTo();
+        if (to == null || isLocationInPvpZone(from) || !isLocationInPvpZone(to)) {
+            return;
+        }
+        activatePvpOnZoneReentry(e.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)

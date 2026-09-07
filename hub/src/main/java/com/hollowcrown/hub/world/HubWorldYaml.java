@@ -76,6 +76,9 @@ public final class HubWorldYaml {
         setIfMissing(cfg, "items.hub.party.slot", 9);
         setIfMissing(cfg, "items.hub.party.material", "NETHER_STAR");
         setIfMissing(cfg, "items.hub.party.name", "Party");
+        setIfMissing(cfg, "items.limbo.team.slot", 3);
+        setIfMissing(cfg, "items.limbo.team.material", "NETHER_STAR");
+        setIfMissing(cfg, "items.limbo.team.name", "Match Team");
         setIfMissing(cfg, "items.limbo.leave.slot", 9);
         setIfMissing(cfg, "items.limbo.leave.material", "BARRIER");
         setIfMissing(cfg, "items.limbo.leave.name", "Leave Lobby");

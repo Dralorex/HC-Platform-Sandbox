@@ -89,6 +89,14 @@ public final class HubAdminShellMenu extends HubMenuView {
                         Component.empty(),
                         Component.text("Click for lobby admin GUI", NamedTextColor.GREEN))));
 
+        inv.setItem(33, btn(Material.IRON_BARS,
+                Component.text("Plugin policies", NamedTextColor.LIGHT_PURPLE),
+                List.of(
+                        Component.text("Whitelist/blacklist server plugins", NamedTextColor.GRAY),
+                        Component.text("in hub, limbo, and active matches.", NamedTextColor.GRAY),
+                        Component.empty(),
+                        Component.text("Click to configure", NamedTextColor.GREEN))));
+
         inv.setItem(40, btn(Material.WRITABLE_BOOK,
                 Component.text("CLI cheatsheet", NamedTextColor.GRAY),
                 List.of(
@@ -144,6 +152,10 @@ public final class HubAdminShellMenu extends HubMenuView {
         }
         if (slot == 31 || slot == 48) {
             plugin.adminGui().openLobbyAdminShortcut(p);
+            return;
+        }
+        if (slot == 33) {
+            plugin.adminGui().openPluginPolicyAdmin(p);
             return;
         }
     }

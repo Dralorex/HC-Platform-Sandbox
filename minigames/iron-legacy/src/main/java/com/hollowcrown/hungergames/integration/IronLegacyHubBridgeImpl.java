@@ -10,4 +10,9 @@ public record IronLegacyHubBridgeImpl(HungerGamesPlugin plugin) implements IronL
     public void recordHubProtectedKill(Player killer, Player victim) {
         plugin.leaderboard().addKill(killer.getUniqueId());
     }
+
+    @Override
+    public boolean isPlayerInActiveMatchWorld(Player player) {
+        return plugin.game().isPlayerInActiveMatchWorld(player);
+    }
 }

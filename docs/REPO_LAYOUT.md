@@ -34,7 +34,10 @@ HC-Platform/                          # Git root (this repo)
 │
 ├── docs/                             # Project documentation
 │   ├── PACKAGING.md
-│   └── REPO_LAYOUT.md
+│   ├── REPO_LAYOUT.md
+│   ├── PLATFORM_FEATURES.md          # Copy-paste feature list (keep in sync with code)
+│   ├── PLATFORM_COMMANDS.md          # Copy-paste command list (keep in sync with code)
+│   └── PLATFORM_REFERENCE.md         # Detailed GUIs, integration, config
 │
 └── scripts/                          # Maintainer scripts
     ├── build.ps1
@@ -57,6 +60,7 @@ HC-Platform/                          # Git root (this repo)
 2. Add `<module>minigames/<id></module>` to root `pom.xml`.
 3. Register mechanic on Hub `GamePlatform` (see Iron Legacy).
 4. Document in `CHANGELOG.md` under `[Unreleased]`.
+5. Update `docs/PLATFORM_FEATURES.md` / `docs/PLATFORM_COMMANDS.md` if the minigame adds commands or player-visible features.
 
 ## What does not belong here
 

@@ -4,7 +4,10 @@ import com.hollowcrown.api.integration.IronLegacyHubImportResult;
 import com.hollowcrown.api.integration.IronLegacyTemplateAdmin;
 import com.hollowcrown.api.integration.IronLegacyTemplateRow;
 import com.hollowcrown.api.integration.IronLegacyWorldsCatalog;
+import com.hollowcrown.api.integration.HubTemplatePublishLifecycle;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
+import org.bukkit.Bukkit;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import com.hollowcrown.hungergames.managers.TemplateWorldManager;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
@@ -58,7 +61,8 @@ public record IronLegacyTemplateAdminImpl(HungerGamesPlugin plugin) implements I
         plugin.templates().applyEditorWorldRules(player.getWorld());
         if (!plugin.templates().restoreEditorInventory(player, templateKey)) {
             player.getInventory().clear();
-            player.getInventory().setArmorContents(null);
+            // Paper rejects null armor arrays — use empty slots.
+            player.getInventory().setArmorContents(new ItemStack[4]);
             player.getInventory().setItemInOffHand(new ItemStack(org.bukkit.Material.AIR));
         }
         player.setGameMode(GameMode.CREATIVE);
@@ -66,8 +70,62 @@ public record IronLegacyTemplateAdminImpl(HungerGamesPlugin plugin) implements I
     }
 
     @Override
+    public boolean isInTemplateEditorWorld(Player player) {
+        if (player == null || player.getWorld() == null) {
+            return false;
+        }
+        return plugin.templates().getTemplateByWorldName(player.getWorld().getName()) != null;
+    }
+
+    @Override
+    public void prepareLeavingTemplateEditor(Player player) {
+        if (player == null) {
+            return;
+        }
+        plugin.templates().rememberResumeSpotLeavingTemplate(player);
+        plugin.templates().saveEditorInventoryIfTemplate(player);
+    }
+
+    @Override
+    public void finishHubReturnFromTemplateEditor(Player player) {
+        if (player == null) {
+            return;
+        }
+        plugin.templates().restoreLobbyAfterLeavingTemplate(player);
+    }
+
+    @Override
+    public boolean ensureWorldTemplateRow(String templateKey) {
+        return plugin.templates().ensureTemplateRow(templateKey);
+    }
+
+    @Override
+    public List<String> discoverManagedTemplateFolders() {
+        return plugin.templates().discoverManagedTemplateFolders();
+    }
+
+    @Override
+    public List<String> listManagedTemplateFolderKeys() {
+        return plugin.templates().listManagedTemplateFolderKeys();
+    }
+
+    @Override
+    public List<String> syncManagedTemplatesFromDisk() {
+        return plugin.templates().syncManagedTemplatesFromDisk();
+    }
+
+    @Override
     public boolean publish(String templateKey) {
-        return requireWorldsCatalog().publishTemplate(templateKey);
+        plugin.templates().ensureTemplateRow(templateKey);
+        boolean ok = plugin.templates().publishTemplate(templateKey);
+        if (ok) {
+            RegisteredServiceProvider<HubTemplatePublishLifecycle> reg =
+                    Bukkit.getServicesManager().getRegistration(HubTemplatePublishLifecycle.class);
+            if (reg != null) {
+                reg.getProvider().onTemplatePublished(templateKey);
+            }
+        }
+        return ok;
     }
 
     @Override
@@ -101,6 +159,10 @@ public record IronLegacyTemplateAdminImpl(HungerGamesPlugin plugin) implements I
         try {
             plugin.templates().reload();
         } catch (Throwable ignored) {
+        }
+        List<String> discovered = plugin.templates().syncManagedTemplatesFromDisk();
+        if (!discovered.isEmpty()) {
+            lines.add("Discovered managed templates: " + String.join(", ", discovered));
         }
         var recovery = plugin.templates().recoverStaleInstances();
         try {

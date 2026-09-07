@@ -1,7 +1,7 @@
 package com.hollowcrown.hub.command;
 
 import com.hollowcrown.hub.HollowCrownHubPlugin;
-import com.hollowcrown.hub.gui.LobbyJoinTemplateMenu;
+import com.hollowcrown.hub.gui.LobbyJoinMechanicMenu;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
@@ -43,7 +43,7 @@ public final class HubJoinCommands {
                 return true;
             }
         }
-        LobbyJoinTemplateMenu.open(player, plugin, page);
+        LobbyJoinMechanicMenu.open(player, plugin, page);
         return true;
     }
 }

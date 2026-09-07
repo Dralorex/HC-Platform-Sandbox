@@ -29,6 +29,9 @@ public final class HubGuiCommands {
             return true;
         }
         String sub = args.length >= 2 ? args[1].toLowerCase(Locale.ROOT) : "admin";
+        if (sub.equals("worldsgui") || sub.equals("worldgui") || sub.equals("worlds")) {
+            return openWorldsGui(plugin, sender);
+        }
         return switch (sub) {
             case "help", "?" -> {
                 help(sender);
@@ -65,10 +68,29 @@ public final class HubGuiCommands {
         };
     }
 
+    public static boolean openWorldsGui(HollowCrownHubPlugin plugin, CommandSender sender) {
+        if (!sender.hasPermission("hollowcrownhub.admin")) {
+            sender.sendMessage(Component.text("You need hollowcrownhub.admin.", NamedTextColor.RED));
+            return true;
+        }
+        if (!(sender instanceof Player p)) {
+            sender.sendMessage(Component.text("Players only.", NamedTextColor.RED));
+            return true;
+        }
+        var il = com.hollowcrown.hub.integration.HubIronLegacySupport.ilAdmin();
+        if (il.isEmpty()) {
+            sender.sendMessage(Component.text("Iron Legacy admin API unavailable.", NamedTextColor.RED));
+            return true;
+        }
+        p.openInventory(new HubIlTemplateListMenu(plugin, il.get(), 0).getInventory());
+        return true;
+    }
+
     private static void help(CommandSender sender) {
         sender.sendMessage(Component.text("Hub admin GUIs (/hch gui)", NamedTextColor.GOLD));
+        sender.sendMessage(Component.text(" worldsgui — Iron Legacy template list & actions", NamedTextColor.GRAY));
         sender.sendMessage(Component.text(" admin — multi-tab home (Iron Legacy, templates, queues, lobby)", NamedTextColor.GRAY));
-        sender.sendMessage(Component.text(" maps — Iron Legacy template list & actions (aliases: ironlegacy, il)", NamedTextColor.GRAY));
+        sender.sendMessage(Component.text(" maps — same as worldsgui (aliases: ironlegacy, il)", NamedTextColor.GRAY));
         sender.sendMessage(Component.text(" templates — browse Hub templates.yml rows", NamedTextColor.GRAY));
         sender.sendMessage(Component.text(" queues — live queue depth per template", NamedTextColor.GRAY));
         sender.sendMessage(Component.text(" lobby — lobby instance admin chest", NamedTextColor.GRAY));

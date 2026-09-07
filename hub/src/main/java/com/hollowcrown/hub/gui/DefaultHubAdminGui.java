@@ -44,4 +44,9 @@ public final class DefaultHubAdminGui implements HubAdminGui {
     public void openLobbyAdminShortcut(Player player) {
         LobbyAdminMenu.open(player, plugin, 0);
     }
+
+    @Override
+    public void openPluginPolicyAdmin(Player player) {
+        player.openInventory(new HubPluginAllocationLandingMenu(plugin).getInventory());
+    }
 }

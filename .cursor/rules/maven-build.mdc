@@ -1,0 +1,19 @@
+---
+description: Maven executable path for HC-Platform builds (not on PATH in Cursor shells)
+alwaysApply: true
+---
+
+# Maven build (HC-Platform)
+
+`mvn` is **not** on PATH in Cursor agent shells. Use the full path:
+
+```powershell
+cd "c:\Users\super\0. The Hollow Crown\plugins\0. HC-Plugins\HC-Platform"
+& "C:\apache-maven-3.9.16\bin\mvn.cmd" clean package -DskipTests
+```
+
+- **Maven home:** `C:\apache-maven-3.9.16`
+- **Executable:** `C:\apache-maven-3.9.16\bin\mvn.cmd`
+- **JDK on PATH:** `C:\Program Files\Microsoft\jdk-21.0.11.10-hotspot\bin`
+
+For zip/ship after a successful build, follow `release-versioning.mdc` (no tag bump unless the user asks to up tags).

@@ -1,7 +1,9 @@
 package com.hollowcrown.hungergames.managers;
 
+import com.hollowcrown.api.integration.PreMatchLimboService;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
 import com.hollowcrown.hungergames.integration.HubIntegrationRouting;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import com.hollowcrown.hungergames.util.TeamColorRgb;
 import org.bukkit.*;
 import org.bukkit.ChatColor;
@@ -81,6 +83,31 @@ public class GameManager implements Listener {
 
     public boolean isMatchParticipant(UUID id) {
         return participants.contains(id);
+    }
+
+    /**
+     * True when {@code player} is inside the active match world (freeze or running). Used by Hub
+     * for scope resolution (e.g. plugin policy MATCH scope) and post-game routing.
+     */
+    private static void scheduleLimboZoneClearAfterSpawnPads(String instanceWorldName, String templateKey) {
+        RegisteredServiceProvider<PreMatchLimboService> reg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
+        if (reg == null) {
+            return;
+        }
+        reg.getProvider().clearLimboZoneAfterSpawnPads(instanceWorldName, templateKey);
+    }
+
+    public boolean isPlayerInActiveMatchWorld(Player player) {
+        if (player == null) return false;
+        if (state == State.LOBBY || state == State.ENDED) return false;
+        World w = player.getWorld();
+        if (w == null) return false;
+        String name = w.getName();
+        if (activeInstanceWorldName != null && activeInstanceWorldName.equalsIgnoreCase(name)) {
+            return true;
+        }
+        return currentWorld != null && currentWorld.getName().equalsIgnoreCase(name);
     }
     public void markJoinIntentCounted(Player p) {
         UUID id = p.getUniqueId();
@@ -262,6 +289,8 @@ public class GameManager implements Listener {
         final World launchWorld = world;
         final WorldGameSettings ws = activeMatchSettings;
 
+        final boolean fromLimboLaunch = immediateTeleportFromLimbo;
+        final String limboClearTemplateKey = activeMatchTemplateKey;
         Runnable doTeleportPhase = () -> {
             new BukkitRunnable() {
             @Override public void run() {
@@ -277,14 +306,18 @@ public class GameManager implements Listener {
                     // Match launch transition policy for normal counted players.
                     if (countedParticipants.contains(p.getUniqueId())) {
                         p.getInventory().clear();
-                        p.getInventory().setArmorContents(null);
+                        p.getInventory().setArmorContents(new ItemStack[4]);
                         p.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
                         boolean keepAdventure = ws.keepAdventureOnStart();
                         p.setGameMode(keepAdventure ? GameMode.ADVENTURE : GameMode.SURVIVAL);
                     }
                     p.setFoodLevel(20);
-                    p.setSaturation(20f);
+                    p.setSaturation(5f);
                     p.setHealth(Math.min(20.0, p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue()));
+                }
+
+                if (fromLimboLaunch && limboClearTemplateKey != null) {
+                    scheduleLimboZoneClearAfterSpawnPads(launchWorld.getName(), limboClearTemplateKey);
                 }
 
                 try {
@@ -457,7 +490,7 @@ public class GameManager implements Listener {
         hardFreezeActive = false;
         activeMatchTemplateKey = null;
         activeMatchSettings = null;
-        try { teamManager.clearAllTeams(); } catch (Throwable ignored) {}
+        clearMatchTeams();
 
         // Cleanup: remove scoreboard teams we created and reset player display/list names
         try {
@@ -496,26 +529,39 @@ public class GameManager implements Listener {
         try { plugin.leaderboardSidebar().refreshAll(); } catch (Throwable ignored) {}
     }
 
+    /** Clears match teams for this instance only — never wipes other lobbies/sessions. */
+    private void clearMatchTeams() {
+        try {
+            Set<UUID> scoped = new HashSet<>(participants);
+            scoped.addAll(eliminated);
+            if (activeInstanceWorldName != null) {
+                World w = Bukkit.getWorld(activeInstanceWorldName);
+                if (w != null) {
+                    for (Player p : w.getPlayers()) {
+                        scoped.add(p.getUniqueId());
+                    }
+                }
+            }
+            if (!scoped.isEmpty()) {
+                teamManager.clearTeamsFor(scoped);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
     private void evacuatePlayersFromInstance(String instanceWorldName) {
         if (instanceWorldName == null || instanceWorldName.isBlank()) return;
         World instance = Bukkit.getWorld(instanceWorldName);
         if (instance == null) return;
         List<Player> players = new ArrayList<>(instance.getPlayers());
         if (players.isEmpty()) return;
-        String hubServer = plugin.files().gameflow().getString("velocity.hubServerId", "hub-1");
-        World safe = Bukkit.getWorlds().stream()
-                .filter(w -> !w.getName().equalsIgnoreCase(instanceWorldName))
-                .findFirst().orElse(null);
+        Set<UUID> handled = new java.util.HashSet<>();
         for (Player p : players) {
-            if (plugin.serverRole().velocityEnabled()
-                    && !HubIntegrationRouting.hubTargetIsThisServer(plugin)) {
-                if (safe != null) {
-                    p.teleport(safe.getSpawnLocation());
-                }
-                plugin.velocity().connectPlayer(p, hubServer);
-            } else {
-                plugin.lobby().sendToLobbyExact(p, true, true);
-            }
+            if (!handled.add(p.getUniqueId())) continue;
+            plugin.hollowPartyService().flatMap(ps -> ps.partyForMember(p.getUniqueId()))
+                    .filter(pv -> pv.isLeader(p.getUniqueId()))
+                    .ifPresent(pv -> handled.addAll(pv.membersJoinOrder()));
+            plugin.lobby().sendToLobbyExact(p, true, true);
         }
     }
 
@@ -878,7 +924,7 @@ public class GameManager implements Listener {
     private void sendPlayerToHub(Player p) {
         if (p == null) return;
         p.getInventory().clear();
-        p.getInventory().setArmorContents(null);
+        p.getInventory().setArmorContents(new ItemStack[4]);
         p.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
         plugin.game().clearJoinIntent(p);
         HubIntegrationRouting.returnToHubOrLobby(plugin, p, true, true);

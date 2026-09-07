@@ -28,6 +28,26 @@ party:
 ironLegacy:
   pluginName: HCIronLegacy
 
-# Set in-game with /hch sethub (writes world-uuid + coords).
+# Match teams (limbo-only; reset each lobby/match). Cap in limbo uses template teamSizeMax.
+teams:
+  memberCap: 4
+
+# Drop a Minecraft world into hch-worlds/templates/<name> — on startup Hub + IL register it automatically.
+templates:
+  autoDiscoverOnStartup: true
+
+# Set in-game with /hch sethub [1] (writes world-uuid + coords). Hub #1 = /hub and /hub join 1.
+# Extra hubs: /hch sethub 2, /hch sethub 3, … (writes hub.instances.<n> below).
 hub:
+  # Max players per numbered hub instance before overflow to the next hub (/hub party pull, match end).
+  instanceCapacity: 20
   spawn: {}
+  # Optional extra hub spawns (/hub join 2, /hub join 3, …). Prefer /hch sethub <n> in-game.
+  # instances:
+  #   "2":
+  #     world-uuid: "00000000-0000-0000-0000-000000000000"
+  #     x: 0.5
+  #     y: 64.0
+  #     z: 0.5
+  #     yaw: 0.0
+  #     pitch: 0.0

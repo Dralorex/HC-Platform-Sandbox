@@ -153,6 +153,15 @@ public class HungerGamesPlugin extends JavaPlugin {
         this.lobbyManager = new LobbyManager(this);
         this.lobbyShardManager = new LobbyShardManager(this);
         this.templateWorldManager = new TemplateWorldManager(this);
+        try {
+            var discovered = this.templateWorldManager.syncManagedTemplatesFromDisk();
+            if (!discovered.isEmpty()) {
+                getLogger().info("Managed template folders registered in worlds.yml: "
+                        + String.join(", ", discovered));
+            }
+        } catch (Throwable t) {
+            getLogger().warning("Managed template folder scan failed: " + t.getMessage());
+        }
         this.ironLegacyLimboBridge = new IronLegacyLimboBridgeImpl(this);
         this.worldSettingsManager = new WorldSettingsManager(this);
         this.teamNameDatabaseManager = new TeamNameDatabaseManager(this);
@@ -249,7 +258,12 @@ public class HungerGamesPlugin extends JavaPlugin {
                 Bukkit.getServicesManager().getRegistration(TemplateRegistry.class);
         if (tplReg != null) {
             this.hollowTemplateRegistry = tplReg.getProvider();
-            getLogger().info("Hub TemplateRegistry: " + hollowTemplateRegistry.list().size() + " template(s).");
+            try {
+                getLogger().info("Hub TemplateRegistry: " + hollowTemplateRegistry.list().size() + " template(s).");
+            } catch (Throwable t) {
+                getLogger().log(java.util.logging.Level.WARNING,
+                        "Hub TemplateRegistry.list() failed (continuing enable): " + t.getMessage(), t);
+            }
         } else {
             this.hollowTemplateRegistry = null;
             getLogger().warning("Hub did not register TemplateRegistry; update HollowCrownHub.");

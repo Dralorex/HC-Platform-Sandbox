@@ -3,14 +3,18 @@ package com.hollowcrown.hub.integration;
 import com.hollowcrown.api.integration.IronLegacyMatchInstanceRuntime;
 import com.hollowcrown.api.integration.IronLegacyWorldsCatalog;
 import com.hollowcrown.api.platform.GamePlatform;
+import com.hollowcrown.api.platform.HubSpawn;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.util.WorldFolderCopier;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.RegisteredServiceProvider;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
@@ -53,26 +57,92 @@ public final class HubIronLegacyMatchInstanceRuntime implements IronLegacyMatchI
     public boolean destroyMatchInstanceByWorld(String worldName) {
         if (worldName == null || worldName.isBlank()) return false;
         World w = Bukkit.getWorld(worldName);
-        if (w != null && !w.getPlayers().isEmpty()) {
-            return false;
-        }
+        java.util.Set<java.util.UUID> occupants = new java.util.HashSet<>();
         if (w != null) {
-            try {
-                Bukkit.unloadWorld(w, false);
-            } catch (Throwable ignored) {
+            for (Player p : w.getPlayers()) {
+                occupants.add(p.getUniqueId());
             }
         }
-        Path root = Bukkit.getWorldContainer().toPath();
+
+        if (w != null && !w.getPlayers().isEmpty()) {
+            evacuateStragglersToHubSpawn(w);
+            if (!w.getPlayers().isEmpty()) {
+                return false;
+            }
+        }
+
+        clearTeamsForWorldOccupants(occupants);
+
+        if (w != null) {
+            try {
+                Bukkit.unloadWorld(w, true);
+            } catch (Throwable t) {
+                plugin.getLogger().warning("Failed to unload match world '" + worldName + "': " + t.getMessage());
+                return false;
+            }
+        }
+
+        Path root = Bukkit.getWorldContainer().toPath().toAbsolutePath().normalize();
         Path folder = root.resolve(worldName).normalize();
         if (!folder.startsWith(root)) return false;
-        if (!Files.exists(folder)) return true;
-        try {
-            WorldFolderCopier.deleteDirectory(folder);
+        if (!Files.exists(folder)) {
+            unmarkPolicyMatchWorld(worldName);
             return true;
-        } catch (IOException ex) {
-            plugin.getLogger().warning("Failed to delete match world folder '" + worldName + "': " + ex.getMessage());
-            return false;
+        }
+
+        boolean deleted = WorldFolderCopier.deleteDirectoryBestEffort(folder, 20, 250L);
+        if (deleted) {
+            unmarkPolicyMatchWorld(worldName);
+            return true;
+        }
+        plugin.getLogger().warning("Failed to delete match world folder after retries: " + worldName);
+        return false;
+    }
+
+    private void evacuateStragglersToHubSpawn(World world) {
+        Optional<HubSpawn> spawnOpt = platform.getHubSpawn();
+        Location fallback = null;
+        if (spawnOpt.isPresent()) {
+            HubSpawn s = spawnOpt.get();
+            World hub = Bukkit.getWorld(s.worldUuid());
+            if (hub != null) {
+                fallback = new Location(hub, s.x(), s.y(), s.z(), s.yaw(), s.pitch());
+            }
+        }
+        for (Player p : new ArrayList<>(world.getPlayers())) {
+            boolean routed = false;
+            try {
+                routed = plugin.sendPlayerToHubSpawnSync(p);
+            } catch (Throwable ignored) {
+            }
+            if (!routed && fallback != null) {
+                try {
+                    p.teleport(fallback);
+                } catch (Throwable ignored) {
+                }
+            }
         }
     }
-}
 
+    private void unmarkPolicyMatchWorld(String worldName) {
+        try {
+            if (plugin.pluginPolicies() != null) {
+                plugin.pluginPolicies().unmarkWorldAsMatch(worldName);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** Backup team wipe when instance folder teardown runs (primary path is session cleanup on lobby destroy). */
+    private void clearTeamsForWorldOccupants(java.util.Set<java.util.UUID> playerIds) {
+        if (playerIds == null || playerIds.isEmpty()) {
+            return;
+        }
+        RegisteredServiceProvider<com.hollowcrown.api.team.TeamService> reg =
+                org.bukkit.Bukkit.getServicesManager().getRegistration(com.hollowcrown.api.team.TeamService.class);
+        if (reg == null) {
+            return;
+        }
+        reg.getProvider().clearTeamsFor(playerIds);
+    }
+}

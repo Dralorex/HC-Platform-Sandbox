@@ -2,6 +2,7 @@ package com.hollowcrown.hub.gui;
 
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.lobby.HubLobbyService;
+import com.hollowcrown.hub.template.HubMechanics;
 import com.hollowcrown.hub.template.HubTemplateEntry;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -34,14 +35,19 @@ public final class LobbyJoinTemplateMenu {
     private LobbyJoinTemplateMenu() {
     }
 
-    public static void open(Player player, HollowCrownHubPlugin plugin, int page) {
-        List<HubTemplateEntry> all = new ArrayList<>(plugin.templates().list());
+    public static void open(Player player, HollowCrownHubPlugin plugin, String mechanicId, int page) {
+        List<HubTemplateEntry> all = new ArrayList<>();
+        for (HubTemplateEntry e : plugin.templates().list()) {
+            if (matchesMechanic(e, mechanicId)) {
+                all.add(e);
+            }
+        }
         int totalPages = Math.max(1, (all.size() + LobbyJoinTemplateMenuHolder.PAGE_SIZE - 1) / LobbyJoinTemplateMenuHolder.PAGE_SIZE);
         int p = Math.min(Math.max(0, page), totalPages - 1);
         int from = p * LobbyJoinTemplateMenuHolder.PAGE_SIZE;
         int to = Math.min(from + LobbyJoinTemplateMenuHolder.PAGE_SIZE, all.size());
 
-        LobbyJoinTemplateMenuHolder holder = new LobbyJoinTemplateMenuHolder(plugin, p, totalPages);
+        LobbyJoinTemplateMenuHolder holder = new LobbyJoinTemplateMenuHolder(plugin, mechanicId, p, totalPages);
         var inv = holder.getInventory();
         HubLobbyService svc = plugin.lobbyService();
 
@@ -100,9 +106,9 @@ public final class LobbyJoinTemplateMenu {
         }
         m.displayName(Component.text(e.effectiveDisplayName(), NamedTextColor.GREEN));
         List<Component> lore = new ArrayList<>();
+        lore.add(Component.text("Mechanic: " + HubMechanics.displayLabel(e.mechanicId()), NamedTextColor.DARK_GRAY));
         if (viewer.isOp()) {
             lore.add(Component.text("Template: " + tk, NamedTextColor.GRAY));
-            lore.add(Component.text("Mechanic: " + e.mechanicId(), NamedTextColor.DARK_GRAY));
         }
         lore.add(Component.text("Open lobbies: " + open, NamedTextColor.AQUA));
         lore.add(Component.empty());
@@ -119,5 +125,12 @@ public final class LobbyJoinTemplateMenu {
         pdc.set(plugin.lobbyJoinTemplateKey(), PersistentDataType.STRING, tk);
         it.setItemMeta(m);
         return it;
+    }
+
+    private static boolean matchesMechanic(HubTemplateEntry e, String mechanicId) {
+        if (HubMechanics.isVanilla(mechanicId)) {
+            return !e.hasMechanicSelected() || e.isVanillaMechanic();
+        }
+        return e.mechanicId().equalsIgnoreCase(mechanicId);
     }
 }

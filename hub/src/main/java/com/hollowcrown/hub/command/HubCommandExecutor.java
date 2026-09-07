@@ -3,8 +3,9 @@ package com.hollowcrown.hub.command;
 import com.hollowcrown.api.platform.GamePlatform;
 import com.hollowcrown.api.platform.HubSpawn;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
-import com.hollowcrown.hub.integration.HubIronLegacySupport;
 import com.hollowcrown.hub.HubLog;
+import com.hollowcrown.hub.integration.HubIronLegacySupport;
+import com.hollowcrown.hub.platform.HubHubSpawns;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
@@ -34,23 +35,11 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
-            sender.sendMessage(Component.text("Hollow Crown Hub — /hch", NamedTextColor.GOLD));
-            sender.sendMessage(Component.text("  /hch help — this help", NamedTextColor.GRAY));
-            sender.sendMessage(Component.text("  /hch version — API + Hub version", NamedTextColor.GRAY));
-            sender.sendMessage(Component.text("  /hch sethub — set global hub spawn (here)", NamedTextColor.GRAY));
-            sender.sendMessage(Component.text("  /hch clearhub — remove hub spawn", NamedTextColor.GRAY));
-            sender.sendMessage(Component.text("  /hch hubworld … — hub protection radius, build mode, PvP pads, mob spawns", NamedTextColor.GRAY));
-            sender.sendMessage(Component.text("  /hch template … — Hub listings + /hch template worlds … + limbo + set …", NamedTextColor.GRAY));
-            sender.sendMessage(Component.text("  /hch lobby … — lobby instance worlds L# (admin); /hch lobby gui", NamedTextColor.GRAY));
-            sender.sendMessage(Component.text("  /hch join — pick a game and join an open lobby", NamedTextColor.GRAY));
-            sender.sendMessage(Component.text("  /hch party … — Hub parties (create, invite, leave, …)", NamedTextColor.GRAY));
-            sender.sendMessage(Component.text("  /hch queue … — match queue per template (join, leave, status)", NamedTextColor.GRAY));
-            sender.sendMessage(Component.text("  /hch debug mechanics — list registered mechanic ids (admin)", NamedTextColor.GRAY));
-            sender.sendMessage(Component.text("  /hch debug why <player> — Hub party/queue/world snapshot (admin)", NamedTextColor.GRAY));
-            sender.sendMessage(Component.text("  /hch gui … — admin hub GUIs (maps, templates.yml, queues, lobby)", NamedTextColor.GRAY));
-            sender.sendMessage(Component.text("  /hch template worlds … — Iron Legacy worlds.yml (CLI)", NamedTextColor.GRAY));
-            sender.sendMessage(Component.text("Players use /hub when spawn is set; party leaders pull the whole party.", NamedTextColor.DARK_GRAY));
+            sendHelp(sender);
             return true;
+        }
+        if (args[0].equalsIgnoreCase("worldsgui") || args[0].equalsIgnoreCase("worldgui")) {
+            return HubGuiCommands.openWorldsGui(plugin, sender);
         }
         if (args[0].equalsIgnoreCase("gui")) {
             return HubGuiCommands.handle(plugin, sender, args);
@@ -106,6 +95,19 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
                 sender.sendMessage(Component.text("Run sethub in-game.", NamedTextColor.RED));
                 return true;
             }
+            int hubNumber = 1;
+            if (args.length >= 2) {
+                try {
+                    hubNumber = Integer.parseInt(args[1]);
+                } catch (NumberFormatException ex) {
+                    sender.sendMessage(Component.text("Usage: /hch sethub [hubNumber]", NamedTextColor.YELLOW));
+                    return true;
+                }
+                if (hubNumber < 1) {
+                    sender.sendMessage(Component.text("Hub number must be at least 1.", NamedTextColor.RED));
+                    return true;
+                }
+            }
             Location loc = player.getLocation();
             HubSpawn spawn = new HubSpawn(
                     loc.getWorld().getUID(),
@@ -115,9 +117,13 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
                     loc.getYaw(),
                     loc.getPitch()
             );
-            plugin.platform().setHubSpawn(spawn);
-            sender.sendMessage(Component.text("Hub spawn set to this location. Players can use /hub.", NamedTextColor.GREEN));
-            HubLog.info(plugin, "action=hch_sethub", "sender=" + sender.getName(), "worldUuid=" + spawn.worldUuid());
+            HubHubSpawns.persist(plugin, hubNumber, spawn);
+            sender.sendMessage(Component.text(
+                    "Hub #" + hubNumber + " spawn set to this location. Players can use /hub"
+                            + (hubNumber <= 1 ? "" : " join " + hubNumber) + ".",
+                    NamedTextColor.GREEN));
+            HubLog.info(plugin, "action=hch_sethub", "sender=" + sender.getName(),
+                    "hubNumber=" + hubNumber, "worldUuid=" + spawn.worldUuid());
             return true;
         }
         if (args[0].equalsIgnoreCase("clearhub")) {
@@ -125,9 +131,22 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
                 sender.sendMessage(Component.text("You need hollowcrownhub.admin.", NamedTextColor.RED));
                 return true;
             }
-            plugin.platform().clearHubSpawn();
-            sender.sendMessage(Component.text("Hub spawn cleared.", NamedTextColor.YELLOW));
-            HubLog.info(plugin, "action=hch_clearhub", "sender=" + sender.getName());
+            int hubNumber = 1;
+            if (args.length >= 2) {
+                try {
+                    hubNumber = Integer.parseInt(args[1]);
+                } catch (NumberFormatException ex) {
+                    sender.sendMessage(Component.text("Usage: /hch clearhub [hubNumber]", NamedTextColor.YELLOW));
+                    return true;
+                }
+                if (hubNumber < 1) {
+                    sender.sendMessage(Component.text("Hub number must be at least 1.", NamedTextColor.RED));
+                    return true;
+                }
+            }
+            HubHubSpawns.clear(plugin, hubNumber);
+            sender.sendMessage(Component.text("Hub #" + hubNumber + " spawn cleared.", NamedTextColor.YELLOW));
+            HubLog.info(plugin, "action=hch_clearhub", "sender=" + sender.getName(), "hubNumber=" + hubNumber);
             return true;
         }
         if (args[0].equalsIgnoreCase("hubworld")) {
@@ -143,19 +162,66 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private static void sendHelp(CommandSender sender) {
+        boolean admin = sender.hasPermission("hollowcrownhub.admin");
+        sender.sendMessage(Component.text("Hollow Crown Hub — /hch", NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("  /hch help — this help", NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("  /hch party … — parties (create, invite, leave, …)", NamedTextColor.GRAY));
+        if (admin) {
+            sender.sendMessage(Component.text("  /hch version — API + Hub version", NamedTextColor.GRAY));
+            sender.sendMessage(Component.text("  /hch sethub [n] — set hub spawn #1 or numbered instance", NamedTextColor.GRAY));
+            sender.sendMessage(Component.text("  /hch clearhub [n] — clear hub spawn #1 or numbered instance", NamedTextColor.GRAY));
+            sender.sendMessage(Component.text("  /hch hubworld … — hub protection, build mode, PvP pads", NamedTextColor.GRAY));
+            sender.sendMessage(Component.text("  /hch template … — Hub listings + worlds + limbo", NamedTextColor.GRAY));
+            sender.sendMessage(Component.text("  /hch lobby … — lobby instance worlds (admin)", NamedTextColor.GRAY));
+            sender.sendMessage(Component.text("  /hch join — join-game GUI (compass uses this too)", NamedTextColor.GRAY));
+            sender.sendMessage(Component.text("  /hch queue … — match queue per template", NamedTextColor.GRAY));
+            sender.sendMessage(Component.text("  /hch debug … — mechanics list / player snapshot", NamedTextColor.GRAY));
+            sender.sendMessage(Component.text("  /hch gui … — admin hub GUIs", NamedTextColor.GRAY));
+            sender.sendMessage(Component.text("  /hch worldsgui — Iron Legacy template worlds GUI", NamedTextColor.GRAY));
+        }
+        sender.sendMessage(Component.text(
+                "Use /hub for the main spawn; /hub join <n> for another hub instance. Party leaders pull the party on /hub.",
+                NamedTextColor.DARK_GRAY));
+    }
+
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
             List<String> out = new ArrayList<>();
             String p = args[0].toLowerCase();
-            for (String c : List.of("help", "version", "sethub", "clearhub", "hubworld", "template", "lobby", "join", "party", "queue", "debug", "gui")) {
+            boolean admin = sender.hasPermission("hollowcrownhub.admin");
+            List<String> cmds = admin
+                    ? List.of("help", "version", "sethub", "clearhub", "hubworld", "template", "lobby", "join",
+                    "party", "queue", "debug", "gui", "worldsgui", "worldgui")
+                    : List.of("help", "party");
+            for (String c : cmds) {
                 if (c.startsWith(p)) {
                     out.add(c);
                 }
             }
             return out;
         }
-        if (args.length == 2 && args[0].equalsIgnoreCase("debug")) {
+        if (args.length == 2 && (args[0].equalsIgnoreCase("sethub") || args[0].equalsIgnoreCase("clearhub"))) {
+            String p = args[1].toLowerCase(Locale.ROOT);
+            List<String> out = new ArrayList<>();
+            for (int n : HubHubSpawns.configuredNumbers(plugin)) {
+                String s = Integer.toString(n);
+                if (s.startsWith(p)) {
+                    out.add(s);
+                }
+            }
+            int next = HubHubSpawns.configuredNumbers(plugin).stream().mapToInt(Integer::intValue).max().orElse(1) + 1;
+            String nextStr = Integer.toString(next);
+            if (nextStr.startsWith(p) && next > 1) {
+                out.add(nextStr);
+            }
+            if ("1".startsWith(p) && !out.contains("1")) {
+                out.add(0, "1");
+            }
+            return out;
+        }
+        if (args.length >= 2 && args[0].equalsIgnoreCase("debug")) {
             String p = args[1].toLowerCase();
             List<String> out = new ArrayList<>();
             if ("mechanics".startsWith(p)) {
@@ -232,7 +298,7 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
         if (args.length == 3 && args[1].equalsIgnoreCase("worlds")) {
             String p = args[2].toLowerCase(Locale.ROOT);
             List<String> out = new ArrayList<>();
-            for (String c : List.of("help", "list", "reload", "gui", "importhub", "tp", "publish", "delete",
+            for (String c : List.of("help", "list", "discover", "reload", "gui", "importhub", "edit", "publish", "delete",
                     "rollback", "snapshots", "toggle", "iconpreview")) {
                 if (c.startsWith(p)) {
                     out.add(c);
@@ -243,7 +309,7 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
         if (args.length == 4 && args[1].equalsIgnoreCase("worlds")) {
             String sub = args[2].toLowerCase(Locale.ROOT);
             boolean needsKey = switch (sub) {
-                case "tp", "publish", "delete", "rollback", "snapshots", "toggle", "iconpreview" -> true;
+                case "edit", "publish", "delete", "rollback", "snapshots", "toggle", "iconpreview" -> true;
                 default -> false;
             };
             if (needsKey) {

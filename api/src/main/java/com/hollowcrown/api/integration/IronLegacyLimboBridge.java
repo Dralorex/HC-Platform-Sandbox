@@ -65,4 +65,7 @@ public interface IronLegacyLimboBridge {
 
     /** True when this backend should run hub-style limbo listeners (matches IL {@code ServerRoleManager#isHubLike}). */
     boolean isHubLikeServerRole();
+
+    /** True while the player is in an active Iron Legacy match (from launch until eliminated or match end). */
+    boolean isActiveMatchParticipant(java.util.UUID playerId);
 }

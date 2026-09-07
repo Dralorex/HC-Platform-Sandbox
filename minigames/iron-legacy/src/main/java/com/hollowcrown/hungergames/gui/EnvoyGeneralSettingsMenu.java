@@ -40,16 +40,16 @@ public class EnvoyGeneralSettingsMenu extends MenuView {
     }
 
     private FileConfiguration replY() {
-        WorldEnvoyStorage.ensureReplenish(plugin, templateKey);
-        return Yaml.loadOrCreate(plugin, WorldEnvoyStorage.replenishPath(templateKey));
+        WorldEnvoyStorage.ensureBaseReplenish(plugin);
+        return Yaml.loadOrCreate(plugin, WorldEnvoyStorage.BASE_REPLENISH);
+    }
+
+    private void saveRepl(FileConfiguration y) {
+        Yaml.save(plugin, WorldEnvoyStorage.BASE_REPLENISH, y);
     }
 
     private void saveEnv(FileConfiguration y) {
         plugin.envoys().saveYamlTemplate(templateKey, y);
-    }
-
-    private void saveRepl(FileConfiguration y) {
-        Yaml.save(plugin, WorldEnvoyStorage.replenishPath(templateKey), y);
     }
 
     private ItemStack btn(Material mat, String title, List<String> loreLines) {
@@ -118,7 +118,8 @@ public class EnvoyGeneralSettingsMenu extends MenuView {
 
         inv.setItem(4, btn(Material.PAPER, "§bMap: §f" + templateKey,
                 List.of("§7Files:", "§8world-envoys/" + templateKey + "/envoys.yml",
-                        "§8world-envoys/" + templateKey + "/replenish.yml")));
+                        "§8plugins/HCIronLegacy/replenish.yml (loot + schedule)",
+                        "§8world-envoys/" + templateKey + "/replenish-locations.yml")));
 
         inv.setItem(49, btn(Material.BARRIER, "§cBack", List.of("§7Envoys admin")));
     }

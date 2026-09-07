@@ -71,8 +71,7 @@ public class ReplenishManager {
     }
 
     private void startScheduleInternal(String templateKey, World world) {
-        WorldEnvoyStorage.ensureReplenish(plugin, templateKey);
-        FileConfiguration y = Yaml.loadOrCreate(plugin, WorldEnvoyStorage.replenishPath(templateKey));
+        FileConfiguration y = lootConfig();
         long intervalMin = Math.max(1, y.getLong("schedule.intervalMinutes", 30));
         int repeatsPerTier = Math.max(1, y.getInt("schedule.repeatsPerTier", 1));
         long firstDelayTicks = Math.max(0L, y.getLong("schedule.firstRefillDelaySeconds", 20)) * 20L;
@@ -103,9 +102,29 @@ public class ReplenishManager {
         }
     }
 
+    /** Shared tier loot + schedule from plugins/HCIronLegacy/replenish.yml. */
+    private FileConfiguration lootConfig() {
+        WorldEnvoyStorage.ensureBaseReplenish(plugin);
+        return Yaml.loadOrCreate(plugin, WorldEnvoyStorage.BASE_REPLENISH);
+    }
+
+    private FileConfiguration locationsConfig(String templateKey) {
+        WorldEnvoyStorage.ensureReplenishLocations(plugin, templateKey);
+        String path = WorldEnvoyStorage.replenishLocationsPath(templateKey);
+        FileConfiguration y = Yaml.loadOrCreate(plugin, path);
+        List<?> locs = y.getList("locations");
+        if (locs == null || locs.isEmpty()) {
+            FileConfiguration legacy = Yaml.load(plugin, WorldEnvoyStorage.legacyScopedReplenishPath(templateKey));
+            if (legacy != null && legacy.contains("locations")) {
+                y.set("locations", legacy.getList("locations"));
+                Yaml.save(plugin, path, y);
+            }
+        }
+        return y;
+    }
+
     private List<BlockCoord> loadCoords(String templateKey) {
-        WorldEnvoyStorage.ensureReplenish(plugin, templateKey);
-        FileConfiguration y = Yaml.loadOrCreate(plugin, WorldEnvoyStorage.replenishPath(templateKey));
+        FileConfiguration y = locationsConfig(templateKey);
         List<BlockCoord> out = new ArrayList<>();
         List<Map<String, Object>> arr = (List<Map<String, Object>>) y.get("locations");
         if (arr == null) return out;
@@ -124,8 +143,8 @@ public class ReplenishManager {
     }
 
     private void persistLocations(String templateKey, List<BlockCoord> list) {
-        WorldEnvoyStorage.ensureReplenish(plugin, templateKey);
-        FileConfiguration y = Yaml.loadOrCreate(plugin, WorldEnvoyStorage.replenishPath(templateKey));
+        WorldEnvoyStorage.ensureReplenishLocations(plugin, templateKey);
+        FileConfiguration y = locationsConfig(templateKey);
         List<Map<String, Object>> arr = new ArrayList<>();
         for (BlockCoord c : list) {
             Map<String, Object> m = new LinkedHashMap<>();
@@ -136,7 +155,7 @@ public class ReplenishManager {
             arr.add(m);
         }
         y.set("locations", arr);
-        Yaml.save(plugin, WorldEnvoyStorage.replenishPath(templateKey), y);
+        Yaml.save(plugin, WorldEnvoyStorage.replenishLocationsPath(templateKey), y);
     }
 
     public void invalidateTemplate(String templateKey) {
@@ -246,8 +265,7 @@ public boolean removeNearest(Location ref, String templateKey) {
     private void fillChest(Location l, String tier, String templateKey) {
         Block b = l.getBlock();
         if (!(b.getState() instanceof Chest chest)) return;
-        WorldEnvoyStorage.ensureReplenish(plugin, templateKey);
-        FileConfiguration y = Yaml.loadOrCreate(plugin, WorldEnvoyStorage.replenishPath(templateKey));
+        FileConfiguration y = lootConfig();
         String base = "tiers." + tier;
         int minItems = y.getInt(base + ".numItems.min", 2);
         int maxItems = y.getInt(base + ".numItems.max", 4);

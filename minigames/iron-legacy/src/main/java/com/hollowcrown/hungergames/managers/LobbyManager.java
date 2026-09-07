@@ -49,6 +49,11 @@ public final class LobbyManager {
     public void sendToLobbyExact(Player p, boolean wipeInv, boolean selectCompass) {
         plugin.templates().rememberResumeSpotLeavingTemplate(p);
         plugin.templates().saveEditorInventoryIfTemplate(p);
+        if (hubWorld().map(h -> h.sendToHubSpawn(p)).orElse(false)) {
+            plugin.packs().applyIfEnabled(p);
+            plugin.templates().restoreLobbyAfterLeavingTemplate(p);
+            return;
+        }
         plugin.limbo().leaveLimbo(p);
         Location center = getLobbySpawn();
         if (center == null) {

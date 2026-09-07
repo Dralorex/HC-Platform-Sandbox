@@ -128,15 +128,20 @@ public final class HubPartyService implements PartyService {
             notifyLeftParty(memberId, oldLeader, true);
             return true;
         }
+        UUID promotedLeader = null;
         if (Objects.equals(p.leader, memberId)) {
             UUID next = chooseNewLeader(p);
             if (next != null) {
                 p.leader = next;
+                promotedLeader = next;
             }
         }
         saveToDisk();
         HubLog.info(plugin, "action=party_leave", "partyId=" + p.id, "member=" + memberId);
         notifyLeftParty(memberId, oldLeader, false);
+        if (promotedLeader != null) {
+            notifyPromotedToLeader(oldLeader, promotedLeader, false);
+        }
         return true;
     }
 
@@ -189,6 +194,8 @@ public final class HubPartyService implements PartyService {
         if (!p.members.contains(targetMemberId)) {
             return false;
         }
+        UUID oldLeader = p.leader;
+        boolean kickedWasLeader = Objects.equals(oldLeader, targetMemberId);
         p.members.remove(targetMemberId);
         byMember.remove(targetMemberId);
         p.memberJoinOrder.remove(targetMemberId);
@@ -197,8 +204,19 @@ public final class HubPartyService implements PartyService {
             removeParty(p);
             return true;
         }
+        UUID promotedLeader = null;
+        if (kickedWasLeader) {
+            UUID next = chooseNewLeader(p);
+            if (next != null) {
+                p.leader = next;
+                promotedLeader = next;
+            }
+        }
         saveToDisk();
         HubLog.info(plugin, "action=party_kick", "partyId=" + p.id, "target=" + targetMemberId);
+        if (promotedLeader != null) {
+            notifyPromotedToLeader(oldLeader, promotedLeader, true);
+        }
         return true;
     }
 
@@ -569,5 +587,28 @@ public final class HubPartyService implements PartyService {
     private static String safeName(String raw) {
         if (raw == null || raw.isBlank()) return DEFAULT_NAME;
         return raw;
+    }
+
+    private void notifyPromotedToLeader(UUID formerLeaderId, UUID newLeaderId, boolean kicked) {
+        if (newLeaderId == null || Objects.equals(formerLeaderId, newLeaderId)) {
+            return;
+        }
+        Player promoted = Bukkit.getPlayer(newLeaderId);
+        if (promoted == null || !promoted.isOnline()) {
+            return;
+        }
+        Player former = formerLeaderId == null ? null : Bukkit.getPlayer(formerLeaderId);
+        Component formerName = former != null
+                ? HubPartyText.coloredPlayerName(plugin, former)
+                : HubPartyText.coloredPlayerName(plugin, "Party Leader", formerLeaderId);
+        Component line = Component.text()
+                .append(Component.text("Party Leader ", NamedTextColor.YELLOW))
+                .append(formerName)
+                .append(Component.text(
+                        kicked ? " has been kicked from the Party. You have been promoted to Party Leader!"
+                                : " has left the Party. You have been promoted to Party Leader!",
+                        NamedTextColor.YELLOW))
+                .build();
+        promoted.sendMessage(line);
     }
 }

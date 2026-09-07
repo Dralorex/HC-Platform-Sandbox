@@ -127,9 +127,14 @@ public class TeamManager {
         return service().removeMember(id);
     }
 
-    /** NEW: wipe all teams and all invites, then persist. */
+    /** NEW: wipe all teams and all invites, then persist. Prefer {@link #clearTeamsFor(Collection)} per session. */
     public void clearAllTeams() {
         service().clearAllTeams();
+    }
+
+    /** Clears teams for specific players only (lobby/match session teardown). */
+    public void clearTeamsFor(Collection<UUID> playerIds) {
+        service().clearTeamsFor(playerIds);
     }
 
     public void load() {

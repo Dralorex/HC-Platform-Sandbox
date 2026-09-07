@@ -44,9 +44,6 @@ public final class HubTemplateEntry {
         if (this.templateKey.isEmpty()) {
             throw new IllegalArgumentException("templateKey empty");
         }
-        if (this.mechanicId.isEmpty()) {
-            throw new IllegalArgumentException("mechanicId empty");
-        }
         int cap = queueMaxUnitSize;
         if (cap < 1) {
             cap = 1;
@@ -71,6 +68,15 @@ public final class HubTemplateEntry {
 
     public String mechanicId() {
         return mechanicId;
+    }
+
+    /** True when a mechanic was chosen via {@code /hch template worlds mechanic …} or template set. */
+    public boolean hasMechanicSelected() {
+        return HubMechanics.hasMechanicSelected(mechanicId);
+    }
+
+    public boolean isVanillaMechanic() {
+        return HubMechanics.isVanilla(mechanicId);
     }
 
     /** May be empty; fall back to templateKey in UI. */
@@ -116,6 +122,12 @@ public final class HubTemplateEntry {
 
     public HubTemplateEntry withJoinQueueFirst(boolean joinQueueFirst) {
         return new HubTemplateEntry(templateKey, mechanicId, displayName, sourceWorldName,
+                queueMaxUnitSize, queueSoloOnly, queueSoloAutoMerge, joinQueueFirst);
+    }
+
+    public HubTemplateEntry withMechanicId(String mechanic) {
+        String m = mechanic == null ? "" : mechanic.trim();
+        return new HubTemplateEntry(templateKey, m, displayName, sourceWorldName,
                 queueMaxUnitSize, queueSoloOnly, queueSoloAutoMerge, joinQueueFirst);
     }
 }

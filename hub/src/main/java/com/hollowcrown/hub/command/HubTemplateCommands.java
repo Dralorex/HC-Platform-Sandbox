@@ -37,7 +37,7 @@ public final class HubTemplateCommands {
                     " list · create · get · remove · worlds … · limbo … · set … · setsource · setqueue",
                     NamedTextColor.GRAY));
             sender.sendMessage(Component.text(
-                    " worlds list|reload|gui|importhub|tp|publish|delete|rollback|snapshots|toggle|iconpreview … — Iron Legacy worlds.yml",
+                    " worlds list|reload|gui|importhub|edit|publish|delete|rollback|snapshots|toggle|iconpreview … — Iron Legacy worlds.yml",
                     NamedTextColor.GRAY));
             sender.sendMessage(Component.text(
                     " set <key> <mechanicId> [display…] — Hub templates.yml (game listing / queue)",

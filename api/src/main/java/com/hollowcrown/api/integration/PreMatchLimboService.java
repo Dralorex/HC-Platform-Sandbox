@@ -38,6 +38,12 @@ public interface PreMatchLimboService {
 
     boolean forceBeginTeleportCountdown(String worldOrTemplateKey);
 
+    /**
+     * After match start teleports players to spawn pads, clears the limbo arena volume in
+     * {@code instanceWorldName} (air + entities). No-op when zone metadata is missing.
+     */
+    void clearLimboZoneAfterSpawnPads(String instanceWorldName, String templateKey);
+
     boolean isInLimboWorld(World world);
 
     Set<String> limboWorldNames();
@@ -53,4 +59,10 @@ public interface PreMatchLimboService {
     void setAllowHostileMobSpawns(boolean value);
 
     void setAllowPassiveMobSpawns(boolean value);
+
+    /**
+     * Per-template team size cap while the player is in pre-match limbo ({@code teamSizeMax} from worlds.yml),
+     * or {@code -1} when not in limbo.
+     */
+    int teamSizeMaxFor(Player player);
 }
