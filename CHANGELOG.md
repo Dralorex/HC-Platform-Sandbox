@@ -9,6 +9,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- HCIronLegacy failed to compile after PR #7 merge — missing `if` guard in `ReplenishManager.fillChest`.
+
 ## [HC-Plugins-a0.1.14] - 2026-09-07
 
 Tagged plugins: **API a0.1.13**, **Foundation a0.1.5**, **Hub a0.1.14**, **Iron Legacy a0.3.14**.
