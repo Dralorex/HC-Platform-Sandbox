@@ -277,32 +277,10 @@ public class ReplenishManager {
             } catch (Exception ignored) {}
         }
 
-        List<Integer> availableSlots = new ArrayList<>();
-        for (int i = 0; i < inv.getSize(); i++) availableSlots.add(i);
-        Collections.shuffle(availableSlots);
-        Set<Integer> used = new HashSet<>();
-
         for (ItemStack it : toPlace) {
-            if (availableSlots.isEmpty()) break;
-            Integer slot = null;
-            for (Integer s : availableSlots) {
-                if (!used.contains(s) && inv.getItem(s) == null) {
-                    slot = s;
-                    break;
-                }
-            }
-            if (slot == null) {
-                for (int s = 0; s < inv.getSize(); s++) {
-                    if (!used.contains(s) && inv.getItem(s) == null) {
-                        slot = s;
-                        break;
-                    }
-                }
-            }
-            if (slot != null) {
-                inv.setItem(slot, it);
-                used.add(slot);
-            }
+            int slot = inv.firstEmpty();
+            if (slot == -1) break;
+            inv.setItem(slot, it);
         }
     }
 
