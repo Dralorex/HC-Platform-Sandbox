@@ -75,7 +75,7 @@ tiers:
       - { material: IRON_PICKAXE, minStack: 1, maxStack: 1 }
       - { material: GOLDEN_APPLE, minStack: 1, maxStack: 2 }
       - { material: ENDER_PEARL, minStack: 1, maxStack: 3 }
-      - { material: IRON, minStack: 8, maxStack: 16 }
+      - { material: IRON_INGOT, minStack: 8, maxStack: 16 }
       - { material: COOKED_PORKCHOP, minStack: 6, maxStack: 14 }
       - { material: CAMPFIRE, minStack: 1, maxStack: 1 }
       - { material: LAVA_BUCKET, minStack: 1, maxStack: 1 }

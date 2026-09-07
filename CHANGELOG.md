@@ -9,9 +9,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [HC-Plugins-a0.1.15] - 2026-09-07
+
+Tagged plugins: **API a0.1.13**, **Foundation a0.1.5**, **Hub a0.1.14**, **Iron Legacy a0.3.15**.
+
 ### Fixed
 
-- HCIronLegacy failed to compile after PR #7 merge — missing `if` guard in `ReplenishManager.fillChest`.
+- Replenish chest fill silently dropped many loot entries (`nextInt(1,1)` in stack split), placed items in sequential slots instead of random slots, and now merges same-material stacks when a random slot already holds that item.
+- Replenish material lookup uses `Material.matchMaterial` and skips invalid entries with a log line instead of failing silently.
+- Jar default `replenish.yml` T3 `IRON` → `IRON_INGOT`.
 
 ## [HC-Plugins-a0.1.14] - 2026-09-07
 

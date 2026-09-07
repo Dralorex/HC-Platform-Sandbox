@@ -269,40 +269,127 @@ public boolean removeNearest(Location ref, String templateKey) {
         String base = "tiers." + tier;
         int minItems = y.getInt(base + ".numItems.min", 2);
         int maxItems = y.getInt(base + ".numItems.max", 4);
-        List<Map<?, ?>> items = y.getMapList(base + ".items");
-        if (items == null || items.isEmpty()) return;
-        int num = ThreadLocalRandom.current().nextInt(minItems, Math.max(minItems, maxItems) + 1);
-        Collections.shuffle(items);
+        List<Map<?, ?>> itemDefs = y.getMapList(base + ".items");
+        if (itemDefs == null || itemDefs.isEmpty()) return;
+
+        int pickCount = ThreadLocalRandom.current().nextInt(minItems, Math.max(minItems, maxItems) + 1);
+        List<Map<?, ?>> pool = new ArrayList<>(itemDefs);
+        Collections.shuffle(pool);
+        pickCount = Math.min(pickCount, pool.size());
+
         Inventory inv = chest.getBlockInventory();
         inv.clear();
 
         List<ItemStack> toPlace = new ArrayList<>();
-        for (int i = 0; i < num && i < items.size(); i++) {
-            Map<?, ?> m = items.get(i);
-            try {
-                Material mat = Material.valueOf(Objects.toString(m.get("material"), "STONE"));
-                int minS = Integer.parseInt(Objects.toString(m.get("minStack"), "1"));
-                int maxS = Integer.parseInt(Objects.toString(m.get("maxStack"), "1"));
-                int totalAmt = Math.max(1, ThreadLocalRandom.current().nextInt(minS, maxS + 1));
-
-                int numStacks = ThreadLocalRandom.current().nextInt(1, Math.min(5, totalAmt / 2 + 1));
-                numStacks = Math.max(1, numStacks);
-                int remaining = totalAmt;
-                for (int s = 0; s < numStacks && remaining > 0; s++) {
-                    int stackSize = s == numStacks - 1 ? remaining : Math.max(1, ThreadLocalRandom.current().nextInt(1, remaining / (numStacks - s) + 1));
-                    stackSize = Math.min(stackSize, remaining);
-                    if (stackSize > 0 && stackSize <= mat.getMaxStackSize()) {
-                        toPlace.add(new ItemStack(mat, stackSize));
-                        remaining -= stackSize;
-                    }
-                }
-            } catch (Exception ignored) {}
+        for (int i = 0; i < pickCount; i++) {
+            ItemStack rolled = rollItemStack(pool.get(i));
+            if (rolled != null) {
+                toPlace.addAll(splitIntoStacks(rolled));
+            }
         }
+        placeStacksRandomly(inv, toPlace);
+        chest.update(true, false);
+    }
 
-        for (ItemStack it : toPlace) {
-            int slot = inv.firstEmpty();
-            if (slot == -1) break;
-            inv.setItem(slot, it);
+    /** Rolls min/max stack for one tier item entry; skips invalid materials. */
+    private ItemStack rollItemStack(Map<?, ?> def) {
+        try {
+            String matName = Objects.toString(def.get("material"), "").trim();
+            if (matName.isEmpty()) return null;
+            Material mat = Material.matchMaterial(matName);
+            if (mat == null || !mat.isItem()) {
+                plugin.getLogger().fine("Replenish skipped unknown material: " + matName);
+                return null;
+            }
+            int minS = Integer.parseInt(Objects.toString(def.get("minStack"), "1"));
+            int maxS = Integer.parseInt(Objects.toString(def.get("maxStack"), "1"));
+            if (maxS < minS) maxS = minS;
+            int amount = ThreadLocalRandom.current().nextInt(minS, maxS + 1);
+            amount = Math.max(1, Math.min(amount, mat.getMaxStackSize()));
+            return new ItemStack(mat, amount);
+        } catch (Exception ex) {
+            plugin.getLogger().fine("Replenish skipped invalid item entry: " + def);
+            return null;
+        }
+    }
+
+    /** Splits one rolled stack into 1–N physical stacks (same material). */
+    private List<ItemStack> splitIntoStacks(ItemStack rolled) {
+        List<ItemStack> out = new ArrayList<>();
+        Material mat = rolled.getType();
+        int totalAmt = rolled.getAmount();
+        int maxStack = mat.getMaxStackSize();
+        if (totalAmt <= 0) return out;
+
+        int maxStacks = Math.min(5, Math.max(1, totalAmt / 2 + 1));
+        int numStacks = ThreadLocalRandom.current().nextInt(1, maxStacks + 1);
+        int remaining = totalAmt;
+        for (int s = 0; s < numStacks && remaining > 0; s++) {
+            int stacksLeft = numStacks - s;
+            int amt;
+            if (stacksLeft == 1) {
+                amt = remaining;
+            } else {
+                int minForRest = stacksLeft - 1;
+                int maxForThis = Math.min(maxStack, remaining - minForRest);
+                if (maxForThis < 1) {
+                    amt = 1;
+                } else {
+                    amt = ThreadLocalRandom.current().nextInt(1, maxForThis + 1);
+                }
+            }
+            amt = Math.min(amt, Math.min(maxStack, remaining));
+            if (amt > 0) {
+                out.add(new ItemStack(mat, amt));
+                remaining -= amt;
+            }
+        }
+        if (remaining > 0) {
+            out.add(new ItemStack(mat, remaining));
+        }
+        return out;
+    }
+
+    /**
+     * Places stacks in random chest slots. Only uses empty slots or slots with the same item
+     * (merges stacks when the same slot is chosen twice).
+     */
+    private void placeStacksRandomly(Inventory inv, List<ItemStack> stacks) {
+        for (ItemStack stack : stacks) {
+            placeOneStackRandomly(inv, stack);
+        }
+    }
+
+    private void placeOneStackRandomly(Inventory inv, ItemStack stack) {
+        if (stack == null || stack.getType().isAir() || stack.getAmount() <= 0) return;
+        int remaining = stack.getAmount();
+        Material mat = stack.getType();
+        int maxStack = mat.getMaxStackSize();
+
+        while (remaining > 0) {
+            List<Integer> candidates = new ArrayList<>();
+            for (int slot = 0; slot < inv.getSize(); slot++) {
+                ItemStack cur = inv.getItem(slot);
+                if (cur == null || cur.getType().isAir()) {
+                    candidates.add(slot);
+                } else if (cur.getType() == mat && cur.getAmount() < maxStack) {
+                    candidates.add(slot);
+                }
+            }
+            if (candidates.isEmpty()) break;
+
+            int slot = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
+            ItemStack cur = inv.getItem(slot);
+            if (cur == null || cur.getType().isAir()) {
+                int place = Math.min(remaining, maxStack);
+                inv.setItem(slot, new ItemStack(mat, place));
+                remaining -= place;
+            } else {
+                int space = maxStack - cur.getAmount();
+                int add = Math.min(space, remaining);
+                cur.setAmount(cur.getAmount() + add);
+                remaining -= add;
+            }
         }
     }
 

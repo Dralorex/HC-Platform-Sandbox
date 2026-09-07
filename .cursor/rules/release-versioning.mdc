@@ -56,6 +56,15 @@ When the user asks only to **zip**, **ship**, or **rebuild HC-Plugins** (without
 
 Use whatever plugin versions are already in `pom.xml` / root properties.
 
+## Ship to GitHub (default after zip)
+
+After **commit + push** of source changes to `origin/main`:
+
+1. `gh release create <hc.plugins.zip.tag>` on the release commit with **`HC-Plugins-${tag}.zip`** and **`HC-Plugins.zip`** attached (GitHub Releases — zips stay out of git; see `.gitignore`).
+2. Keep the same zip files at repo root locally for deploy.
+
+Do **not** leave fixes or releases local-only — always push commits; attach zips via Releases when shipping.
+
 ## When to ask
 
 After **medium** user-visible work, you may ask once: **“Up tags for changed plugins?”**

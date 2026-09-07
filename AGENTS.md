@@ -7,6 +7,7 @@
 - Cursor rules: `.cursor/rules/git-and-repo-standards.mdc` (always apply), `hollow-crown-platform.mdc`, `release-versioning.mdc`, `platform-docs.mdc` (this repo).
 - **Release tags:** separate per plugin (same bump rule for all). **Up tags** only when the user asks — bump every edited plugin plus `hc.plugins.zip.tag`, then rebuild. **Zip/ship** alone does not bump tags. See `release-versioning.mdc`.
 - **Maven build:** use `C:\apache-maven-3.9.16\bin\mvn.cmd clean package -DskipTests` from repo root (`mvn` is not on PATH in Cursor shells). See `.cursor/rules/maven-build.mdc`.
-- **Never commit** `**/target/` or `HC-Plugins*.zip` — Maven/build output only; use `mvn package` locally.
+- **Never commit** `**/target/` or `HC-Plugins*.zip` — attach deploy zips via **GitHub Releases** (`gh release create`); see `release-versioning.mdc`.
+- **Ship workflow:** commit + push source to GitHub; never leave fixes local-only. Zip locally and upload both `HC-Plugins-<tag>.zip` and `HC-Plugins.zip` to the matching Release.
 - **Never `git push`** unless the user explicitly asks in that message.
 - **New minigame:** copy `minigames/_template/` → `minigames/<id>/`, wire root `pom.xml`, then implement (see `.cursor/rules/hollow-crown-platform.mdc`).
