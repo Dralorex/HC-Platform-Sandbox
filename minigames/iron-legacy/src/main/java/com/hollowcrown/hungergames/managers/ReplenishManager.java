@@ -156,33 +156,34 @@ public class ReplenishManager {
         return list;
     });
 }
-
-    public boolean removeNearest(Location ref, String templateKey) {
-        List<BlockCoord> list = new ArrayList<>(coords(templateKey));
-        BlockCoord best = null;
-        double bd = Double.MAX_VALUE;
-        World rw = ref.getWorld();
-        if (rw == null) return false;
-        for (BlockCoord c : list) {
-            if (!c.worldName().equalsIgnoreCase(rw.getName())) continue;
-            double dx = (c.x() + 0.5) - ref.getX();
-            double dy = (c.y() + 0.5) - ref.getY();
-            double dz = (c.z() + 0.5) - ref.getZ();
-            double d = dx * dx + dy * dy + dz * dz;
-            if (d < bd) {
-                bd = d;
-                best = c;
-            }
+public boolean removeNearest(Location ref, String templateKey) {
+    List<BlockCoord> list = new ArrayList<>(coords(templateKey));
+    BlockCoord best = null;
+    double bd = Double.MAX_VALUE;
+    World rw = ref.getWorld();
+    if (rw == null) return false;
+    for (BlockCoord c : list) {
+        if (!c.worldName().equalsIgnoreCase(rw.getName())) continue;
+        double dx = (c.x() + 0.5) - ref.getX();
+        double dy = (c.y() + 0.5) - ref.getY();
+        double dz = (c.z() + 0.5) - ref.getZ();
+        double d = dx * dx + dy * dy + dz * dz;
+        if (d < bd) {
+            bd = d;
+            best = c;
         }
-        if (best != null) {
-            final BlockCoord rm = best;
-            list.removeIf(o -> o.worldName().equals(rm.worldName()) && o.x() == rm.x() && o.y() == rm.y() && o.z() == rm.z());
-            persistLocations(templateKey, list);
-            coordCache.put(templateKey, list);
-            return true;
-        }
-        return false;
     }
+    if (best == null) return false;
+    
+    final BlockCoord rm = best;
+    coordCache.compute(templateKey, (key, oldList) -> {
+        List<BlockCoord> updated = oldList != null ? new ArrayList<>(oldList) : new ArrayList<>();
+        updated.removeIf(o -> o.worldName().equals(rm.worldName()) && o.x() == rm.x() && o.y() == rm.y() && o.z() == rm.z());
+        persistLocations(templateKey, updated);
+        return updated;
+    });
+    return true;
+}
 
     /** Locations for GUI listing (resolved worlds). */
     public List<Location> list(String templateKey) {
