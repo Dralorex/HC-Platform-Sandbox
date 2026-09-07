@@ -252,7 +252,7 @@ public boolean removeNearest(Location ref, String templateKey) {
         int minItems = y.getInt(base + ".numItems.min", 2);
         int maxItems = y.getInt(base + ".numItems.max", 4);
         List<Map<?, ?>> items = y.getMapList(base + ".items");
-        if (items.isEmpty()) return;
+        (items == null || items.isEmpty()) return;
         int num = ThreadLocalRandom.current().nextInt(minItems, Math.max(minItems, maxItems) + 1);
         Collections.shuffle(items);
         Inventory inv = chest.getBlockInventory();
