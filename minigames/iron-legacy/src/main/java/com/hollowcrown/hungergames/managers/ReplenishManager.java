@@ -267,7 +267,7 @@ public class ReplenishManager {
                 numStacks = Math.max(1, numStacks);
                 int remaining = totalAmt;
                 for (int s = 0; s < numStacks && remaining > 0; s++) {
-                    int stackSize = s == numStacks - 1 ? remaining : Math.max(1, ThreadLocalRandom.current().nextInt(1, remaining / (numStacks - s) + 2));
+                    int stackSize = s == numStacks - 1 ? remaining : Math.max(1, ThreadLocalRandom.current().nextInt(1, remaining / (numStacks - s) + 1));
                     stackSize = Math.min(stackSize, remaining);
                     if (stackSize > 0 && stackSize <= mat.getMaxStackSize()) {
                         toPlace.add(new ItemStack(mat, stackSize));
