@@ -31,130 +31,63 @@ types:
     WEAPONS: 2.0
     KITS: 1.0
 tiers:
-  enabled: true
+  enabled: false
   allowed: [T1, T2, T3, T4]
   T1: { weight: 10.0, name: "Tier 1" }
   T2: { weight: 5.0, name: "Tier 2" }
   T3: { weight: 2.0, name: "Tier 3" }
   T4: { weight: 1.0, name: "Tier 4" }
-  T1:
-    name: Tier 1 - Leather & Wood
-    weight: 10.0
-    FOOD:
-      packages:
-        - items:
-            - { material: BREAD, min: 4, max: 8 }
-            - { material: APPLE, min: 4, max: 8 }
-    WEAPONS:
-      packages:
-        - items:
-            - { material: WOODEN_SWORD, min: 1, max: 1 }
-            - { material: ARROW, min: 8, max: 16 }
-    BLOCKS:
-      packages:
-        - items:
-            - { material: OAK_PLANKS, min: 16, max: 32 }
-            - { material: SPRUCE_PLANKS, min: 8, max: 16 }
-    TOOLS:
-      packages:
-        - items:
-            - { material: WOODEN_PICKAXE, min: 1, max: 1 }
-            - { material: WOODEN_AXE, min: 1, max: 1 }
-    KITS:
-      packages:
-        - items:
-            - { material: LEATHER_HELMET, min: 1, max: 1 }
-            - { material: LEATHER_CHESTPLATE, min: 1, max: 1 }
-  T2:
-    name: Tier 2 - Stone & Better Food
-    weight: 5.0
-    FOOD:
-      packages:
-        - items:
-            - { material: COOKED_BEEF, min: 4, max: 8 }
-            - { material: COOKED_CHICKEN, min: 4, max: 8 }
-            - { material: BREAD, min: 6, max: 12 }
-    WEAPONS:
-      packages:
-        - items:
-            - { material: STONE_SWORD, min: 1, max: 1 }
-            - { material: ARROW, min: 12, max: 24 }
-    BLOCKS:
-      packages:
-        - items:
-            - { material: COBBLESTONE, min: 16, max: 32 }
-            - { material: STONE, min: 8, max: 16 }
-    TOOLS:
-      packages:
-        - items:
-            - { material: STONE_PICKAXE, min: 1, max: 1 }
-            - { material: STONE_AXE, min: 1, max: 1 }
-    KITS:
-      packages:
-        - items:
-            - { material: CHAINMAIL_HELMET, min: 1, max: 1 }
-            - { material: CHAINMAIL_CHESTPLATE, min: 1, max: 1 }
-  T3:
-    name: Tier 3 - Iron & Steak
-    weight: 2.0
-    FOOD:
-      packages:
-        - items:
-            - { material: COOKED_BEEF, min: 8, max: 16 }
-            - { material: COOKED_MUTTON, min: 6, max: 12 }
-            - { material: BREAD, min: 8, max: 12 }
-    WEAPONS:
-      packages:
-        - items:
-            - { material: IRON_SWORD, min: 1, max: 1 }
-            - { material: ARROW, min: 16, max: 32 }
-    BLOCKS:
-      packages:
-        - items:
-            - { material: IRON_BLOCK, min: 4, max: 8 }
-            - { material: COBBLESTONE, min: 16, max: 32 }
-    TOOLS:
-      packages:
-        - items:
-            - { material: IRON_PICKAXE, min: 1, max: 1 }
-            - { material: IRON_AXE, min: 1, max: 1 }
-    KITS:
-      packages:
-        - items:
-            - { material: IRON_HELMET, min: 1, max: 1 }
-            - { material: IRON_CHESTPLATE, min: 1, max: 1 }
-            - { material: IRON_LEGGINGS, min: 1, max: 1 }
-  T4:
-    name: Tier 4 - Diamond & Golden Apples
-    weight: 1.0
-    FOOD:
-      packages:
-        - items:
-            - { material: COOKED_BEEF, min: 12, max: 20 }
-            - { material: GOLDEN_CARROT, min: 4, max: 8 }
-            - { material: GOLDEN_APPLE, min: 2, max: 4 }
-    WEAPONS:
-      packages:
-        - items:
-            - { material: DIAMOND_SWORD, min: 1, max: 1 }
-            - { material: BOW, min: 1, max: 1 }
-            - { material: ARROW, min: 24, max: 48 }
-    BLOCKS:
-      packages:
-        - items:
-            - { material: DIAMOND_BLOCK, min: 2, max: 4 }
-            - { material: IRON_BLOCK, min: 8, max: 16 }
-    TOOLS:
-      packages:
-        - items:
-            - { material: DIAMOND_PICKAXE, min: 1, max: 1 }
-            - { material: DIAMOND_AXE, min: 1, max: 1 }
-    KITS:
-      packages:
-        - items:
-            - { material: DIAMOND_HELMET, min: 1, max: 1 }
-            - { material: DIAMOND_CHESTPLATE, min: 1, max: 1 }
-            - { material: DIAMOND_LEGGINGS, min: 1, max: 1 }
-            - { material: DIAMOND_BOOTS, min: 1, max: 1 }
+  FOOD:
+    packages:
+      - items:
+          - { material: COOKED_BEEF, min: 4, max: 12 }
+          - { material: BREAD, min: 4, max: 12 }
+      - items:
+          - { material: COOKED_CHICKEN, min: 6, max: 14 }
+          - { material: GOLDEN_CARROT, min: 2, max: 6 }
+  WEAPONS:
+    packages:
+      - items:
+          - { material: IRON_SWORD, min: 1, max: 1 }
+          - { material: ARROW, min: 12, max: 32 }
+      - items:
+          - { material: BOW, min: 1, max: 1 }
+          - { material: ARROW, min: 16, max: 48 }
+  BLOCKS:
+    packages:
+      - items:
+          - { material: COBBLESTONE, min: 16, max: 48 }
+          - { material: OAK_PLANKS, min: 16, max: 48 }
+  TOOLS:
+    packages:
+      - items:
+          - { material: IRON_PICKAXE, min: 1, max: 1 }
+          - { material: IRON_AXE, min: 1, max: 1 }
+  KITS:
+    packages:
+      - items:
+          - { material: SHIELD, min: 1, max: 1 }
+          - { material: GOLDEN_APPLE, min: 1, max: 2 }
+
+#tiers:
+#  basic:
+#    name: Basic
+#    weight: 5.0     # likeyhood os spawning
+#    loot:
+#      - { material: IRON_INGOT, min: 2, max: 6 }
+#      - { material: COOKED_BEEF, min: 4, max: 8 }
+#  rare:
+#    name: Rare
+#    weight: 2.0     # likeyhood os spawning
+#    loot:
+#      - { material: GOLDEN_APPLE, min: 1, max: 2 }
+#      - { material: DIAMOND, min: 1, max: 2 }
+#  legendary:
+#    name: Legendary
+#    weight: 1.0     # likeyhood os spawning
+#    loot:
+#      - { material: NETHERITE_SCRAP, min: 1, max: 1 }
+#      - { material: ENCHANTED_GOLDEN_APPLE, min: 1, max: 1 }
 
 locations: []
+
