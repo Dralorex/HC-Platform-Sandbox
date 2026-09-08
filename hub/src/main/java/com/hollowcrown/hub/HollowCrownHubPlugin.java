@@ -12,7 +12,6 @@ import com.hollowcrown.api.queue.MatchQueueService;
 import com.hollowcrown.api.platform.GamePlatform;
 import com.hollowcrown.api.storage.StorageProvider;
 import com.hollowcrown.api.template.TemplateRegistry;
-import com.hollowcrown.api.team.TeamService;
 import com.hollowcrown.hub.command.HubCommandExecutor;
 import com.hollowcrown.hub.command.HubPlayerCommand;
 import com.hollowcrown.hub.platform.DefaultGamePlatform;
@@ -34,9 +33,9 @@ import com.hollowcrown.hub.limbo.HubPreMatchLimboService;
 import com.hollowcrown.hub.party.HubPartyListener;
 import com.hollowcrown.hub.party.HubPartyService;
 import com.hollowcrown.hub.queue.HubMatchQueueService;
+import com.hollowcrown.hub.team.TeamManager;
 import com.hollowcrown.hub.template.HubTemplateApiRegistry;
 import com.hollowcrown.hub.template.HubTemplateRegistry;
-import com.hollowcrown.hub.team.HubTeamService;
 import com.hollowcrown.hub.world.HubWorldYaml;
 import com.hollowcrown.hub.world.HubWorldManager;
 import org.bukkit.Bukkit;
@@ -59,7 +58,8 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
     private HubLobbyService lobbyService;
     private HubPartyService partyService;
     private HubMatchQueueService matchQueueService;
-    private HubTeamService teamService;
+    //private HubTeamService teamService; //Old teams system.
+    //private TeamManager teamManager;
     private HubWorldYaml hubWorldYaml;
     private HubWorldManager hubWorldManager;
     private DefaultHubPlayerMenus playerMenus;
@@ -105,7 +105,8 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         this.lobbyService = new HubLobbyService(this, lobbyInstanceRegistry, templateRegistry);
         this.partyService = new HubPartyService(this, jdbc);
         this.matchQueueService = new HubMatchQueueService(this, partyService, templateRegistry);
-        this.teamService = new HubTeamService(this);
+        //this.teamService = new HubTeamService(this);
+        //this.teamManager = new TeamManager();
         if (jdbc != null) {
             matchQueueService.attachJdbc(jdbc);
         }
@@ -157,12 +158,12 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
                 this,
                 ServicePriority.Normal
         );
-        Bukkit.getServicesManager().register(
-                TeamService.class,
-                teamService,
-                this,
-                ServicePriority.Normal
-        );
+        //Bukkit.getServicesManager().register(
+        //        TeamService.class,
+        //        teamService,
+        //        this,
+        //        ServicePriority.Normal
+        //);
         Bukkit.getServicesManager().register(
                 MatchQueueService.class,
                 matchQueueService,

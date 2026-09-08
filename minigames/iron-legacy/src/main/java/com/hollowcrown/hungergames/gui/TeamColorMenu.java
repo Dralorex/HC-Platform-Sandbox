@@ -1,22 +1,17 @@
 package com.hollowcrown.hungergames.gui;
 
-import com.hollowcrown.hungergames.HungerGamesPlugin;
-import com.hollowcrown.hungergames.util.TeamColorRgb;
+import com.hollowcrown.hub.team.TeamManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Material;
+import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.PotionMeta;
 
-import java.util.List;
-import java.util.OptionalInt;
 import java.util.UUID;
 
 public class TeamColorMenu extends MenuView {
@@ -25,14 +20,7 @@ public class TeamColorMenu extends MenuView {
     private final UUID owner;
     private final boolean returnToLimbo;
 
-    private static final ChatColor[] ALLOWED = {
-            ChatColor.BLACK, ChatColor.DARK_BLUE, ChatColor.DARK_GREEN, ChatColor.DARK_AQUA,
-            ChatColor.DARK_RED, ChatColor.DARK_PURPLE, ChatColor.GOLD, ChatColor.GRAY,
-            ChatColor.DARK_GRAY, ChatColor.BLUE, ChatColor.GREEN, ChatColor.AQUA,
-            ChatColor.RED, ChatColor.LIGHT_PURPLE, ChatColor.YELLOW, ChatColor.WHITE
-    };
-
-    private static final int SLOT_CUSTOM_HEX = 49;
+    //private static final int SLOT_CUSTOM_HEX = 49;
 
     public TeamColorMenu(String name, UUID owner) {
         this(name, owner, false);
@@ -46,17 +34,25 @@ public class TeamColorMenu extends MenuView {
         build();
     }
 
-    private ItemStack swatch(Material m, ChatColor color) {
+    private ItemStack swatch(Material m, Color color, String colorName) {
         ItemStack it = new ItemStack(m);
         ItemMeta im = it.getItemMeta();
         if (im != null) {
-            im.displayName(LegacyComponentSerializer.legacySection().deserialize(color + "Pick " + color.name()));
+            if(m == Material.GLASS_BOTTLE)
+                im.customName(Component.text("Already taken!", TextColor.color(color.asRGB())));
+            else if (m == Material.POTION) {
+                im.customName(Component.text("Pick " + colorName, TextColor.color(color.asRGB())));
+                if(im instanceof PotionMeta pm){
+                    pm.setColor(color);
+                    pm.clearCustomEffects();
+                }
+            }
             it.setItemMeta(im);
         }
         return it;
     }
 
-    private static ItemStack hexBook() {
+    /*private static ItemStack hexBook() {
         ItemStack it = new ItemStack(Material.WRITABLE_BOOK);
         ItemMeta im = it.getItemMeta();
         if (im != null) {
@@ -67,43 +63,33 @@ public class TeamColorMenu extends MenuView {
             it.setItemMeta(im);
         }
         return it;
-    }
+    }*/
 
     private void build() {
-        var tm = HungerGamesPlugin.get().teams();
-        int i = 0;
-        for (ChatColor c : ALLOWED) {
-            if (tm.colorTaken(c)) continue;
-            Material wool = switch (c) {
-                case BLACK -> Material.BLACK_WOOL;
-                case DARK_BLUE -> Material.BLUE_WOOL;
-                case DARK_GREEN -> Material.GREEN_WOOL;
-                case DARK_AQUA -> Material.CYAN_WOOL;
-                case DARK_RED -> Material.RED_WOOL;
-                case DARK_PURPLE -> Material.PURPLE_WOOL;
-                case GOLD -> Material.ORANGE_WOOL;
-                case GRAY -> Material.LIGHT_GRAY_WOOL;
-                case DARK_GRAY -> Material.GRAY_WOOL;
-                case BLUE -> Material.BLUE_WOOL;
-                case GREEN -> Material.GREEN_WOOL;
-                case AQUA -> Material.CYAN_WOOL;
-                case RED -> Material.RED_WOOL;
-                case LIGHT_PURPLE -> Material.MAGENTA_WOOL;
-                case YELLOW -> Material.YELLOW_WOOL;
-                case WHITE -> Material.WHITE_WOOL;
-                default -> Material.WHITE_WOOL;
-            };
-            inv.setItem(i++, swatch(wool, c));
+        //var tm = HungerGamesPlugin.get().teams();
+        Player player = Bukkit.getServer().getPlayer(owner);
+        TeamManager.TeamManagerInstance teamManagerInstance;
+        if(player == null)
+            teamManagerInstance = TeamManager.getOrCreateWorldInstance(Bukkit.getWorlds().getFirst());
+        else
+            teamManagerInstance = TeamManager.getOrCreateWorldInstance(player.getWorld());
+
+        for (int i = 0; i < 54; i++) {
+            if (teamManagerInstance.takenColors.contains(TeamManager.colorSwatch[i]))
+                inv.setItem(i, swatch(Material.GLASS_BOTTLE, TeamManager.colorSwatch[i], TeamManager.colorNames[i]));
+            else
+                inv.setItem(i, swatch(Material.POTION, TeamManager.colorSwatch[i], TeamManager.colorNames[i]));
         }
-        inv.setItem(SLOT_CUSTOM_HEX, hexBook());
+        //inv.setItem(SLOT_CUSTOM_HEX, hexBook());
     }
 
     @Override
     public void onClick(InventoryClickEvent e) {
         if (!(e.getWhoClicked() instanceof Player p)) return;
-        int slot = e.getRawSlot();
-        HungerGamesPlugin plug = HungerGamesPlugin.get();
-        if (slot == SLOT_CUSTOM_HEX) {
+        //int slot = e.getRawSlot();
+        //HungerGamesPlugin plug = HungerGamesPlugin.get();
+        TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getOrCreateWorldInstance(p.getWorld());
+        /*if (slot == SLOT_CUSTOM_HEX) {
             ItemStack cur = e.getCurrentItem();
             if (cur == null || cur.getType() != Material.WRITABLE_BOOK) return;
             p.closeInventory();
@@ -113,31 +99,35 @@ public class TeamColorMenu extends MenuView {
                     () -> Bukkit.getScheduler().runTask(plug, () ->
                             p.openInventory(new TeamColorMenu(teamName, owner, returnToLimbo).getInventory())));
             return;
-        }
+        }*/
         ItemStack it = e.getCurrentItem();
         if (it == null || !it.hasItemMeta() || it.getItemMeta().displayName() == null) return;
-        String name = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
-                .serialize(it.getItemMeta().displayName());
-        ChatColor picked = null;
-        for (ChatColor c : ALLOWED) {
-            if (name.contains(c.name())) {
-                picked = c;
-                break;
-            }
-        }
+        //String name = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+        //        .serialize(it.getItemMeta().displayName());
+        Color picked = TeamManager.colorSwatch[e.getSlot()];
+        //ChatColor picked = null;
+        //for (ChatColor c : ALLOWED) {
+        //    if (name.contains(c.name())) {
+        //        picked = c;
+        //        break;
+        //    }
+        //}
         if (picked == null) return;
         if (!owner.equals(p.getUniqueId())) {
             p.sendMessage(Component.text("Only the team owner can confirm this menu.", NamedTextColor.RED));
             return;
         }
-        var t = plug.teams().createTeam(teamName, picked, owner);
+        //var t = plug.teams().createTeam(teamName, picked, owner);
+        TeamManager.Team t = new TeamManager.Team(teamName, picked, teamManagerInstance);
+        t.members.add(owner);
         p.sendMessage(Component.text("Created team ", NamedTextColor.GREEN)
-                .append(LegacyComponentSerializer.legacySection().deserialize(picked + t.getName())));
-        plug.game().applyTeamColors();
+                .append(Component.text(teamName, TextColor.color(picked.asRGB()))));
+        //plug.game().applyTeamColors();
+        t.sendFakeTeamPackets();
         openAfterCreate(p);
     }
 
-    private void finishWithHex(Player p, String line) {
+    /*private void finishWithHex(Player p, String line) {
         HungerGamesPlugin plug = HungerGamesPlugin.get();
         if (!owner.equals(p.getUniqueId())) {
             p.sendMessage(Component.text("Only the team owner can create this team.", NamedTextColor.RED));
@@ -165,7 +155,7 @@ public class TeamColorMenu extends MenuView {
                 .append(Component.text(t.getName(), TextColor.color(0xFF000000 | (0xFFFFFF & rgb)))));
         plug.game().applyTeamColors();
         openAfterCreate(p);
-    }
+    }*/
 
     private void openAfterCreate(Player p) {
         p.openInventory(new MainMenu(p).getInventory());

@@ -1,8 +1,8 @@
 package com.hollowcrown.hungergames;
 
+import com.hollowcrown.hub.team.TeamManager;
 import com.hollowcrown.hungergames.commands.HGCommand;
 import com.hollowcrown.hungergames.gui.MenuListener;
-import com.hollowcrown.hungergames.managers.TeamManager;
 import com.hollowcrown.hungergames.managers.SpawnManager;
 import com.hollowcrown.hungergames.managers.GameManager;
 import com.hollowcrown.hungergames.managers.EnvoyManager;
@@ -15,7 +15,6 @@ import com.hollowcrown.hungergames.managers.LobbyManager;
 import com.hollowcrown.hungergames.managers.LobbyShardManager;
 import com.hollowcrown.hungergames.managers.TemplateWorldManager;
 import com.hollowcrown.hungergames.managers.WorldSettingsManager;
-import com.hollowcrown.hungergames.managers.TeamNameDatabaseManager;
 import com.hollowcrown.hungergames.managers.IconManager;
 import com.hollowcrown.hungergames.managers.ConfigFilesManager;
 import com.hollowcrown.hungergames.managers.ServerRoleManager;
@@ -52,7 +51,6 @@ import com.hollowcrown.hungergames.integration.IronLegacyHubBridgeImpl;
 import com.hollowcrown.hungergames.integration.IronLegacyLimboBridgeImpl;
 import com.hollowcrown.hungergames.integration.IronLegacyTemplateAdminImpl;
 import com.hollowcrown.hungergames.integration.IronLegacyMechanic;
-import com.hollowcrown.hungergames.integration.IronLegacyTeamChatProvider;
 import com.hollowcrown.hungergames.listeners.HubShardBoundaryListener;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -90,7 +88,7 @@ public class HungerGamesPlugin extends JavaPlugin {
     private LobbyShardManager lobbyShardManager;
     private TemplateWorldManager templateWorldManager;
     private WorldSettingsManager worldSettingsManager;
-    private TeamNameDatabaseManager teamNameDatabaseManager;
+    //private TeamNameDatabaseManager teamNameDatabaseManager;
     private IconManager iconManager;
     private ConfigFilesManager configFilesManager;
     private ServerRoleManager serverRoleManager;
@@ -141,9 +139,9 @@ public class HungerGamesPlugin extends JavaPlugin {
         this.resourcePackManager = new ResourcePackManager(this);
         this.killLeaderboardManager = new KillLeaderboardManager(this);
         this.killLeaderboardSidebarManager = new KillLeaderboardSidebarManager(this);
-        this.teamManager  = new TeamManager(this);
+        //this.teamManager  = new TeamManager(this);
         this.spawnManager = new SpawnManager(this);
-        this.gameManager  = new GameManager(this, teamManager, spawnManager);
+        this.gameManager  = new GameManager(this, spawnManager);
         this.envoyManager = new EnvoyManager(this);
         this.giftDropManager = new GiftDropManager(this);
         this.addMode = new AddChestModeManager(this, envoyManager);
@@ -155,7 +153,7 @@ public class HungerGamesPlugin extends JavaPlugin {
         this.templateWorldManager = new TemplateWorldManager(this);
         this.ironLegacyLimboBridge = new IronLegacyLimboBridgeImpl(this);
         this.worldSettingsManager = new WorldSettingsManager(this);
-        this.teamNameDatabaseManager = new TeamNameDatabaseManager(this);
+        //this.teamNameDatabaseManager = new TeamNameDatabaseManager(this);
         this.iconManager = new IconManager(this);
         try {
             var report = this.templateWorldManager.recoverStaleInstances();
@@ -172,7 +170,7 @@ public class HungerGamesPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new RulesListener(this, buildRules), this);
 
         // Command wiring
-        HGCommand cmd = new HGCommand(gameManager, teamManager, spawnManager, chatInput);
+        HGCommand cmd = new HGCommand(gameManager, spawnManager, chatInput);
         if (getCommand("il") != null) {
             getCommand("il").setExecutor(cmd);
             getCommand("il").setTabCompleter(cmd);
@@ -200,7 +198,7 @@ public class HungerGamesPlugin extends JavaPlugin {
         getLogger().info("SharedState backend=" + sharedStateManager.backend());
 
         Bukkit.getServicesManager().register(GameWorldScopeResolver.class, new IlGameWorldScopeResolver(this), this, ServicePriority.Normal);
-        Bukkit.getServicesManager().register(TeamChatProvider.class, new IronLegacyTeamChatProvider(this), this, ServicePriority.Normal);
+        //Bukkit.getServicesManager().register(TeamChatProvider.class, new IronLegacyTeamChatProvider(this), this, ServicePriority.Normal);
         Bukkit.getServicesManager().register(IronLegacyHubBridge.class, new IronLegacyHubBridgeImpl(this), this, ServicePriority.Normal);
         Bukkit.getServicesManager().register(IronLegacyTemplateAdmin.class, new IronLegacyTemplateAdminImpl(this), this, ServicePriority.Normal);
         Bukkit.getServicesManager().register(IronLegacyLimboBridge.class, ironLegacyLimboBridge, this, ServicePriority.Normal);
@@ -317,7 +315,7 @@ public class HungerGamesPlugin extends JavaPlugin {
     public LobbyShardManager lobbyShards() { return lobbyShardManager; }
     public TemplateWorldManager templates() { return templateWorldManager; }
     public WorldSettingsManager worldSettings() { return worldSettingsManager; }
-    public TeamNameDatabaseManager teamNames() { return teamNameDatabaseManager; }
+    //public TeamNameDatabaseManager teamNames() { return teamNameDatabaseManager; }
     public IconManager icons() { return iconManager; }
     public ConfigFilesManager files() { return configFilesManager; }
     public ServerRoleManager serverRole() { return serverRoleManager; }

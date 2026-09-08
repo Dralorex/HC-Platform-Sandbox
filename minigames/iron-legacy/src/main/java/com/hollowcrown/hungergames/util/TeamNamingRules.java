@@ -1,13 +1,14 @@
 package com.hollowcrown.hungergames.util;
 
 import com.hollowcrown.api.party.PartyView;
+import com.hollowcrown.hub.team.TeamManager;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
-import com.hollowcrown.hungergames.managers.TeamManager;
 import org.bukkit.entity.Player;
 
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -18,6 +19,29 @@ public final class TeamNamingRules {
 
     private static final List<String> FALLBACK_BASES = List.of(
             "Squad", "Crew", "Unit", "Team", "Cell", "Fireteam");
+
+    private static final String[] RANDOM_NAME_PRIMARIES = new String[]{
+            "! Squad", "! Crew", "! Unit", "! Team", "! Cell", "! Fireteam"
+    };
+
+    //Assorted names for teams based on categories (currently 66, with 6 primaries that makes 396 unique names, making a ~1% chance of a joke name per team, or a ~40% chance of a joke name showing up among 50 randomly generated names. As most teams won't have randomly generated names, it's only around a 10% chance with 10 random names. As it is absolutely essential for at least one joke name to enter the game, I nominate the C Team!)
+    private static final String[] RANDOM_NAME_SECONDARIES = new String[]{
+            //Trees
+            "Oak", "Birch", "Spruce", "Dark Oak", "Pale Oak", "Acacia", "Jungle", "Mangrove", "Warped", "Crimson", "Azalea",
+            //Stones
+            "Stone", "Granite", "Andesite", "Diorite", "Calcite", "Deepslate", "Basalt", "Netherrack", "Blackstone", "Bedrock",
+            //Resources
+            "Copper", "Iron", "Gold", "Diamond", "Emerald", "Lapis", "Redstone", "Coal", "Netherite", "Amethyst", "Quartz",
+            //Planty things
+            "Moss", "Leaf", "Bamboo", "Kelp", "Coral", "Mushroom", "Fungus", "Spore", "Blossom", "Vine", "Berry", "Flower",
+            //Turf
+            "Grass", "Dirt", "Sand", "Nylium", "Podzol", "Mycelium", "Terracotta",
+            //Equipment
+            "Sword", "Shield", "Pickaxe", "Shovel", "Axe", "Hoe", "Helmet", "Chestplate", "Leggings", "Boots", "Bow",
+            //Joke stand ins (C Team, Team Rocket, Team Fortress, Team Avatar)
+            "Sea", "Firework", "Bastion", "Armor Stand"
+
+    };
 
     private TeamNamingRules() {
     }
@@ -57,11 +81,12 @@ public final class TeamNamingRules {
         if (containsProfanity(stripped, plugin)) {
             return Optional.of("That name is not allowed.");
         }
-        TeamManager teams = plugin.teams();
-        if (teams.nameTaken(stripped)) {
+        //TeamManager teams = plugin.teams();
+        if (TeamManager.getOrCreateWorldInstance(player.getWorld()).teams.containsKey(stripped)) {
             return Optional.of("That name is already in use.");
         }
-        if (player != null && teams.nameTakenByOtherTeamInSameLimbo(player, stripped)) {
+        //if (player != null && teams.nameTakenByOtherTeamInSameLimbo(player, stripped)) {
+        if(player != null && TeamManager.getOrCreateWorldInstance(player.getWorld()).findPlayerTeam(player) != TeamManager.getOrCreateWorldInstance(player.getWorld()).teams.get(stripped)) {
             return Optional.of("Another team in this limbo already uses that name.");
         }
         return Optional.empty();
@@ -70,7 +95,7 @@ public final class TeamNamingRules {
     /**
      * Team name when binding a Hub party at match start if the leader never finished a custom naming flow.
      */
-    public static String resolveBindTeamName(HungerGamesPlugin plugin, PartyView party, TeamManager teams) {
+    public static String resolveBindTeamName(HungerGamesPlugin plugin, PartyView party, TeamManager.TeamManagerInstance teams) {
         String candidate = stripLegacyColorCodes(party.displayName()).trim();
         if (candidate.isEmpty()) {
             candidate = "Party";
@@ -83,7 +108,7 @@ public final class TeamNamingRules {
         }
         String name = candidate;
         int bump = 2;
-        while (teams.nameTaken(name)) {
+        while (teams.teams.containsKey(name)) {
             String suffix = " " + bump++;
             int keep = Math.max(1, MAX_NAME_LENGTH - suffix.length());
             String base = candidate.length() > keep ? candidate.substring(0, keep) : candidate;
@@ -91,6 +116,44 @@ public final class TeamNamingRules {
             if (name.length() > MAX_NAME_LENGTH) {
                 name = name.substring(0, MAX_NAME_LENGTH);
             }
+        }
+        return name;
+    }
+
+    //[Hydraulic] generate a valid "random" name
+    public static String randomTeamName(TeamManager.TeamManagerInstance teams) {
+        if(!teams.teams.containsKey("C Team".toLowerCase()))
+            return "C Team";
+        Random random = new Random();
+        int tries = 0;
+        String name = RANDOM_NAME_PRIMARIES[random.nextInt(0, RANDOM_NAME_PRIMARIES.length)];
+        name = name.replace("!", RANDOM_NAME_SECONDARIES[random.nextInt(0, RANDOM_NAME_SECONDARIES.length)]);
+        if(name.equals("Team Sea"))
+            name = "C Team";
+        else if(name.equals("Team Firework"))
+            name = "Team Rocket";
+        else if(name.equals("Team Bastion"))
+            name = "Team Fortress";
+        else if(name.equals("Team Armor Stand"))
+            name = "Team Avatar";
+        while (teams.teams.containsKey(name.toLowerCase())) {
+            if(tries > 1000) { //Look, at this point something has gone wrong. Switch to a numerical approach instead of processing for forever.
+                int i = 1;
+                while (teams.teams.containsKey(("Team " + i).toLowerCase()))
+                    i++;
+                return "Team " + i;
+            }
+            name = RANDOM_NAME_PRIMARIES[random.nextInt(0, RANDOM_NAME_PRIMARIES.length)];
+            name = name.replace("!", RANDOM_NAME_SECONDARIES[random.nextInt(0, RANDOM_NAME_SECONDARIES.length)]);
+            if(name.equals("Team Sea"))
+                name = "C Team";
+            else if(name.equals("Team Firework"))
+                name = "Team Rocket";
+            else if(name.equals("Team Bastion"))
+                name = "Team Fortress";
+            else if(name.equals("Team Armor Stand"))
+                name = "Team Avatar";
+            tries++;
         }
         return name;
     }

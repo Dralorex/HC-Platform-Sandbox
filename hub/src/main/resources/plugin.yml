@@ -3,7 +3,7 @@ version: '${project.version}'
 main: com.hollowcrown.hub.HollowCrownHubPlugin
 api-version: '1.21'
 load: POSTWORLD
-depend: [HC-Foundation]
+depend: [HC-Foundation, FakeTeamAPI]
 authors: [HollowCrownStudio]
 description: Hollow Crown Hub — world templates, lobby instances, platform services.
 commands:

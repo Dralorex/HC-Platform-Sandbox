@@ -1,8 +1,10 @@
 package com.hollowcrown.hungergames.gui;
 
+import com.hollowcrown.hub.team.TeamManager;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -40,7 +42,7 @@ public class InviteMenu extends MenuView {
         // Candidate = every offline/online player who has joined, NOT already in a team
         List<OfflinePlayer> candidates = Arrays.stream(Bukkit.getOfflinePlayers())
                 .filter(op -> op.getUniqueId() != null && op.getName() != null)
-                .filter(op -> tm.getTeamOf(op.getUniqueId()) == null)
+                .filter(op -> TeamManager.findPlayerTeam(op.getUniqueId()) == null)
                 .sorted(Comparator.comparing(op -> op.getName().toLowerCase()))
                 .collect(Collectors.toList());
 
@@ -96,8 +98,8 @@ public class InviteMenu extends MenuView {
         if (slot >= inv.getSize()) return;
 
         var tm = HungerGamesPlugin.get().teams();
-        var my = tm.getTeamOf(p.getUniqueId());
-        if (my == null || !my.getOwner().equals(p.getUniqueId()) || !my.getName().equalsIgnoreCase(teamName)) {
+        var my = TeamManager.getOrCreateWorldInstance(p.getWorld()).findPlayerTeam(p.getUniqueId());
+        if (my == null || !my.getLeader().equals(p.getUniqueId()) || !my.getName().equalsIgnoreCase(teamName)) {
             p.sendMessage(Component.text("You no longer own this team.", NamedTextColor.RED));
             p.closeInventory();
             return;
@@ -111,27 +113,32 @@ public class InviteMenu extends MenuView {
             p.openInventory(new InviteMenu(teamName, page + 1).getInventory());
             return;
         }
-        if (slot == 49) { p.closeInventory(); return; }
+        if (slot == 49) {
+            p.closeInventory();
+            return;
+        }
 
         UUID targetId = index.get(slot);
         if (targetId == null) return;
-        if (tm.getTeamOf(targetId) != null) {
+        if (TeamManager.getOrCreateWorldInstance(p.getWorld()).findPlayerTeam(targetId) != null) {
             p.sendMessage(Component.text("That player already joined a team.", NamedTextColor.RED));
             p.openInventory(new InviteMenu(teamName, page).getInventory());
             return;
         }
 
-        tm.invite(targetId, teamName);
+        //tm.invite(targetId, teamName);
+        TeamManager.teamJoinInvites.add(new TeamManager.TeamJoinInvite(my, targetId));
         OfflinePlayer op = Bukkit.getOfflinePlayer(targetId);
         p.sendMessage(Component.text("Invited ", NamedTextColor.GREEN)
-            .append(Component.text(op.getName() == null ? targetId.toString() : op.getName()))
-            .append(Component.text(" to ", NamedTextColor.GREEN))
-            .append(LegacyComponentSerializer.legacySection().deserialize(my.getColor() + my.getName())));
+                .append(Component.text(op.getName() == null ? targetId.toString() : op.getName()))
+                .append(Component.text(" to ", NamedTextColor.GREEN))
+                .append(Component.text(my.getName(), TextColor.color(my.color.asRGB()))));
 
         if (op.isOnline()) {
-            op.getPlayer().sendMessage(Component.text("You were invited to join team ", NamedTextColor.GOLD)
-                .append(LegacyComponentSerializer.legacySection().deserialize(my.getColor() + my.getName()))
-                .append(Component.text(". Open /il gui -> Join Team.", NamedTextColor.GOLD)));
+            Objects.requireNonNull(op.getPlayer()).sendMessage(Component.text("You were invited to join team ", NamedTextColor.GOLD)
+                    .append(Component.text(my.getName(), TextColor.color(my.color.asRGB())))
+                    .append(Component.text(". Open /il gui -> Join Team.", NamedTextColor.GOLD)));
+
         }
 
         // Refresh page (their head disappears once they have a team; invite alone keeps them here,

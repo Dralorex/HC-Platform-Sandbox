@@ -5,6 +5,7 @@ import com.hollowcrown.api.platform.HubSpawn;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.integration.HubIronLegacySupport;
 import com.hollowcrown.hub.HubLog;
+import com.hollowcrown.hub.team.TeamManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
@@ -22,6 +23,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
 
@@ -44,6 +46,7 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
             sender.sendMessage(Component.text("  /hch lobby … — lobby instance worlds L# (admin); /hch lobby gui", NamedTextColor.GRAY));
             sender.sendMessage(Component.text("  /hch join — pick a game and join an open lobby", NamedTextColor.GRAY));
             sender.sendMessage(Component.text("  /hch party … — Hub parties (create, invite, leave, …)", NamedTextColor.GRAY));
+            sender.sendMessage(Component.text("  /hch team … — Hub teams (ally, rival)", NamedTextColor.GRAY));
             sender.sendMessage(Component.text("  /hch queue … — match queue per template (join, leave, status)", NamedTextColor.GRAY));
             sender.sendMessage(Component.text("  /hch debug mechanics — list registered mechanic ids (admin)", NamedTextColor.GRAY));
             sender.sendMessage(Component.text("  /hch debug why <player> — Hub party/queue/world snapshot (admin)", NamedTextColor.GRAY));
@@ -66,6 +69,9 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
         }
         if (args[0].equalsIgnoreCase("party")) {
             return HubPartyCommands.handle(plugin, sender, args);
+        }
+        if (args[0].equalsIgnoreCase("team")) {
+            return TeamCommands.handle(plugin, sender, args);
         }
         if (args[0].equalsIgnoreCase("queue")) {
             return HubQueueCommands.handle(plugin, sender, args);
@@ -148,7 +154,7 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             List<String> out = new ArrayList<>();
             String p = args[0].toLowerCase();
-            for (String c : List.of("help", "version", "sethub", "clearhub", "hubworld", "template", "lobby", "join", "party", "queue", "debug", "gui")) {
+            for (String c : List.of("help", "version", "sethub", "clearhub", "hubworld", "template", "lobby", "join", "party", "team", "queue", "debug", "gui")) {
                 if (c.startsWith(p)) {
                     out.add(c);
                 }
@@ -187,6 +193,9 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("party")) {
             return tabParty(args);
+        }
+        if (args.length >= 2 && args[0].equalsIgnoreCase("team") && sender instanceof Player player) {
+            return tabTeam(args, player);
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("queue")) {
             return tabQueue(plugin, args);
@@ -468,5 +477,36 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
             return out;
         }
         return List.of();
+    }
+
+
+    private static List<String> tabTeam(String[] args, Player player) {
+        if (args.length == 2) {
+            String p = args[1].toLowerCase(Locale.ROOT);
+            List<String> out = new ArrayList<>();
+            for (String c : List.of("ally", "rival")) {
+                if (c.startsWith(p)) {
+                    out.add(c);
+                }
+            }
+            return out;
+        }
+        if (args.length == 3 && (args[1].equalsIgnoreCase("ally") || args[1].equalsIgnoreCase("rival"))) {
+            return partial(args[2].toLowerCase(Locale.ROOT), List.of("add", "remove"));
+        }
+        if (args.length == 4 && (args[1].equalsIgnoreCase("ally") || args[1].equalsIgnoreCase("rival"))) {
+            TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getInstance(player.getWorld());
+            if(teamManagerInstance == null)
+                return List.of();
+            TeamManager.Team team = teamManagerInstance.findPlayerTeam(player);
+            if(team == null)
+                return List.of();
+            return partial(args[2].toLowerCase(Locale.ROOT), teamManagerInstance.teams.keySet().stream().filter((e) -> !e.toLowerCase(Locale.ROOT).equals(team.getName().toLowerCase(Locale.ROOT))).sorted().toList());
+        }
+        return List.of();
+    }
+
+    private static List<String> partial(String arg, List<String> options) {
+        return options.stream().filter(s -> s.toLowerCase().startsWith(arg.toLowerCase())).collect(Collectors.toList());
     }
 }
