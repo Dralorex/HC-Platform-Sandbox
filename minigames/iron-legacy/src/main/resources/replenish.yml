@@ -19,7 +19,7 @@ tiers:
   T1:
     numItems:
       min: 2     # Minimum items that spawn in a chest
-      max: 4     # Maxumum items that spawn in a chest
+      max: 4     # Maximum items that spawn in a chest
     items:       # List of items that can spawn is specified tier
       - { material: APPLE, minStack: 3, maxStack: 8 }
       - { material: COBBLESTONE, minStack: 8, maxStack: 16 }
@@ -105,7 +105,4 @@ tiers:
       - { material: DIAMOND_CHESTPLATE, minStack: 1, maxStack: 1 }
       - { material: DIAMOND_HORSE_ARMOR, minStack: 1, maxStack: 1 }
       - { material: SADDLE, minStack: 1, maxStack: 1 }
-
-locations: []
-
 

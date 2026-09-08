@@ -9,6 +9,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [HC-Plugins-a0.1.17] - 2026-09-07
+
+Tagged plugins: **API a0.1.13**, **Foundation a0.1.5**, **Hub a0.1.14**, **Iron Legacy a0.3.17**.
+
+### Fixed
+
+- Replenish auto-corrects common `replenish.yml` material typos on load (`CHAIMAIL_CHESTPLATE`, `LEATHER_LEGGINS`, `IRON` → `IRON_INGOT`) and saves the fixed file.
+
 ## [HC-Plugins-a0.1.16] - 2026-09-07
 
 Tagged plugins: **API a0.1.13**, **Foundation a0.1.5**, **Hub a0.1.14**, **Iron Legacy a0.3.16**.

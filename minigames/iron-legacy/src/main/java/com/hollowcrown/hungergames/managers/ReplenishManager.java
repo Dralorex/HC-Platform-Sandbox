@@ -19,6 +19,15 @@ import java.util.concurrent.ThreadLocalRandom;
 public class ReplenishManager {
     public record BlockCoord(String worldName, int x, int y, int z) {}
 
+    /** Known typos in hand-edited replenish.yml files. */
+    private static final Map<String, String> MATERIAL_TYPO_FIXES = Map.of(
+            "CHAIMAIL_CHESTPLATE", "CHAINMAIL_CHESTPLATE",
+            "LEATHER_LEGGINS", "LEATHER_LEGGINGS",
+            "IRON", "IRON_INGOT"
+    );
+
+    private static final List<String> LOOT_TIERS = List.of("T1", "T2", "T3", "T4");
+
     private final HungerGamesPlugin plugin;
     private final ConcurrentHashMap<String, List<BlockCoord>> coordCache = new ConcurrentHashMap<>();
 
@@ -105,7 +114,52 @@ public class ReplenishManager {
     /** Shared tier loot + schedule from plugins/HCIronLegacy/replenish.yml. */
     private FileConfiguration lootConfig() {
         WorldEnvoyStorage.ensureBaseReplenish(plugin);
+        patchReplenishLootFileTypos();
         return Yaml.loadOrCreate(plugin, WorldEnvoyStorage.BASE_REPLENISH);
+    }
+
+    /** Rewrites known material typos in replenish.yml on disk (one save when fixes apply). */
+    private void patchReplenishLootFileTypos() {
+        FileConfiguration y = Yaml.loadOrCreate(plugin, WorldEnvoyStorage.BASE_REPLENISH);
+        boolean changed = false;
+        for (String tier : LOOT_TIERS) {
+            String path = "tiers." + tier + ".items";
+            List<Map<?, ?>> items = y.getMapList(path);
+            if (items.isEmpty()) continue;
+            boolean tierChanged = false;
+            List<Map<String, Object>> fixed = new ArrayList<>();
+            for (Map<?, ?> entry : items) {
+                Map<String, Object> copy = new LinkedHashMap<>();
+                for (Map.Entry<?, ?> e : entry.entrySet()) {
+                    copy.put(String.valueOf(e.getKey()), e.getValue());
+                }
+                Object mat = copy.get("material");
+                if (mat != null) {
+                    String corrected = correctMaterialName(Objects.toString(mat));
+                    if (!corrected.equalsIgnoreCase(Objects.toString(mat))) {
+                        copy.put("material", corrected);
+                        tierChanged = true;
+                        plugin.getLogger().info("Replenish fixed material typo: "
+                                + mat + " -> " + corrected + " (tiers." + tier + ")");
+                    }
+                }
+                fixed.add(copy);
+            }
+            if (tierChanged) {
+                y.set(path, fixed);
+                changed = true;
+            }
+        }
+        if (changed) {
+            Yaml.save(plugin, WorldEnvoyStorage.BASE_REPLENISH, y);
+        }
+    }
+
+    private static String correctMaterialName(String name) {
+        String trimmed = name.trim();
+        if (trimmed.isEmpty()) return trimmed;
+        String upper = trimmed.toUpperCase(Locale.ROOT);
+        return MATERIAL_TYPO_FIXES.getOrDefault(upper, trimmed);
     }
 
     private FileConfiguration locationsConfig(String templateKey) {
@@ -322,7 +376,7 @@ public boolean removeNearest(Location ref, String templateKey) {
 
     private Material resolveMaterial(Object raw) {
         if (raw instanceof Material m) return m.isAir() ? null : m;
-        String name = Objects.toString(raw, "").trim();
+        String name = correctMaterialName(Objects.toString(raw, ""));
         if (name.isEmpty()) return null;
         Material mat = Material.matchMaterial(name);
         if (mat != null) return mat;
