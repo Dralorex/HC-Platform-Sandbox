@@ -288,27 +288,47 @@ public boolean removeNearest(Location ref, String templateKey) {
             }
         }
         placeStacksRandomly(inv, toPlace);
-        chest.update(true, false);
+        if (toPlace.isEmpty()) {
+            plugin.getLogger().warning("Replenish " + tier + " at "
+                    + l.getBlockX() + "," + l.getBlockY() + "," + l.getBlockZ()
+                    + ": no valid loot entries (check replenish.yml materials).");
+        }
     }
 
     /** Rolls min/max stack for one tier item entry; skips invalid materials. */
     private ItemStack rollItemStack(Map<?, ?> def) {
         try {
-            String matName = Objects.toString(def.get("material"), "").trim();
-            if (matName.isEmpty()) return null;
-            Material mat = Material.matchMaterial(matName);
-            if (mat == null || !mat.isItem()) {
-                plugin.getLogger().fine("Replenish skipped unknown material: " + matName);
+            Material mat = resolveMaterial(def.get("material"));
+            if (mat == null) {
+                plugin.getLogger().warning("Replenish skipped unknown material: " + def.get("material"));
                 return null;
             }
-            int minS = Integer.parseInt(Objects.toString(def.get("minStack"), "1"));
-            int maxS = Integer.parseInt(Objects.toString(def.get("maxStack"), "1"));
+            int minS = parseInt(def.get("minStack"), 1);
+            int maxS = parseInt(def.get("maxStack"), 1);
             if (maxS < minS) maxS = minS;
-            int amount = ThreadLocalRandom.current().nextInt(minS, maxS + 1);
+            int amount = minS == maxS ? minS : ThreadLocalRandom.current().nextInt(minS, maxS + 1);
             amount = Math.max(1, Math.min(amount, mat.getMaxStackSize()));
             return new ItemStack(mat, amount);
         } catch (Exception ex) {
-            plugin.getLogger().fine("Replenish skipped invalid item entry: " + def);
+            plugin.getLogger().warning("Replenish skipped invalid item entry " + def + ": " + ex.getMessage());
+            return null;
+        }
+    }
+
+    private static int parseInt(Object raw, int fallback) {
+        if (raw instanceof Number n) return n.intValue();
+        return Integer.parseInt(Objects.toString(raw, String.valueOf(fallback)));
+    }
+
+    private Material resolveMaterial(Object raw) {
+        if (raw instanceof Material m) return m.isAir() ? null : m;
+        String name = Objects.toString(raw, "").trim();
+        if (name.isEmpty()) return null;
+        Material mat = Material.matchMaterial(name);
+        if (mat != null) return mat;
+        try {
+            return Material.valueOf(name.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ignored) {
             return null;
         }
     }

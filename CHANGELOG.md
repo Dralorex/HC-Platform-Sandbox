@@ -9,6 +9,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [HC-Plugins-a0.1.16] - 2026-09-07
+
+Tagged plugins: **API a0.1.13**, **Foundation a0.1.5**, **Hub a0.1.14**, **Iron Legacy a0.3.16**.
+
+### Fixed
+
+- Replenish chests were cleared but stayed empty — `chest.update()` after fill reverted inventory; removed. Material parsing hardened for YAML enum/number forms.
+
 ## [HC-Plugins-a0.1.15] - 2026-09-07
 
 Tagged plugins: **API a0.1.13**, **Foundation a0.1.5**, **Hub a0.1.14**, **Iron Legacy a0.3.15**.
