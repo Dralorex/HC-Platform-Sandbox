@@ -56,6 +56,9 @@ public class GameManager implements Listener {
     private WorldGameSettings activeMatchSettings = null;
     /** Eliminated players held in place before hub teleport so death cannon audio can play. */
     private final Set<UUID> legacyDeathHold = new HashSet<>();
+    
+    // border shrink management
+    private BorderShrinkManager borderShrinkManager;
 
     public GameManager(HungerGamesPlugin plugin, TeamManager teams, SpawnManager spawns) {
         this.plugin = plugin;
@@ -278,9 +281,6 @@ public class GameManager implements Listener {
         // Prepare world border (centered on world spawn, set to max size)
         WorldBorder wb = world.getWorldBorder();
         double start = activeMatchSettings.borderStartSize();
-        double end = activeMatchSettings.borderEndSize();
-        long shrinkDelay = activeMatchSettings.borderShrinkDelaySeconds();
-        long shrinkDuration = activeMatchSettings.borderShrinkDurationSeconds();
         wb.setCenter(world.getSpawnLocation());
         wb.setSize(start);
 
@@ -334,7 +334,10 @@ public class GameManager implements Listener {
                     softLeashEndMs = 0L;
                     try { plugin.leaderboardSidebar().refreshAll(); } catch (Throwable ignored) {}
                     try { HungerGamesPlugin.get().replenish().startSchedule(); } catch (Throwable ignored) {}
-                    scheduleBorderShrink(plist, wb, end, shrinkDelay, shrinkDuration);
+                    
+                    // Initialize and schedule border shrink phases
+                    borderShrinkManager = new BorderShrinkManager(plugin, launchWorld, plist, GameManager.this, ws.borderShrinkSchedule());
+                    borderShrinkManager.scheduleAllPhases();
                 } else {
                     state = State.FREEZE;
                     hardFreezeActive = false;
@@ -343,7 +346,7 @@ public class GameManager implements Listener {
 
                     new BukkitRunnable() {
                         @Override public void run() {
-                            beginCountdown(plist, wb, end, shrinkDelay, shrinkDuration);
+                            beginCountdown(plist, launchWorld);
                             try { HungerGamesPlugin.get().replenish().startSchedule(); } catch (Throwable ignored) {}
                         }
                     }.runTaskLater(plugin, 5 * 20L);
@@ -409,24 +412,7 @@ public class GameManager implements Listener {
         return result;
     }
 
-    private void scheduleBorderShrink(List<Player> plist, WorldBorder wb, double end, long shrinkDelay, long shrinkDuration) {
-        new BukkitRunnable() {
-            @Override public void run() {
-                if (state != State.RUNNING) return;
-                wb.setSize(end, shrinkDuration);
-                for (Player p : promptAudience(plist, currentWorld)) {
-                    sendPrompt(
-                            p,
-                            Component.text("World Border is Shrinking!", NamedTextColor.RED),
-                            Component.empty(),
-                            Component.text("[HCIronLegacy] World Border is Shrinking!", NamedTextColor.RED)
-                    );
-                }
-            }
-        }.runTaskLater(plugin, shrinkDelay * 20L);
-    }
-
-    private void beginCountdown(List<Player> plist, WorldBorder wb, double end, long shrinkDelay, long shrinkDuration) {
+    private void beginCountdown(List<Player> plist, World launchWorld) {
         hardFreezeActive = true; // punish moves from now on
 
         final int base = activeMatchSettings != null
@@ -450,7 +436,9 @@ public class GameManager implements Listener {
                     hardFreezeActive = false; // freeze over
                     try { plugin.leaderboardSidebar().refreshAll(); } catch (Throwable ignored) {}
 
-                    scheduleBorderShrink(plist, wb, end, shrinkDelay, shrinkDuration);
+                    // Initialize and schedule border shrink phases
+                    borderShrinkManager = new BorderShrinkManager(plugin, launchWorld, plist, GameManager.this, activeMatchSettings.borderShrinkSchedule());
+                    borderShrinkManager.scheduleAllPhases();
 
                     cancel();
                     return;
@@ -490,6 +478,13 @@ public class GameManager implements Listener {
         hardFreezeActive = false;
         activeMatchTemplateKey = null;
         activeMatchSettings = null;
+        
+        // Clean up border shrink manager
+        if (borderShrinkManager != null) {
+            borderShrinkManager.reset();
+            borderShrinkManager = null;
+        }
+        
         clearMatchTeams();
 
         // Cleanup: remove scoreboard teams we created and reset player display/list names
