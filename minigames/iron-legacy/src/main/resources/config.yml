@@ -60,17 +60,40 @@ lobby:
   pvpSwordMaterial: IRON_SWORD
 
 worldborder:
-  # Starting/max border size at game start.
+  # Starting/max border size at game start. This is the full diameter in blocks.
   startSize: 1500.0
 
-  # Target/min border size once fully shrunk.
+  # Target/min border size once fully shrunk. This is the full diameter in blocks.
   endSize: 200.0
 
-  # Seconds after game start before the border begins shrinking.
+  # Legacy single-shrink settings. Used only when no phases are configured below.
   shrinkDelaySeconds: 300
-
-  # Seconds it takes to shrink from startSize to endSize.
   shrinkDurationSeconds: 600
+
+  # Border shrink phases are defined here so the match schedule is version-controlled
+  # and can be edited directly in the repository.
+  #
+  # delaySeconds is measured from match start, not from the previous phase.
+  # radiusStart/radiusEnd are radii; the actual WorldBorder diameter is radius * 2.
+  # Keep phases non-overlapping: the next delay should be >= previous delay + duration.
+  phases:
+    phase_1:
+      delaySeconds: 300
+      radiusStart: 750
+      radiusEnd: 500
+      shrinkDurationSeconds: 300
+
+    phase_2:
+      delaySeconds: 600
+      radiusStart: 500
+      radiusEnd: 250
+      shrinkDurationSeconds: 300
+
+    phase_3:
+      delaySeconds: 900
+      radiusStart: 250
+      radiusEnd: 100
+      shrinkDurationSeconds: 300
 
 # =========================
 # Rules: Build / Dig / Craft

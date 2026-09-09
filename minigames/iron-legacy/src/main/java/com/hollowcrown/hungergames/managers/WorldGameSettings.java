@@ -3,6 +3,7 @@ package com.hollowcrown.hungergames.managers;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,35 +49,42 @@ public final class WorldGameSettings {
     }
 
     public BorderShrinkSchedule borderShrinkSchedule() {
-    if (overlay != null && overlay.contains("borderShrinkPhases")) {
-        return loadScheduleFromSection(overlay.getConfigurationSection("borderShrinkPhases"));
-    }
-    // backup reg border shrink (continuous)
-    List<BorderShrinkPhase> legacy = new ArrayList<>();
-    legacy.add(new BorderShrinkPhase(
-            borderShrinkDelaySeconds(),
-            borderStartSize(),
-            borderEndSize(),
-            borderShrinkDurationSeconds()
-    ));
-    return new BorderShrinkSchedule(legacy);
-}
+        if (overlay != null && overlay.contains("borderShrinkPhases")) {
+            return loadScheduleFromSection(overlay.getConfigurationSection("borderShrinkPhases"));
+        }
 
-private static BorderShrinkSchedule loadScheduleFromSection(ConfigurationSection sec) {
-    if (sec == null) return new BorderShrinkSchedule();
-    List<BorderShrinkPhase> phases = new ArrayList<>();
-    for (String key : sec.getKeys(false)) {
-        if (!sec.isConfigurationSection(key)) continue;
-        ConfigurationSection phaseSection = sec.getConfigurationSection(key);
-        long delay = phaseSection.getLong("delaySeconds", 0);
-        double start = phaseSection.getDouble("radiusStart", 400);
-        double end = phaseSection.getDouble("radiusEnd", 50);
-        long duration = phaseSection.getLong("shrinkDurationSeconds", 1800);
-        phases.add(new BorderShrinkPhase(delay, start, end, duration));
+        ConfigurationSection configuredPhases = cfg().getConfigurationSection("worldborder.phases");
+        if (configuredPhases != null) {
+            return loadScheduleFromSection(configuredPhases);
+        }
+
+        // Legacy fallback: one continuous shrink.
+        List<BorderShrinkPhase> legacy = new ArrayList<>();
+        legacy.add(new BorderShrinkPhase(
+                borderShrinkDelaySeconds(),
+                borderStartSize(),
+                borderEndSize(),
+                borderShrinkDurationSeconds()
+        ));
+        return new BorderShrinkSchedule(legacy);
     }
-    return new BorderShrinkSchedule(phases);
-}
-    
+
+    private static BorderShrinkSchedule loadScheduleFromSection(ConfigurationSection sec) {
+        if (sec == null) return new BorderShrinkSchedule();
+
+        List<BorderShrinkPhase> phases = new ArrayList<>();
+        for (String key : sec.getKeys(false)) {
+            if (!sec.isConfigurationSection(key)) continue;
+            ConfigurationSection phaseSection = sec.getConfigurationSection(key);
+            long delay = phaseSection.getLong("delaySeconds", 0);
+            double start = phaseSection.getDouble("radiusStart", 400);
+            double end = phaseSection.getDouble("radiusEnd", 50);
+            long duration = phaseSection.getLong("shrinkDurationSeconds", 1800);
+            phases.add(new BorderShrinkPhase(delay, start, end, duration));
+        }
+        return new BorderShrinkSchedule(phases);
+    }
+
     public int freezeCountdownSeconds() {
         return oi("freezeCountdownSeconds", cfg().getInt("game.countdownSeconds", 30));
     }

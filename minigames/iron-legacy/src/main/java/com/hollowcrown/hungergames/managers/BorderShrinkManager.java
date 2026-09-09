@@ -12,7 +12,6 @@ import java.util.*;
 
 /**
  * Executes border shrink phases during a running match.
- * Replacement 4 old border shrink
  */
 public class BorderShrinkManager {
     private final HungerGamesPlugin plugin;
@@ -21,7 +20,7 @@ public class BorderShrinkManager {
     private final GameManager gameManager;
     private final BorderShrinkSchedule schedule;
 
-    //track phases have been scheduled
+    // Tracks phases that have started.
     private final Set<Integer> scheduledPhaseIndices = new HashSet<>();
 
     public BorderShrinkManager(HungerGamesPlugin plugin, World matchWorld, List<Player> audience,
@@ -34,7 +33,8 @@ public class BorderShrinkManager {
     }
 
     /**
-     * Schedule all border shrink phases relative to match start
+     * Schedule all border shrink phases relative to match start.
+     * Each phase's delaySeconds is measured from match start.
      */
     public void scheduleAllPhases() {
         for (int i = 0; i < schedule.size(); i++) {
@@ -61,7 +61,6 @@ public class BorderShrinkManager {
         WorldBorder wb = matchWorld.getWorldBorder();
         wb.setSize(phase.radiusEnd() * 2, phase.shrinkDurationSeconds());
 
-        // notificatin 4 players
         for (Player p : audience) {
             if (p == null || !p.isOnline()) continue;
             p.sendMessage(Component.text(
