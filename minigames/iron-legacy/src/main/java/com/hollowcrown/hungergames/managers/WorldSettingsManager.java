@@ -4,7 +4,8 @@ import com.hollowcrown.hungergames.HungerGamesPlugin;
 import com.hollowcrown.hungergames.util.Yaml;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
-
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /** Per-template match settings stored in {@code world-game-settings.yml}. */
