@@ -5,7 +5,7 @@ package com.hollowcrown.hungergames.managers;
  * fields are in-game time units starting at match start
  */
 public class BorderShrinkPhase {
-    private final long delaySeconds;         // When to start shrinkin
+    private final long delaySeconds;         // When to start shrinking
     private final double radiusStart;        // Starting border radius
     private final double radiusEnd;          // Ending border radius
     private final long shrinkDurationSeconds; // How long to shrink over
