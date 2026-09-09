@@ -83,4 +83,28 @@ public class WorldSettingsManager {
         sec.set(field, value);
         save();
     }
+       
+    public void addBorderShrinkPhase(String templateKey, BorderShrinkPhase phase) {
+        ConfigurationSection sec = sectionForTemplate(templateKey, true);
+        if (!sec.isConfigurationSection("borderShrinkPhases")) {
+            sec.createSection("borderShrinkPhases");
+        }
+        ConfigurationSection phases = sec.getConfigurationSection("borderShrinkPhases");
+        String key = "phase_" + System.currentTimeMillis();
+        phases.set(key + ".delaySeconds", phase.delaySeconds());
+        phases.set(key + ".radiusStart", phase.radiusStart());
+        phases.set(key + ".radiusEnd", phase.radiusEnd());
+        phases.set(key + ".shrinkDurationSeconds", phase.shrinkDurationSeconds());
+        save();
+    }
+    
+    public void removeBorderShrinkPhase(String templateKey, int index) {
+        ConfigurationSection sec = sectionForTemplate(templateKey, false);
+        if (sec == null || !sec.isConfigurationSection("borderShrinkPhases")) return;
+        ConfigurationSection phases = sec.getConfigurationSection("borderShrinkPhases");
+        if (index < 0 || index >= phases.getKeys(false).size()) return;
+        List<String> keys = new ArrayList<>(phases.getKeys(false));
+        phases.set(keys.get(index), null);
+        save();
+    }
 }
