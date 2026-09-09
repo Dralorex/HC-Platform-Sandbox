@@ -7,6 +7,36 @@ import org.bukkit.configuration.file.FileConfiguration;
 /**
  * Effective match settings for a template: overlays {@code world-game-settings.yml} on top of {@code config.yml}.
  */
+public BorderShrinkSchedule borderShrinkSchedule() {
+    if (overlay != null && overlay.contains("borderShrinkPhases")) {
+        return loadScheduleFromSection(overlay.getConfigurationSection("borderShrinkPhases"));
+    }
+    // backup reg border shrink (continuous)
+    List<BorderShrinkPhase> legacy = new ArrayList<>();
+    legacy.add(new BorderShrinkPhase(
+            borderShrinkDelaySeconds(),
+            borderStartSize(),
+            borderEndSize(),
+            borderShrinkDurationSeconds()
+    ));
+    return new BorderShrinkSchedule(legacy);
+}
+
+private static BorderShrinkSchedule loadScheduleFromSection(ConfigurationSection sec) {
+    if (sec == null) return new BorderShrinkSchedule();
+    List<BorderShrinkPhase> phases = new ArrayList<>();
+    for (String key : sec.getKeys(false)) {
+        if (!sec.isConfigurationSection(key)) continue;
+        ConfigurationSection phaseSection = sec.getConfigurationSection(key);
+        long delay = phaseSection.getLong("delaySeconds", 0);
+        double start = phaseSection.getDouble("radiusStart", 400);
+        double end = phaseSection.getDouble("radiusEnd", 50);
+        long duration = phaseSection.getLong("shrinkDurationSeconds", 1800);
+        phases.add(new BorderShrinkPhase(delay, start, end, duration));
+    }
+    return new BorderShrinkSchedule(phases);
+}
+
 public final class WorldGameSettings {
     private final HungerGamesPlugin plugin;
     private final ConfigurationSection overlay;
