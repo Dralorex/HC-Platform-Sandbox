@@ -7,7 +7,7 @@ Copy-paste reference for all player and admin commands.
 **Feature descriptions:** `docs/PLATFORM_FEATURES.md`  
 **GUIs & integration:** `docs/PLATFORM_REFERENCE.md`
 
-**Bundle baseline:** HC-Plugins a0.1.17
+**Bundle baseline:** HC-Plugins a0.1.18
 
 ================================================================================
 PERMISSIONS

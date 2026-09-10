@@ -6,7 +6,7 @@ Copy-paste reference for **HC-Foundation**, **HollowCrownHub**, and **HCIronLega
 
 **Detail (GUIs, integration flows):** `docs/PLATFORM_REFERENCE.md`
 
-**Bundle baseline:** HC-Plugins a0.1.17
+**Bundle baseline:** HC-Plugins a0.1.18
 
 **Load order:** HC-Foundation (STARTUP) → HollowCrownHub → HCIronLegacy
 
@@ -408,7 +408,8 @@ Hard freeze countdown
 
 World border
   Status: Implemented
-  Shrink from config or /il border set.
+  Multi-phase shrink from config.yml worldborder.phases (or legacy single shrink);
+  per-map overrides in world-game-settings.yml; /il border set for global legacy fields.
 
 Elimination & win
   Status: Implemented

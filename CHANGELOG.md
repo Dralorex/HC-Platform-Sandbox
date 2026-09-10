@@ -9,6 +9,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [HC-Plugins-a0.1.18] - 2026-09-09
+
+Tagged plugins: **API a0.1.13**, **Foundation a0.1.5**, **Hub a0.1.14**, **Iron Legacy a0.3.18**.
+
+### Added
+
+- Multi-phase world border shrink schedule (`worldborder.phases` in `config.yml`, per-map overrides via `world-game-settings.yml`) with `BorderShrinkManager`.
+- GitHub Actions Maven publish workflow.
+
 ## [HC-Plugins-a0.1.17] - 2026-09-07
 
 Tagged plugins: **API a0.1.13**, **Foundation a0.1.5**, **Hub a0.1.14**, **Iron Legacy a0.3.17**.
