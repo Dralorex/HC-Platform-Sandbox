@@ -126,7 +126,8 @@ public class BuildRuleManager {
                 + "\u00A77 (" + buildMode + "), " + buildList.size() + " entries");
         out.add("\u00A7e  Dig:   " + (digEnabled ? "\u00A7aENABLED" : "\u00A7cDISABLED")
                 + "\u00A77 (" + digMode + "), " + digList.size() + " entries");
-
+        out.add("§e  Dispensers: "
+        + (dispenserInteractionEnabled ? "§aENABLED" : "§cDISABLED"));
         out.add("\u00A76Categories (" + categories.size() + "): "
                 + "\u00A77" + String.join(", ", categories.keySet()));
         out.add("\u00A78Tip: use category:<name> or cat:<name> with /hg build|dig add/remove");
