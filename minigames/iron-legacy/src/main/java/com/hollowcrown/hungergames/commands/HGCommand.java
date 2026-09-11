@@ -109,6 +109,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " randomteams <size> [forceop]"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " rules"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " crafting <on|off>"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " dispenser <on|off>"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " build <enable|disable|mode|add|remove|list>"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " dig <enable|disable|mode|add|remove|list>"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " set <teamsize|countdown|penaltyheight|titlecolor> <value>"));
