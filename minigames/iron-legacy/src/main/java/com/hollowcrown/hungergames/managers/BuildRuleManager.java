@@ -29,6 +29,8 @@ public class BuildRuleManager {
 
     private boolean craftingEnabled;
 
+    private boolean dispenserInteractionEnabled;
+    
     private boolean buildEnabled;
     private String  buildMode; // "whitelist" | "blacklist"
     private final Set<Material> buildList = new TreeSet<>(Comparator.comparing(Enum::name));
@@ -76,6 +78,9 @@ public class BuildRuleManager {
         }
 
         var d = rules.getConfigurationSection("dig");
+        var dispenser = rules.getConfigurationSection("dispenserInteraction");
+        this.dispenserInteractionEnabled =
+        dispenser == null || dispenser.getBoolean("enabled", true);
         this.digEnabled = d.getBoolean("enabled", true);
         this.digMode = normalizeMode(d.getString("mode", "whitelist"));
         digList.clear();
@@ -103,7 +108,7 @@ public class BuildRuleManager {
         plugin.getConfig().set("rules.build.enabled", buildEnabled);
         plugin.getConfig().set("rules.build.mode", buildMode);
         plugin.getConfig().set("rules.build.list", buildList.stream().map(Enum::name).sorted().toList());
-
+        plugin.getConfig().set("rules.dispenserInteraction.enabled",dispenserInteractionEnabled);    
         plugin.getConfig().set("rules.dig.enabled", digEnabled);
         plugin.getConfig().set("rules.dig.mode", digMode);
         plugin.getConfig().set("rules.dig.list", digList.stream().map(Enum::name).sorted().toList());
@@ -127,7 +132,15 @@ public class BuildRuleManager {
         out.add("\u00A78Tip: use category:<name> or cat:<name> with /hg build|dig add/remove");
         return out;
     }
-
+    /* Dispensers */
+        public void setDispenserInteractionEnabled(boolean enabled) {
+        this.dispenserInteractionEnabled = enabled;
+        saveLists();
+    }
+    
+    public boolean isDispenserInteractionEnabled() {
+        return dispenserInteractionEnabled;
+    }
     /* Crafting */
     public void setCraftingEnabled(boolean enabled) { this.craftingEnabled = enabled; saveLists(); }
     public boolean isCraftingEnabled() { return craftingEnabled; }
