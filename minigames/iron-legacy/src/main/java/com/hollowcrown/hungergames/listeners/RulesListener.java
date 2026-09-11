@@ -12,6 +12,9 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.block.Block;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
@@ -29,6 +32,22 @@ public class RulesListener implements Listener {
         return p.isOp() && plugin.getConfig().getBoolean("rules.opsBypassBuildDig", true);
     }
 
+    @EventHandler
+    public void onDispenserInteract(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+    
+        Block block = event.getClickedBlock();
+        if (block == null || block.getType() != Material.DISPENSER) {
+            return;
+        }
+    
+        if (!rules.isDispenserInteractionEnabled()) {
+            event.setCancelled(true);
+        }
+    }
+    
     private WorldGameSettings matchSettings(Player p) {
         GameManager gm = plugin.game();
         if (gm.getActiveMatchSettings() == null) return null;
