@@ -745,7 +745,39 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eCrafting: " + (on ? "\u00A7aENABLED" : "\u00A7cDISABLED")));
                 return true;
             }
-
+            //      DISPENSER TOGGLE
+                case "dispenser" -> {
+                    if (!sender.isOp()) {
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                                "§cOnly OPs can change dispenser interaction."
+                        ));
+                        return true;
+                    }
+                
+                    if (args.length < 2 ||
+                            (!args[1].equalsIgnoreCase("on") &&
+                             !args[1].equalsIgnoreCase("off"))) {
+                
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                                "§cUsage: /" + label + " dispenser <on|off>"
+                        ));
+                        return true;
+                    }
+                
+                    boolean enabled = args[1].equalsIgnoreCase("on");
+                
+                    HungerGamesPlugin.get().buildRules()
+                            .setDispenserInteractionEnabled(enabled);
+                
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                            enabled
+                                    ? "§aDispenser interaction enabled."
+                                    : "§cDispenser interaction disabled."
+                    ));
+                
+                    return true;
+                }
+                
             // ===== BUILD with categories =====
             case "build" -> {
                 if (args.length < 2) {
@@ -1032,7 +1064,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 "help","gui","teams","party","leaderboard","lb","admin","hostilemobspawn","hostilemobspawns","passivemobspawn","passivemobspawns","joingame","start","stop","addspawn","clearspawns","removespawn",
                 "listspawns","addspawnring","showpads","randomteams",
                 "set","border","toggle","reload","envoy","giftdrop","addchests","massaddchests","addmanychests","replenish",
-                "rules","crafting","build","dig"
+                "rules","crafting","dispenser","build","dig"
         ));
         if (args.length == 2 && args[0].equalsIgnoreCase("addchests")) return partial(args[1], List.of("start","stop","give"));
         if (args.length == 2 && args[0].equalsIgnoreCase("replenish")) return partial(args[1], List.of("T1","T2","T3","T4","mode"));
@@ -1043,6 +1075,8 @@ public class HGCommand implements CommandExecutor, TabCompleter {
             return partial(args[2], List.of("forceop"));
 
         if (args.length == 2 && args[0].equalsIgnoreCase("crafting"))
+            return partial(args[1], List.of("on","off"));
+         if (args.length == 2 && args[0].equalsIgnoreCase("dispenser"))
             return partial(args[1], List.of("on","off"));
 
         if (args.length == 2 && (args[0].equalsIgnoreCase("build") || args[0].equalsIgnoreCase("dig")))
