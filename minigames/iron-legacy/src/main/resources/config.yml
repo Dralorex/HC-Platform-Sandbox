@@ -113,7 +113,10 @@ worldborder:
 rules:
   # If true, OPs always bypass build/dig rule checks. If false, OPs follow normal rules.
   opsBypassBuildDig: true
-
+   
+   dispenserInteraction:
+    enabled: false
+    
   crafting:
     enabled: true
 
