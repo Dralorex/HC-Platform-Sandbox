@@ -4,10 +4,14 @@ import com.hollowcrown.hungergames.HungerGamesPlugin;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.*;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.type.Chest;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
@@ -42,6 +46,14 @@ public class ReplenishModeManager implements Listener {
         p.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aGiven replenish wand."));
     }
 
+    /** True when the stack is the named replenish placement wand. */
+    public static boolean isReplenishWand(ItemStack it) {
+        if (it == null || it.getType() != WAND_MAT) return false;
+        if (it.getItemMeta() == null || it.getItemMeta().displayName() == null) return false;
+        String name = LegacyComponentSerializer.legacySection().serialize(it.getItemMeta().displayName());
+        return name.contains("Replenish Wand");
+    }
+
     public void setEnabled(Player p, boolean on) {
         setEnabled(p, on, null);
     }
@@ -71,6 +83,7 @@ public class ReplenishModeManager implements Listener {
         if (tk != null) return tk;
         return plugin.templates().resolveTemplateKeyForWorld(p.getWorld().getName()).orElse(null);
     }
+
     public void toggleParticles(Player p) {
         if (showParticles.contains(p.getUniqueId())) { showParticles.remove(p.getUniqueId()); p.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eReplenish particles: OFF")); }
         else { showParticles.add(p.getUniqueId()); p.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aReplenish particles: ON")); }
@@ -78,43 +91,59 @@ public class ReplenishModeManager implements Listener {
 
     public boolean isEnabled(Player p) { return enabled.contains(p.getUniqueId()); }
 
+    /**
+     * Removes tracked spawn data for a replenish chest and optionally clears the block.
+     *
+     * @return true if spawn data was removed
+     */
+    public boolean removeTrackedChest(Player p, Block chestBlock, boolean destroyBlock) {
+        if (chestBlock == null || chestBlock.getType() != Material.CHEST) return false;
+        String tk = resolveTemplateKey(p);
+        if (tk == null) {
+            tk = plugin.templates().resolveTemplateKeyForWorld(chestBlock.getWorld().getName()).orElse(null);
+        }
+        if (tk == null) return false;
+        Location chestLoc = chestBlock.getLocation().add(0.5, 0, 0.5);
+        boolean removed = repl.removeNearest(chestLoc, tk);
+        if (removed && destroyBlock) {
+            chestBlock.setType(Material.AIR);
+        }
+        return removed;
+    }
+
     @EventHandler
     public void onInteract(PlayerInteractEvent e) {
         Player p = e.getPlayer();
-        if (!p.isOp() || !isEnabled(p)) return;
+        if (!p.isOp()) return;
         ItemStack it = e.getItem();
-        if (it == null || it.getType() != WAND_MAT) return;
-        if (it.getItemMeta() == null || it.getItemMeta().displayName() == null) return;
-        String name = LegacyComponentSerializer.legacySection().serialize(it.getItemMeta().displayName());
-        if (!name.contains("Replenish Wand")) return;
-        
+        if (!isReplenishWand(it)) return;
+
         Block b = e.getClickedBlock();
         if (b == null) return;
-        
-        // Left-click to remove replenish chest
+
+        // Left-click with wand: remove spawn data + chest (mode not required)
         if (e.getAction() == Action.LEFT_CLICK_BLOCK && b.getType() == Material.CHEST) {
-            Location chestLoc = b.getLocation().add(0.5, 0, 0.5);
-            String tk = resolveTemplateKey(p);
-            if (tk != null && repl.removeNearest(chestLoc, tk)) {
-                p.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eRemoved replenish chest."));
+            if (removeTrackedChest(p, b, true)) {
+                p.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                        "\u00A7eRemoved replenish chest and spawn data."));
                 p.playSound(b.getLocation(), Sound.BLOCK_CHEST_CLOSE, 0.8f, 0.8f);
-                e.setCancelled(true);
             }
+            e.setCancelled(true);
             return;
         }
-        
-        // Right-click to place new chest
+
+        // Right-click to place new chest (front faces the player, like vanilla)
+        if (!isEnabled(p)) return;
         if (e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         if (!b.getType().isSolid()) return;
-        
-        Block above = b.getRelative(org.bukkit.block.BlockFace.UP);
+
+        Block above = b.getRelative(BlockFace.UP);
         if (!above.getType().isAir()) return;
         above.setType(Material.CHEST);
-        org.bukkit.block.data.type.Chest chestData = (org.bukkit.block.data.type.Chest) above.getBlockData();
-        // Face the player (180° - chest front faces player)
-        org.bukkit.block.BlockFace face = getFacing(p.getLocation(), above.getLocation());
-        if (face != null) chestData.setFacing(face);
-        above.setBlockData(chestData);
+        if (above.getBlockData() instanceof Chest chestData) {
+            chestData.setFacing(chestFaceTowardPlayer(p));
+            above.setBlockData(chestData);
+        }
         String tk = resolveTemplateKey(p);
         if (tk == null) {
             p.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cNo template context for replenish."));
@@ -126,16 +155,36 @@ public class ReplenishModeManager implements Listener {
         e.setCancelled(true);
     }
 
-    private org.bukkit.block.BlockFace getFacing(Location playerLoc, Location blockLoc) {
-        // Calculate direction FROM block TO player (chest faces player)
-        org.bukkit.util.Vector dir = playerLoc.toVector().subtract(blockLoc.toVector()).normalize();
-        double yaw = Math.toDegrees(Math.atan2(-dir.getX(), dir.getZ()));
-        if (yaw < 0) yaw += 360;
-        // Return opposite direction so chest faces player
-        if (yaw >= 315 || yaw < 45) return org.bukkit.block.BlockFace.NORTH; // Player south, chest faces north
-        if (yaw >= 45 && yaw < 135) return org.bukkit.block.BlockFace.EAST; // Player west, chest faces east
-        if (yaw >= 135 && yaw < 225) return org.bukkit.block.BlockFace.SOUTH; // Player north, chest faces south
-        return org.bukkit.block.BlockFace.WEST; // Player east, chest faces west
+    /**
+     * Survival/creative block break while holding the wand: strip spawn data
+     * (block removal is allowed by {@link com.hollowcrown.hungergames.listeners.ReplenishChestProtectionListener}).
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onWandBreak(BlockBreakEvent e) {
+        Player p = e.getPlayer();
+        if (!isReplenishWand(p.getInventory().getItemInMainHand())
+                && !isReplenishWand(p.getInventory().getItemInOffHand())) {
+            return;
+        }
+        Block b = e.getBlock();
+        if (b.getType() != Material.CHEST) return;
+        if (!plugin.replenish().isProtectedReplenishChest(b.getLocation())) return;
+        if (removeTrackedChest(p, b, false)) {
+            p.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                    "\u00A7eRemoved replenish chest and spawn data."));
+        }
+    }
+
+    /** Vanilla-style: chest front faces the player (opposite of look direction). */
+    private static BlockFace chestFaceTowardPlayer(Player p) {
+        BlockFace look = p.getFacing();
+        return switch (look) {
+            case NORTH -> BlockFace.SOUTH;
+            case SOUTH -> BlockFace.NORTH;
+            case EAST -> BlockFace.WEST;
+            case WEST -> BlockFace.EAST;
+            default -> BlockFace.SOUTH;
+        };
     }
 
     private void startParticles() {
@@ -161,5 +210,3 @@ public class ReplenishModeManager implements Listener {
         }.runTaskTimer(plugin, 0L, 10L);
     }
 }
-
-

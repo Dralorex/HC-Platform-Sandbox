@@ -6,7 +6,7 @@ Copy-paste reference for **HC-Foundation**, **HollowCrownHub**, and **HCIronLega
 
 **Detail (GUIs, integration flows):** `docs/PLATFORM_REFERENCE.md`
 
-**Bundle baseline:** HC-Plugins a0.1.19
+**Bundle baseline:** HC-Plugins a0.1.20
 
 **Load order:** HC-Foundation (STARTUP) → HollowCrownHub → HCIronLegacy
 
@@ -104,6 +104,7 @@ Lobby instances
 Lobby join GUI
   Status: Implemented
   Compass → mechanic tab → template → instance picker or auto-join oldest OPEN.
+  OP: Create template world button on each mechanic tab (chat: file name + lobby name tag).
 
 Party-aware lobby join
   Status: Implemented
@@ -378,6 +379,7 @@ HOLLOWCROWNHUB — Player GUIs (summary)
 
 Join flow (compass)
   LobbyJoinMechanicMenu → LobbyJoinTemplateMenu → LobbyJoinInstanceMenu
+  OP Create template on LobbyJoinTemplateMenu (file name + display name chat prompts)
 
 Party (nether star)
   HubPartyMenu + invite/members/pending submenus + HubPartyLobbyTrimMenu
@@ -494,6 +496,8 @@ HCIRONLEGACY — Replenish
 Tiers T1–T4, schedule, replenish wand, chest protection, admin GUI
   Shared loot + schedule: plugins/HCIronLegacy/replenish.yml
   Per-map chest coords: world-envoys/<key>/replenish-locations.yml (migrates from legacy scoped replenish.yml)
+  Wand place: chest front faces the player (vanilla-style)
+  Wand break: removes chest block + spawn data; break without wand blocked (including OP)
   Status: Implemented
 
 ================================================================================

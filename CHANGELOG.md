@@ -9,6 +9,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [HC-Plugins-a0.1.20] - 2026-09-12
+
+Tagged plugins: **API a0.1.13**, **Foundation a0.1.5**, **Hub a0.1.16**, **Iron Legacy a0.3.20**.
+
+### Added
+
+- Lobby join GUI (OP): **Create template world** on Vanilla / Iron Legacy / other mechanic tabs — chat prompts for file name and lobby display name, then creates the world and assigns that mechanic.
+
+### Fixed
+
+- Replenish wand placement faces the player (vanilla-style chest front).
+- Breaking a tracked replenish chest with the Replenish Wand removes both the block and spawn data; without the wand, breaks are blocked even for OPs.
+
 ## [HC-Plugins-a0.1.19] - 2026-09-12
 
 Tagged plugins: **API a0.1.13**, **Foundation a0.1.5**, **Hub a0.1.15**, **Iron Legacy a0.3.19**.

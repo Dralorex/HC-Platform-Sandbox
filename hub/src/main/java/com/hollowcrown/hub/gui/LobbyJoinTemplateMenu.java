@@ -69,7 +69,11 @@ public final class LobbyJoinTemplateMenu {
         if (p < totalPages - 1) {
             inv.setItem(53, navItem(plugin, "jtpl_next", Material.ARROW, "Next page"));
         }
-        inv.setItem(47, navItem(plugin, "jtpl_close", Material.BARRIER, "Close"));
+        inv.setItem(47, navItem(plugin, "jtpl_back", Material.OAK_DOOR, "Back to games"));
+        inv.setItem(51, navItem(plugin, "jtpl_close", Material.BARRIER, "Close"));
+        if (player.isOp()) {
+            inv.setItem(50, createTemplateItem(plugin, mechanicId));
+        }
 
         player.openInventory(inv);
     }
@@ -92,6 +96,24 @@ public final class LobbyJoinTemplateMenu {
             m.getPersistentDataContainer().set(plugin.lobbyJoinActionKey(), PersistentDataType.STRING, action);
             it.setItemMeta(m);
         }
+        return it;
+    }
+
+    private static ItemStack createTemplateItem(HollowCrownHubPlugin plugin, String mechanicId) {
+        ItemStack it = new ItemStack(Material.WRITABLE_BOOK);
+        ItemMeta m = it.getItemMeta();
+        if (m == null) {
+            return it;
+        }
+        m.displayName(Component.text("Create template world", NamedTextColor.GOLD));
+        List<Component> lore = new ArrayList<>();
+        lore.add(Component.text("OP only", NamedTextColor.DARK_GRAY));
+        lore.add(Component.text("Mechanic: " + HubMechanics.displayLabel(mechanicId), NamedTextColor.AQUA));
+        lore.add(Component.empty());
+        lore.add(Component.text("Prompts for file name + lobby name tag", NamedTextColor.GRAY));
+        m.lore(lore);
+        m.getPersistentDataContainer().set(plugin.lobbyJoinActionKey(), PersistentDataType.STRING, "jtpl_create");
+        it.setItemMeta(m);
         return it;
     }
 

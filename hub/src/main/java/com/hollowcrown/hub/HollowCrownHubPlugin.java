@@ -97,6 +97,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
     private com.hollowcrown.hub.alliance.HubAllianceService allianceService;
     private com.hollowcrown.hub.nametag.HubNametagService nametagService;
     private com.hollowcrown.hub.template.HubTemplatePublishPending templatePublishPending;
+    private com.hollowcrown.hub.util.HubChatInput chatInput;
 
     public static HollowCrownHubPlugin get() {
         return instance;
@@ -152,6 +153,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         this.allianceService = new com.hollowcrown.hub.alliance.HubAllianceService(this);
         this.nametagService = new com.hollowcrown.hub.nametag.HubNametagService(this, allianceService);
         this.templatePublishPending = new com.hollowcrown.hub.template.HubTemplatePublishPending();
+        this.chatInput = new com.hollowcrown.hub.util.HubChatInput(this);
 
         Bukkit.getPluginManager().registerEvents(new LobbyAdminMenuListener(), this);
         Bukkit.getPluginManager().registerEvents(new LobbyJoinMenuListener(), this);
@@ -396,6 +398,10 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
 
     public com.hollowcrown.hub.template.HubTemplatePublishPending templatePublishPending() {
         return templatePublishPending;
+    }
+
+    public com.hollowcrown.hub.util.HubChatInput chatInput() {
+        return chatInput;
     }
 
     public com.hollowcrown.hub.alliance.HubAllianceService alliances() {

@@ -7,7 +7,7 @@ Copy-paste reference for all player and admin commands.
 **Feature descriptions:** `docs/PLATFORM_FEATURES.md`  
 **GUIs & integration:** `docs/PLATFORM_REFERENCE.md`
 
-**Bundle baseline:** HC-Plugins a0.1.19
+**Bundle baseline:** HC-Plugins a0.1.20
 
 ================================================================================
 PERMISSIONS
@@ -85,6 +85,7 @@ Permission: hollowcrownhub.use
 
 /hch join [gui] [page]
   [hollowcrownhub.join] Open join game GUI (same as compass).
+  OP: on a mechanic tab, Create template world → chat file name + lobby name tag.
 
 --- Party  [hollowcrownhub.party] ---
 
@@ -439,7 +440,8 @@ Permission: hcironlegacy.use (admin subcommands: op / hcironlegacy.admin)
 /il replenish mode start
 /il replenish mode stop
 /il replenish mode give
-  Replenish wand mode.
+  Replenish wand mode. Place faces player; break with wand removes chest + spawn;
+  break without wand blocked (including OP).
 
 --- Deprecated ---
 

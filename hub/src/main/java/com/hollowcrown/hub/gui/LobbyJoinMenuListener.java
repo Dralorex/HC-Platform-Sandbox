@@ -118,8 +118,16 @@ public final class LobbyJoinMenuListener implements Listener {
         switch (action) {
             case "jtpl_prev" -> LobbyJoinTemplateMenu.open(player, holder.plugin(), holder.mechanicId(), holder.page() - 1);
             case "jtpl_next" -> LobbyJoinTemplateMenu.open(player, holder.plugin(), holder.mechanicId(), holder.page() + 1);
+            case "jtpl_back" -> LobbyJoinMechanicMenu.open(player, holder.plugin(), 0);
             case "jtpl_close" -> player.closeInventory();
             case "jtpl_info" -> { /* no-op */ }
+            case "jtpl_create" -> {
+                if (!player.isOp()) {
+                    player.sendMessage(Component.text("OP is required to create templates.", NamedTextColor.RED));
+                    return;
+                }
+                LobbyJoinTemplateCreateFlow.start(player, holder.plugin(), holder.mechanicId());
+            }
             case "jtpl_pick" -> {
                 String tk = pdc.get(holder.plugin().lobbyJoinTemplateKey(), PersistentDataType.STRING);
                 if (tk == null) {
