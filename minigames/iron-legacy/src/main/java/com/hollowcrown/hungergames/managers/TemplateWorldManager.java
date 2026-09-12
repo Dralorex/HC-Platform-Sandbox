@@ -62,6 +62,15 @@ public class TemplateWorldManager {
     }
 
     public void reload() {
+        reloadFromDisk();
+        save();
+    }
+
+    /**
+     * Reloads {@code worlds.yml} from disk into memory without writing back.
+     * Used after HollowCrownHub edits limbo spawn/zone so IL sees fresh values.
+     */
+    public void reloadFromDisk() {
         worldsCfg = Yaml.loadOrCreate(plugin, FILE);
         if (!worldsCfg.isConfigurationSection("worlds")) {
             worldsCfg.createSection("worlds");
@@ -69,7 +78,6 @@ public class TemplateWorldManager {
         if (!worldsCfg.isConfigurationSection("instances")) {
             worldsCfg.createSection("instances");
         }
-        save();
     }
 
     public void save() {

@@ -150,11 +150,10 @@ rules:
 #  onGameEnd: [ ]
 
 # =========================
-# Spawn pads (managed in-game)
-# Kept for persistence; do not edit by hand.
+# Spawn pads (legacy — migrated to worlds.yml worlds.<key>.spawnPads on first load)
 # =========================
 spawns:
-  pads: [ ]  # serialized locations world,x,y,z,yaw,pitch
+  pads: [ ]  # deprecated; per-template pads live in worlds.yml
 
 # =========================
 # Limbo / lobby team display names — substring block list (case-insensitive).

@@ -9,8 +9,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [HC-Plugins-a0.1.19] - 2026-09-12
+
+Tagged plugins: **API a0.1.13**, **Foundation a0.1.5**, **Hub a0.1.15**, **Iron Legacy a0.3.19**.
+
 ### Fixed
 
+- Limbo lobby spawn: IL now reloads `worlds.yml` from disk when Hub saves limbo spawn/zone; IL join path prefers Hub catalog (fresh disk) instead of stale in-memory config.
+- Hub lobby join logs a warning when falling back to the world's vanilla spawn because limbo.x/y/z is missing.
+- Match spawn pads are per-template in `worlds.yml` (`spawnPads`), survive publish, and no longer drop on reload when the editor world is unloaded. Legacy global `config.yml` `spawns.pads` migrate automatically.
 - `/il start` is now OP-only (was usable by any player with `hcironlegacy.use`).
 
 ## [HC-Plugins-a0.1.18] - 2026-09-09

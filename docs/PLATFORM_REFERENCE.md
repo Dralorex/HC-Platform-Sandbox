@@ -816,7 +816,7 @@ Permission: `hcironlegacy.use` (default true); admin subcommands require OP / `h
 | File | Purpose |
 |------|---------|
 | `config.yml` | Game settings, integrations, rules, spawns, UI |
-| `worlds.yml` | Template catalog, limbo zones/spawns, min-fill %, team caps |
+| `worlds.yml` | Template catalog, limbo zones/spawns, per-template match spawn pads, min-fill %, team caps |
 | `gameflow.yml` | Server role, Velocity, shard caps, team defaults |
 | `lobby.yml` | Legacy lobby coords (migrated toward Hub) |
 | `envoys.yml` + `world-envoys/<key>/` | Envoy definitions per map |

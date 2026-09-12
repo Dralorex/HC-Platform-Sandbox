@@ -464,6 +464,10 @@ public final class HubLobbyService {
             var s = spawnOpt.get();
             return new Location(lobbyWorld, s.x(), s.y(), s.z(), s.yaw(), s.pitch());
         }
+        HubLog.warn(plugin, "action=lobby_spawn_fallback_world_spawn",
+                "templateKey=" + templateKey,
+                "world=" + lobbyWorld.getName(),
+                "hint=set_limbo_spawn_via_/hch_template_limbo_spawn");
         return lobbyWorld.getSpawnLocation();
     }
 

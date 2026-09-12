@@ -30,6 +30,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.bukkit.Particle;
@@ -71,6 +72,16 @@ public class HGCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
                 "\u00A7cThis action is disabled on " + current.name().toLowerCase() + " role. Allowed: " + sb));
         return false;
+    }
+
+    /** Resolve template key for spawn-pad commands; player must stand in a template/limbo/match world. */
+    private Optional<String> requireSpawnTemplateKey(Player p) {
+        var tk = HungerGamesPlugin.get().templates().resolveTemplateKeyForWorld(p.getWorld().getName());
+        if (tk.isEmpty()) {
+            p.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                    "\u00A7cStand in a template editor, limbo lobby, or match world to edit spawn pads."));
+        }
+        return tk;
     }
 
     private void sendHelp(CommandSender sender, String label) {
@@ -662,53 +673,84 @@ public class HGCommand implements CommandExecutor, TabCompleter {
             }
             case "addspawn" -> {
                 if (!(sender instanceof Player p)) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("Players only.")); return true; }
+                var tk = requireSpawnTemplateKey(p);
+                if (tk.isEmpty()) return true;
                 Location l = p.getLocation().getBlock().getLocation().add(0.5, 0, 0.5);
-                spawns.add(l);
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aAdded spawn pad at " + l.getBlockX() + "," + l.getBlockY() + "," + l.getBlockZ()));
+                spawns.add(tk.get(), l);
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                        "\u00A7aAdded spawn pad for \u00A7f" + tk.get() + "\u00A7a at "
+                                + l.getBlockX() + "," + l.getBlockY() + "," + l.getBlockZ()));
                 return true;
             }
-            case "clearspawns" -> { spawns.clear(); sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eCleared spawn pads.")); return true; }
+            case "clearspawns" -> {
+                if (!(sender instanceof Player p)) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("Players only.")); return true; }
+                var tk = requireSpawnTemplateKey(p);
+                if (tk.isEmpty()) return true;
+                spawns.clear(tk.get());
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                        "\u00A7eCleared spawn pads for \u00A7f" + tk.get() + "\u00A7e."));
+                return true;
+            }
             case "removespawn" -> {
                 if (!(sender instanceof Player p)) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("Players only.")); return true; }
-                var removed = spawns.removeNearest(p.getLocation());
+                var tk = requireSpawnTemplateKey(p);
+                if (tk.isEmpty()) return true;
+                var removed = spawns.removeNearest(tk.get(), p.getLocation());
                 if (removed == null) sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cNo spawn pads to remove."));
                 else sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eRemoved pad at " + removed.getBlockX() + "," + removed.getBlockY() + "," + removed.getBlockZ()));
                 return true;
             }
-            case "listspawns" -> { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A76Spawn pads: " + spawns.getSpawnPads().size())); return true; }
+            case "listspawns" -> {
+                if (!(sender instanceof Player p)) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("Players only.")); return true; }
+                var tk = requireSpawnTemplateKey(p);
+                if (tk.isEmpty()) return true;
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                        "\u00A76Spawn pads for \u00A7f" + tk.get() + "\u00A76: " + spawns.count(tk.get())));
+                return true;
+            }
             case "addspawnring" -> {
                 if (!(sender instanceof Player p)) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("Players only.")); return true; }
+                var tk = requireSpawnTemplateKey(p);
+                if (tk.isEmpty()) return true;
                 if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " addspawnring <count> <radius> [here|spawn]")); return true; }
                 try {
                     int count = Integer.parseInt(args[1]);
                     double radius = Double.parseDouble(args[2]);
                     boolean useSpawn = args.length >= 4 && args[3].equalsIgnoreCase("spawn");
-                    var added = spawns.addRing(p.getLocation(), count, radius, useSpawn);
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aAdded " + added.size() + " pads in a ring (radius " + radius + ")."));
+                    var added = spawns.addRing(tk.get(), p.getLocation(), count, radius, useSpawn);
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                            "\u00A7aAdded " + added.size() + " pads for \u00A7f" + tk.get()
+                                    + "\u00A7a in a ring (radius " + radius + ")."));
                 } catch (Exception ex) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cNumbers expected for count and radius.")); }
                 return true;
             }
             case "showpads" -> {
+                if (!(sender instanceof Player p)) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("Players only.")); return true; }
+                var tk = requireSpawnTemplateKey(p);
+                if (tk.isEmpty()) return true;
                 int seconds = 15; // default display time
                 if (args.length >= 2) {
                     try { seconds = Math.max(1, Integer.parseInt(args[1])); } catch (Exception ignored) {}
                 }
-                if (spawns.getSpawnPads().isEmpty()) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cNo spawn pads set."));
+                List<Location> padLocs = spawns.getSpawnPads(tk.get(), p.getWorld());
+                if (padLocs.isEmpty()) {
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                            "\u00A7cNo spawn pads set for \u00A7f" + tk.get() + "\u00A7c."));
                     return true;
                 }
 
                 final int period = 10; // ticks (0.5s)
                 final int totalTicks = seconds * 20;
 
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A76Showing spawn pads for " + seconds + "s (" + spawns.getSpawnPads().size() + " pads)."));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                        "\u00A76Showing spawn pads for \u00A7f" + tk.get() + "\u00A76 for " + seconds + "s (" + padLocs.size() + " pads)."));
 
                 new BukkitRunnable() {
                     int elapsed = 0;
                     final Particle.DustOptions dust = new Particle.DustOptions(Color.fromRGB(0, 255, 85), 1.5f); // lime
 
                     @Override public void run() {
-                        spawns.getSpawnPads().forEach(loc -> {
+                        padLocs.forEach(loc -> {
                             var w = loc.getWorld();
                             if (w == null) return;
 

@@ -6,7 +6,7 @@ Copy-paste reference for **HC-Foundation**, **HollowCrownHub**, and **HCIronLega
 
 **Detail (GUIs, integration flows):** `docs/PLATFORM_REFERENCE.md`
 
-**Bundle baseline:** HC-Plugins a0.1.18
+**Bundle baseline:** HC-Plugins a0.1.19
 
 **Load order:** HC-Foundation (STARTUP) → HollowCrownHub → HCIronLegacy
 
@@ -400,7 +400,8 @@ Match states
 
 Spawn pad assignment
   Status: Implemented
-  1:1 player-to-pad. Fail if insufficient pads.
+  Per-template pads in worlds.yml (worlds.<key>.spawnPads); 1:1 player-to-pad at match start.
+  Legacy global config.yml spawns.pads migrate on first load.
 
 Hard freeze countdown
   Status: Implemented

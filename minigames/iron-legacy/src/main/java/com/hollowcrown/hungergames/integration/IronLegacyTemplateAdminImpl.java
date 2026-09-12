@@ -204,7 +204,12 @@ public record IronLegacyTemplateAdminImpl(HungerGamesPlugin plugin) implements I
 
     @Override
     public void reloadWorldsYamlFromDisk() {
-        // worlds.yml management is Hub-owned.
+        plugin.templates().reloadFromDisk();
+        try {
+            plugin.spawns().load();
+        } catch (Throwable t) {
+            plugin.getLogger().warning("Spawn pad reload after worlds.yml refresh failed: " + t.getMessage());
+        }
     }
 
     @Override

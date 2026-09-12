@@ -179,8 +179,16 @@ public class GameManager implements Listener {
             plugin.getLogger().warning(lastError);
             return false;
         }
-        if (spawnManager.getSpawnPads().isEmpty()) {
-            lastError = "No spawn pads set!";
+
+        String padTemplateKey = plugin.templates().resolveTemplateKeyForWorld(world.getName()).orElse(null);
+        if (padTemplateKey == null) {
+            var ti = plugin.templates().getTemplateByWorldName(world.getName());
+            if (ti != null) padTemplateKey = ti.key();
+        }
+        if (padTemplateKey == null || spawnManager.count(padTemplateKey) == 0) {
+            lastError = "No spawn pads set for template"
+                    + (padTemplateKey != null ? " '" + padTemplateKey + "'" : "")
+                    + "! Use /il addspawn or /il addspawnring in the template editor.";
             plugin.getLogger().warning(lastError);
             return false;
         }
@@ -189,6 +197,7 @@ public class GameManager implements Listener {
             // If a template world was selected, run the match on a cloned instance.
             var templateInfo = plugin.templates().getTemplateByWorldName(world.getName());
             if (templateInfo != null) {
+                padTemplateKey = templateInfo.key();
                 var instance = plugin.templates().createMatchInstanceFromTemplate(templateInfo.key());
                 if (instance == null) {
                     lastError = "Failed to create runtime instance from template: " + templateInfo.worldName();
@@ -214,7 +223,7 @@ public class GameManager implements Listener {
         eliminated.clear();
         assignedPads.clear();
         currentWorld = world;
-        activeMatchTemplateKey = plugin.templates().resolveTemplateKeyForWorld(world.getName()).orElse(null);
+        activeMatchTemplateKey = plugin.templates().resolveTemplateKeyForWorld(world.getName()).orElse(padTemplateKey);
         activeMatchSettings = plugin.worldSettings().resolve(activeMatchTemplateKey);
         forcedParticipants = explicitParticipants == null ? null : new HashSet<>(explicitParticipants);
 
@@ -243,14 +252,13 @@ public class GameManager implements Listener {
             countedAdded++;
         }
 
-        List<Location> padsRaw = new ArrayList<>(spawnManager.getSpawnPads());
+        String padsKey = activeMatchTemplateKey != null ? activeMatchTemplateKey : padTemplateKey;
+        List<Location> padsRaw = new ArrayList<>(spawnManager.getSpawnPads(padsKey, world));
         List<Location> pads2 = new ArrayList<>();
         for (Location pad : padsRaw) {
-            if (pad == null || pad.getWorld() == null) continue;
+            if (pad == null) continue;
             Location r = pad.clone();
-            if (!r.getWorld().equals(world)) {
-                r.setWorld(world);
-            }
+            r.setWorld(world);
             pads2.add(r);
         }
         //This causes random spread around the circle.

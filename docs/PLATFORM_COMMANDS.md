@@ -7,7 +7,7 @@ Copy-paste reference for all player and admin commands.
 **Feature descriptions:** `docs/PLATFORM_FEATURES.md`  
 **GUIs & integration:** `docs/PLATFORM_REFERENCE.md`
 
-**Bundle baseline:** HC-Plugins a0.1.18
+**Bundle baseline:** HC-Plugins a0.1.19
 
 ================================================================================
 PERMISSIONS
@@ -346,21 +346,22 @@ Permission: hcironlegacy.use (admin subcommands: op / hcironlegacy.admin)
 /il passivemobspawn <true|false|t|f>
   [OP, HUB/STANDALONE] Toggle passive mob spawns in limbo.
 
---- Spawn pads  [OP] ---
+--- Spawn pads  [OP]  (per template → worlds.yml worlds.<key>.spawnPads) ---
 
 /il addspawn
-  Add spawn pad at feet.
+  Add spawn pad at feet for the current template world.
 
 /il clearspawns
-  Clear all spawn pads.
+  Clear spawn pads for the current template.
 
 /il removespawn
-  Remove nearest spawn pad.
+  Remove nearest spawn pad for the current template.
 
 /il listspawns
-  List spawn pad count.
+  List spawn pad count for the current template.
 
 /il addspawnring <count> <radius> [here|spawn]
+  Ring of pads around you (or world spawn).
   Create ring of pads.
 
 /il showpads [seconds]

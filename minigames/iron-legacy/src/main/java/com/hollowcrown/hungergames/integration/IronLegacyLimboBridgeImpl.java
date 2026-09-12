@@ -82,12 +82,14 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
 
     @Override
     public Location resolveLimboSpawn(TemplateRow info, String sessionWorldName) {
+        // Prefer Hub catalog (reads worlds.yml fresh from disk) even when session world is set.
+        IronLegacyWorldsCatalog.LimboSpawn spawn = plugin.worldsCatalog()
+                .flatMap(c -> c.limboSpawn(info.key()))
+                .orElse(null);
+
         String limboWorldName = sessionWorldName;
-        IronLegacyWorldsCatalog.LimboSpawn spawn = null;
-        if (sessionWorldName == null || sessionWorldName.isBlank()) {
-            var cat = plugin.worldsCatalog().flatMap(c -> c.limboSpawn(info.key()));
-            if (cat.isPresent()) {
-                spawn = cat.get();
+        if (limboWorldName == null || limboWorldName.isBlank()) {
+            if (spawn != null && spawn.worldName() != null && !spawn.worldName().isBlank()) {
                 limboWorldName = spawn.worldName();
             } else {
                 String base = "worlds." + info.key() + ".limbo";
@@ -95,9 +97,9 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
             }
         }
         World w = null;
-        if (!limboWorldName.isBlank()) w = Bukkit.getWorld(limboWorldName);
+        if (limboWorldName != null && !limboWorldName.isBlank()) w = Bukkit.getWorld(limboWorldName);
         if (w == null && info.worldName() != null) w = Bukkit.getWorld(info.worldName());
-        if (w == null) w = Bukkit.createWorld(new WorldCreator(info.worldName()));
+        if (w == null && info.worldName() != null) w = Bukkit.createWorld(new WorldCreator(info.worldName()));
         if (w == null) return plugin.lobby().getLobbySpawn();
 
         if (spawn != null) {
@@ -112,6 +114,8 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
             float pitch = (float) plugin.templates().config().getDouble(base + ".pitch", 0.0);
             return new Location(w, x, y, z, yaw, pitch);
         }
+        plugin.getLogger().warning("No limbo spawn for template '" + info.key()
+                + "' — falling back to world spawn. Set via /hch template limbo spawn.");
         return w.getSpawnLocation().clone().add(0.5, 0, 0.5);
     }
 

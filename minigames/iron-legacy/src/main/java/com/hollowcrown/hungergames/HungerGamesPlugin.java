@@ -142,14 +142,6 @@ public class HungerGamesPlugin extends JavaPlugin {
         this.killLeaderboardManager = new KillLeaderboardManager(this);
         this.killLeaderboardSidebarManager = new KillLeaderboardSidebarManager(this);
         this.teamManager  = new TeamManager(this);
-        this.spawnManager = new SpawnManager(this);
-        this.gameManager  = new GameManager(this, teamManager, spawnManager);
-        this.envoyManager = new EnvoyManager(this);
-        this.giftDropManager = new GiftDropManager(this);
-        this.addMode = new AddChestModeManager(this, envoyManager);
-        this.pickupGuard = new PickupGuardListener();
-        this.replenishManager = new ReplenishManager(this);
-        this.replenishMode = new ReplenishModeManager(this, replenishManager);
         this.lobbyManager = new LobbyManager(this);
         this.lobbyShardManager = new LobbyShardManager(this);
         this.templateWorldManager = new TemplateWorldManager(this);
@@ -162,6 +154,15 @@ public class HungerGamesPlugin extends JavaPlugin {
         } catch (Throwable t) {
             getLogger().warning("Managed template folder scan failed: " + t.getMessage());
         }
+        this.spawnManager = new SpawnManager(this);
+        this.spawnManager.load();
+        this.gameManager  = new GameManager(this, teamManager, spawnManager);
+        this.envoyManager = new EnvoyManager(this);
+        this.giftDropManager = new GiftDropManager(this);
+        this.addMode = new AddChestModeManager(this, envoyManager);
+        this.pickupGuard = new PickupGuardListener();
+        this.replenishManager = new ReplenishManager(this);
+        this.replenishMode = new ReplenishModeManager(this, replenishManager);
         this.ironLegacyLimboBridge = new IronLegacyLimboBridgeImpl(this);
         this.worldSettingsManager = new WorldSettingsManager(this);
         this.teamNameDatabaseManager = new TeamNameDatabaseManager(this);
