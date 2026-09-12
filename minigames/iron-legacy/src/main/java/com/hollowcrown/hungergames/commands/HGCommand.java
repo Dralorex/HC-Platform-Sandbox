@@ -629,6 +629,10 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             case "start" -> {
+                if (!sender.isOp()) {
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cOPs only."));
+                    return true;
+                }
                 if (!requireRole(sender, "start", ServerRoleManager.Role.GAME, ServerRoleManager.Role.STANDALONE)) return true;
                 String key = args.length >= 2 ? args[1].trim() : null;
                 if ((key == null || key.isBlank()) && sender instanceof Player p) {

@@ -9,6 +9,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `/il start` is now OP-only (was usable by any player with `hcironlegacy.use`).
+
 ## [HC-Plugins-a0.1.18] - 2026-09-09
 
 Tagged plugins: **API a0.1.13**, **Foundation a0.1.5**, **Hub a0.1.14**, **Iron Legacy a0.3.18**.

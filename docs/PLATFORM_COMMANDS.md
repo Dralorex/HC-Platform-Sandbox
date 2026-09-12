@@ -332,10 +332,10 @@ Permission: hcironlegacy.use (admin subcommands: op / hcironlegacy.admin)
 /il reload
   [OP] Reload config, files, spawns, rules, templates, icons.
 
---- Match & limbo control  [role: GAME or STANDALONE for start/stop] ---
+--- Match & limbo control  [OP; role: GAME or STANDALONE for start/stop] ---
 
 /il start [limbo_world|template]
-  Force limbo countdown (ignores min fill).
+  [OP] Force limbo countdown (ignores min fill).
 
 /il stop
   Abort limbo queues + stop active match → hub.
