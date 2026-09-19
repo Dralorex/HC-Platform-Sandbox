@@ -13,6 +13,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 public class JoinTeamMenu extends MenuView {
@@ -47,7 +48,7 @@ public class JoinTeamMenu extends MenuView {
         if (it == null || !it.hasItemMeta() || it.getItemMeta().displayName() == null) return;
         TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getOrCreateWorldInstance(p.getWorld());
         String plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(it.getItemMeta().displayName());
-        if (teamManagerInstance.teams.containsKey(plain)) return;
+        if (teamManagerInstance.teams.containsKey(plain.toLowerCase(Locale.ROOT))) return;
         TeamManager.Team team = teamManagerInstance.teams.get(plain);
         try {
             if (team.members.size() >= TeamManager.playersPerTeam || !TeamManager.checkTeamJoinInvite(team, p.getUniqueId())) {

@@ -284,6 +284,7 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
                 }
             }
         }
+        teamManagerInstance.sendAllFakeTeamPackets();
     }
 
     private void bindPartiesIntoTeams(Set<UUID> onlinePlayers, int maxSize) {
@@ -330,5 +331,6 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
                 }
             }
         }
+        teamManagerInstance.sendAllFakeTeamPackets();
     }
 }

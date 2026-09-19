@@ -1,6 +1,8 @@
 package com.hollowcrown.hungergames.gui;
 
+import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.team.TeamManager;
+import com.hollowcrown.hungergames.HungerGamesPlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
@@ -17,8 +19,12 @@ public class TeamsMenu extends MenuView {
     public TeamsMenu(World world) {
         inv = Bukkit.createInventory(this, 54, Component.text("Teams", NamedTextColor.GREEN));
         int i = 0;
+        TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getInstance(world);
+        //HungerGamesPlugin.getPlugin(HungerGamesPlugin.class).getLogger().info("Instance: " + teamManagerInstance);
+        if(teamManagerInstance == null) return;
+        //HungerGamesPlugin.getPlugin(HungerGamesPlugin.class).getLogger().info("identifier: " + teamManagerInstance.getIdentifier() + " teams: " + teamManagerInstance.teams);
         //for (Team t : HungerGamesPlugin.get().teams().getTeams()) {
-        for(TeamManager.Team t : TeamManager.getOrCreateWorldInstance(world).teams.values()) {
+        for(TeamManager.Team t : teamManagerInstance.teams.values()) {
             if (i >= 54) break;
             ItemStack it = new ItemStack(Material.OAK_SIGN);
             ItemMeta im = it.getItemMeta();

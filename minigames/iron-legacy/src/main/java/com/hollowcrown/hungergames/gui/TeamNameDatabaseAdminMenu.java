@@ -15,6 +15,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /** Lists preset team names; OP bulk-add via chat. */
 public class TeamNameDatabaseAdminMenu extends MenuView {
@@ -109,7 +110,7 @@ public class TeamNameDatabaseAdminMenu extends MenuView {
             promptNextBulkName(p);
             return;
         }
-        if (teamManagerInstance.teams.containsKey(s)) {
+        if (teamManagerInstance.teams.containsKey(s.toLowerCase(Locale.ROOT))) {
             p.sendMessage(Component.text("Name already in use,", NamedTextColor.RED));
             p.sendMessage(Component.text("Try Again", NamedTextColor.RED));
             promptNextBulkName(p);

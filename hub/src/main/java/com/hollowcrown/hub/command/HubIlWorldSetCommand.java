@@ -24,7 +24,7 @@ public final class HubIlWorldSetCommand {
             return false;
         }
         return switch (word.toLowerCase(Locale.ROOT)) {
-            case "display", "enabled", "maxplayers", "teamsize", "icon", "minimumpercentage", "gamerule" -> true;
+            case "display", "enabled", "maxplayers", "teamsize", "teamfriendlyfire", "allyfriendlyfire", "icon", "minimumpercentage", "gamerule" -> true;
             default -> false;
         };
     }
@@ -52,7 +52,7 @@ public final class HubIlWorldSetCommand {
     public static boolean applyWorldFields(CommandSender sender, IronLegacyTemplateAdmin admin, String[] args) {
         if (args.length < 5) {
             sender.sendMessage(Component.text(
-                    "Usage: /hch template set <worldFolder> <display|enabled|maxplayers|teamsize|icon|minimumpercentage|gamerule> …",
+                    "Usage: /hch template set <worldFolder> <display|enabled|maxplayers|teamsize|teamfriendlyfire|allyfriendlyfire|icon|minimumpercentage|gamerule> …",
                     NamedTextColor.YELLOW));
             sender.sendMessage(Component.text(
                     "<worldFolder> = folder name of the map on disk (worldName in worlds.yml).",
@@ -105,6 +105,22 @@ public final class HubIlWorldSetCommand {
                     return true;
                 }
                 ok = admin.setTeamSizeMax(key, v);
+            }
+            case "teamfriendlyfire" -> {
+                Boolean on = parseBool(args[4]);
+                if (on == null) {
+                    sender.sendMessage(Component.text("Use true/false.", NamedTextColor.RED));
+                    return true;
+                }
+                ok = admin.setTeamFriendlyFire(key, on);
+            }
+            case "allyfriendlyfire" -> {
+                Boolean on = parseBool(args[4]);
+                if (on == null) {
+                    sender.sendMessage(Component.text("Use true/false.", NamedTextColor.RED));
+                    return true;
+                }
+                ok = admin.setAllyFriendlyFire(key, on);
             }
             case "icon" -> ok = admin.setIconKey(key, args[4]);
             case "minimumpercentage" -> {

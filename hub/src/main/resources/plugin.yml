@@ -15,6 +15,14 @@ commands:
     description: Teleport to Hollow Crown hub spawn
     usage: /hub
     aliases: [lobby, spawnhub]
+  ally:
+    description: Make and break team alliances.
+    usage: /ally <add|remove> <team>
+    aliases: [ alliance, truce ]
+  rival:
+    description: Add and remove team rivalries.
+    usage: /rival <add|remove> <team>
+    aliases: [ rivalry, nemesis ]
 permissions:
   hollowcrownhub.use:
     default: true
@@ -22,6 +30,9 @@ permissions:
     default: true
     description: Open the join GUI and teleport into Hub-managed lobby instances
   hollowcrownhub.party:
+    default: true
+    description: Use Hub party commands and invite papers
+  hollowcrownhub.team:
     default: true
     description: Use Hub party commands and invite papers
   hollowcrownhub.queue:

@@ -115,7 +115,7 @@ public class GameManager implements Listener {
             plugin.getLogger().warning(lastError);
             return false;
         }
-        var instance = plugin.templates().createMatchInstanceFromTemplate(templateKey);
+        TemplateWorldManager.MatchInstance instance = plugin.templates().createMatchInstanceFromTemplate(templateKey);
         if (instance == null) {
             lastError = "Failed to create runtime instance from template: " + templateKey;
             plugin.getLogger().warning(lastError);
@@ -152,6 +152,9 @@ public class GameManager implements Listener {
             plugin.getLogger().warning(lastError);
             return false;
         }
+        TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getOrCreateWorldInstance(world);
+        teamManagerInstance.allowTeamCustomization = false;
+        teamManagerInstance.sendAllFakeTeamPackets();
 
         if (!skipTemplateClone) {
             // If a template world was selected, run the match on a cloned instance.
@@ -171,6 +174,8 @@ public class GameManager implements Listener {
                 }
                 world = iw;
                 activeInstanceWorldName = iw.getName();
+                teamManagerInstance.friendlyFire = templateInfo.teamFriendlyFire();
+                teamManagerInstance.allyFriendlyFire = templateInfo.allyFriendlyFire();
             } else {
                 activeInstanceWorldName = null;
             }
@@ -437,10 +442,12 @@ public class GameManager implements Listener {
     }
 
     public void stopGame(boolean announce) {
+        //Bukkit.getLogger().info("Stop Game Called!");
         if (state == State.LOBBY) {
             try { plugin.leaderboardSidebar().refreshAll(); } catch (Throwable ignored) {}
             return;
         }
+        //Bukkit.getLogger().info("Game Ending");
         state = State.ENDED;
         if (announce) Bukkit.broadcast(Component.text("[HCIronLegacy] Game ended.", NamedTextColor.YELLOW));
         try {
@@ -449,15 +456,7 @@ public class GameManager implements Listener {
         } catch (Throwable ignored) {}
         runHooks(plugin.getConfig().getStringList("hooks.onGameEnd"));
 
-        //[Hydraulic] I need to get the TeamManagerInstance for the game.
-        TeamManager.TeamManagerInstance teamManagerInstance = null;
-        for(UUID uuid : countedParticipants){
-            Player player = Bukkit.getServer().getPlayer(uuid);
-            if(player != null && TeamManager.getInstance(player.getWorld()) != null){ //getInstance() will not create a new instance.
-                teamManagerInstance = TeamManager.getInstance(player.getWorld());
-                break;
-            }
-        }
+        //Bukkit.getLogger().info("beginning reset");
 
         assignedPads.clear();
         countedParticipants.clear();
@@ -466,10 +465,19 @@ public class GameManager implements Listener {
         hardFreezeActive = false;
         activeMatchTemplateKey = null;
         activeMatchSettings = null;
-        try { teamManagerInstance.clearAllTeams(); } catch (Throwable ignored) {}
+        TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getInstance(currentWorld);
+        if(teamManagerInstance != null) {
+            //Bukkit.getLogger().info("resetting team manager id: " + teamManagerInstance.getIdentifier());
+            teamManagerInstance.allowTeamCustomization = true;
+            teamManagerInstance.clearAllTeams();
+            //Bukkit.getLogger().info("destroying team manager id: " + teamManagerInstance.getIdentifier());
+            TeamManager.destroyInstance(teamManagerInstance.getIdentifier());
+        }
+        //Bukkit.getLogger().info("beginning nuke");
+        //TeamManager.nukeTeamsForWorld(currentWorld);
 
         // Cleanup: remove scoreboard teams we created and reset player display/list names
-        //[Hydraulic] This will be handled by FakeTeam.
+        //[Hydraulic] This will be handled by FakeTeam stuff above.
         /*try {
             for (Team t : new ArrayList<>(scoreboard.getTeams())) {
                 String n = t.getName();

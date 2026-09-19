@@ -82,12 +82,37 @@ public final class TeamNamingRules {
             return Optional.of("That name is not allowed.");
         }
         //TeamManager teams = plugin.teams();
-        if (TeamManager.getOrCreateWorldInstance(player.getWorld()).teams.containsKey(stripped)) {
+        if (TeamManager.getOrCreateWorldInstance(player.getWorld()).teams.containsKey(stripped.toLowerCase(Locale.ROOT))) {
             return Optional.of("That name is already in use.");
         }
         //if (player != null && teams.nameTakenByOtherTeamInSameLimbo(player, stripped)) {
-        if(player != null && TeamManager.getOrCreateWorldInstance(player.getWorld()).findPlayerTeam(player) != TeamManager.getOrCreateWorldInstance(player.getWorld()).teams.get(stripped)) {
-            return Optional.of("Another team in this limbo already uses that name.");
+        if(player != null && TeamManager.getOrCreateWorldInstance(player.getWorld()).findPlayerTeam(player) != TeamManager.getOrCreateWorldInstance(player.getWorld()).teams.get(stripped.toLowerCase(Locale.ROOT))) {
+            return Optional.of("You are already on a team!");
+        }
+        return Optional.empty();
+    }
+
+    public static Optional<String> validateNewTeamNameForRenaming(String raw, HungerGamesPlugin plugin, Player player) {
+        String stripped = stripLegacyColorCodes(raw).trim();
+        if (stripped.isEmpty()) {
+            return Optional.of("Team name cannot be empty.");
+        }
+        if (stripped.length() > MAX_NAME_LENGTH) {
+            return Optional.of("Team name must be at most " + MAX_NAME_LENGTH + " characters.");
+        }
+        if (!allowedCharacters(stripped)) {
+            return Optional.of("Use only letters, numbers, spaces, and _ - ' .");
+        }
+        if (containsProfanity(stripped, plugin)) {
+            return Optional.of("That name is not allowed.");
+        }
+        //TeamManager teams = plugin.teams();
+        if (TeamManager.getOrCreateWorldInstance(player.getWorld()).teams.containsKey(stripped.toLowerCase(Locale.ROOT))) {
+            return Optional.of("That name is already in use.");
+        }
+        //if (player != null && teams.nameTakenByOtherTeamInSameLimbo(player, stripped)) {
+        if(TeamManager.getOrCreateWorldInstance(player.getWorld()).findPlayerTeam(player) == null) {
+            return Optional.of("You do not have a team!");
         }
         return Optional.empty();
     }
@@ -108,7 +133,7 @@ public final class TeamNamingRules {
         }
         String name = candidate;
         int bump = 2;
-        while (teams.teams.containsKey(name)) {
+        while (teams.teams.containsKey(name.toLowerCase(Locale.ROOT))) {
             String suffix = " " + bump++;
             int keep = Math.max(1, MAX_NAME_LENGTH - suffix.length());
             String base = candidate.length() > keep ? candidate.substring(0, keep) : candidate;

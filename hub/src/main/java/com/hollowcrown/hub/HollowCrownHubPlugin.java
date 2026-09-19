@@ -14,6 +14,8 @@ import com.hollowcrown.api.storage.StorageProvider;
 import com.hollowcrown.api.template.TemplateRegistry;
 import com.hollowcrown.hub.command.HubCommandExecutor;
 import com.hollowcrown.hub.command.HubPlayerCommand;
+import com.hollowcrown.hub.command.TeamAllyCommandExecutor;
+import com.hollowcrown.hub.command.TeamRivalCommandExecutor;
 import com.hollowcrown.hub.platform.DefaultGamePlatform;
 import com.hollowcrown.hub.storage.HubSqlMigrations;
 import com.hollowcrown.hub.storage.HubSqlRuntime;
@@ -33,6 +35,7 @@ import com.hollowcrown.hub.limbo.HubPreMatchLimboService;
 import com.hollowcrown.hub.party.HubPartyListener;
 import com.hollowcrown.hub.party.HubPartyService;
 import com.hollowcrown.hub.queue.HubMatchQueueService;
+import com.hollowcrown.hub.team.TeamListener;
 import com.hollowcrown.hub.team.TeamManager;
 import com.hollowcrown.hub.template.HubTemplateApiRegistry;
 import com.hollowcrown.hub.template.HubTemplateRegistry;
@@ -129,6 +132,8 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new LobbyAdminMenuListener(), this);
         Bukkit.getPluginManager().registerEvents(new LobbyJoinMenuListener(), this);
         Bukkit.getPluginManager().registerEvents(new HubMenuListener(), this);
+        //getLogger().info("Sanity Check!");
+        Bukkit.getPluginManager().registerEvents(new TeamListener(), this);
         Bukkit.getPluginManager().registerEvents(new HubPartyListener(this, partyService), this);
         Bukkit.getPluginManager().registerEvents(hubWorldManager, this);
         Bukkit.getPluginManager().registerEvents(
@@ -230,6 +235,20 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
             getCommand("hub").setExecutor(new HubPlayerCommand(this));
         } else {
             getLogger().warning("Command 'hub' missing from plugin.yml (optional player teleport).");
+        }
+        if (getCommand("ally") != null) {
+            TeamAllyCommandExecutor exec = new TeamAllyCommandExecutor(this);
+            getCommand("ally").setExecutor(exec);
+            getCommand("ally").setTabCompleter(exec);
+        } else {
+            getLogger().severe("Command 'ally' missing from plugin.yml");
+        }
+        if (getCommand("rival") != null) {
+            TeamRivalCommandExecutor exec = new TeamRivalCommandExecutor(this);
+            getCommand("rival").setExecutor(exec);
+            getCommand("rival").setTabCompleter(exec);
+        } else {
+            getLogger().severe("Command 'rival' missing from plugin.yml");
         }
 
         HubLog.info(this, "action=hub_enable", "result=ok", "storage=" + storage.backend(),

@@ -11,6 +11,8 @@ import org.bukkit.Color;
 import org.bukkit.Server;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
 
 import java.time.Instant;
@@ -54,8 +56,8 @@ public class TeamManager {
     //red, orange, yellow, green, teal, blue, purple, magenta, rose
     public static float[] hues = new float[] {0f, 30f, 60f, 125f, 175f, 240f, 275f, 300f, 330f};
     public static float highValue = 1f;
-    public static float midValue = 0.75f;
-    public static float lowValue = 0.5f;
+    public static float midValue = 0.8f;
+    public static float lowValue = 0.6f;
     public static float highSaturation = 0.9f;
     public static float lowSaturation = 0.4f;
 
@@ -97,8 +99,10 @@ public class TeamManager {
         //removed because I actually don't have commands to change teams stuff, you can only do that through the gui
         //TO/DO: Implement the following booleans
         //public boolean allowPartialTeams = false;
-        //public boolean allowTeamCustomization = true; //Whether to allow changing team name, color, players, etc. Useful for disallowing changes mid-game.
+        public boolean allowTeamCustomization = true; //Whether to allow changing team name, color, players, etc. Useful for disallowing changes mid-game.
         public boolean allowAlliances = true; //Whether to allow alliances. Useful for disbanding alliances then disallowing new ones.
+        public boolean friendlyFire = false; //Allow teammates to attack each-other
+        public boolean allyFriendlyFire = true; //Allow allies to attack each-other
 
         public TeamManagerInstance(Object identifier) {
             this.identifier = identifier;
@@ -127,12 +131,16 @@ public class TeamManager {
         public void clearAllTeams(){
             Server server = Bukkit.getServer();
             for(Team team : teams.values()) {
+                List<Player> players = new ArrayList<>();
                 for (UUID member : team.members){
                     Player player = server.getPlayer(member);
-                    if(player != null)
+                    if(player != null) {
                         player.sendMessage(Component.text("Your Team has been disbanded.", NamedTextColor.GRAY));
+                        players.add(player);
+                    }
                 }
-                FakeTeam fakeTeam = new FakeTeam(team.name);
+                FakeTeam fakeTeam = new FakeTeam(team.name)
+                        .players(players);
                 for(Player player : Bukkit.getOnlinePlayers()){
                     fakeTeam.sendRemovalTo(player);
                 }
@@ -154,6 +162,14 @@ public class TeamManager {
 
         public boolean sendAllFakeTeamPackets(){
             return TeamManager.sendAllFakeTeamPackets(this);
+        }
+
+        public boolean disbandAllAlliances(boolean allowFutureAlliances){
+            return TeamManager.disbandAllAlliances(this, allowFutureAlliances);
+        }
+
+        public boolean verifyTeamIntegrity(){
+            return TeamManager.verifyTeamIntegrity(this);
         }
     }
 
@@ -184,7 +200,7 @@ public class TeamManager {
     public static class Team {
         public long timestamp;
         private String name;
-        public Color color = Color.WHITE;
+        public Color color;
         TeamManagerInstance teamManagerInstance;
         public ArrayList<UUID> members = new ArrayList<>(playersPerTeam);
         public ArrayList<Team> allies = new ArrayList<>(maxAllies);
@@ -195,6 +211,7 @@ public class TeamManager {
             this.teamManagerInstance = teamManagerInstance;
             color = teamManagerInstance.getRandomUnusedColor();
             teamManagerInstance.takenColors.add(color);
+            teamManagerInstance.teams.put(name.toLowerCase(Locale.ROOT), this);
             Instant now = Instant.now();
             timestamp = now.getNano() + (now.getEpochSecond() * 1000000000);
         }
@@ -204,6 +221,7 @@ public class TeamManager {
             this.color = color;
             this.teamManagerInstance = teamManagerInstance;
             teamManagerInstance.takenColors.add(color);
+            teamManagerInstance.teams.put(name.toLowerCase(Locale.ROOT), this);
             Instant now = Instant.now();
             timestamp = now.getNano() + (now.getEpochSecond() * 1000000000);
         }
@@ -231,7 +249,11 @@ public class TeamManager {
          * @return true if the team was renamed successfully, or false if the new name was already taken.
          */
         public boolean rename(String newName){
-            if(teamManagerInstance.teams.containsKey(newName))
+            if(!teamManagerInstance.allowTeamCustomization)
+                return false;
+            if(!teamManagerInstance.teams.containsValue(this)) //In the strange case that a team doesn't exist in its manger, nothing should happen.
+                return false;
+            if(teamManagerInstance.teams.containsKey(newName.toLowerCase()))
                 return false;
             teamManagerInstance.teams.remove(name.toLowerCase());
             teamManagerInstance.teams.put(newName.toLowerCase(), this);
@@ -243,10 +265,19 @@ public class TeamManager {
             return name;
         }
 
-        public void setColor(Color color){
+        public boolean setColor(Color color){
+            if(!teamManagerInstance.allowTeamCustomization)
+                return false;
+            if(!teamManagerInstance.teams.containsValue(this)) //In the strange case that a team doesn't exist in its manger, nothing should happen.
+                return false;
             teamManagerInstance.takenColors.remove(this.color);
             teamManagerInstance.takenColors.add(color);
             this.color = color;
+            return true;
+        }
+
+        public TeamManagerInstance getTeamManagerInstance(){
+            return teamManagerInstance;
         }
 
         /*public boolean setColor(String colorCode){
@@ -307,8 +338,12 @@ public class TeamManager {
                 return false;
             if(allies.contains(other) || other.allies.contains(this))
                 return true;
+            rivals.remove(other);
+            other.rivals.remove(this);
             allies.add(other);
             other.allies.add(this);
+            //Remove any invites
+            allianceInvites.removeIf((e) -> (e.offeringTeam == other && e.receivingTeam == this) || (e.offeringTeam == this && e.receivingTeam == other));
             for(UUID uuid : members) {
                 Player player = Bukkit.getServer().getPlayer(uuid);
                 if (player != null) {
@@ -329,6 +364,8 @@ public class TeamManager {
                     );
                 }
             }
+            TeamManager.sendFakeTeamPackets(this);
+            TeamManager.sendFakeTeamPackets(other);
             return true;
         }
 
@@ -355,6 +392,8 @@ public class TeamManager {
                         );
                     }
                 }
+                TeamManager.sendFakeTeamPackets(this);
+                TeamManager.sendFakeTeamPackets(other);
             }
         }
 
@@ -367,6 +406,7 @@ public class TeamManager {
         public void addRival(Team rival){
             if(!rivals.contains(rival)){
                 rivals.add(rival);
+                removeAlly(rival);
                 for(UUID uuid : rival.members) {
                     Player player = Bukkit.getServer().getPlayer(uuid);
                     if (player != null) {
@@ -375,7 +415,7 @@ public class TeamManager {
                                     .content("")
                                     .append(Component.text(name, TextColor.color(color.asRGB())))
                                     .append(Component.text(" has deemed you an enemy. "))
-                                    .append(Component.text("[Return the favor?]", TextColor.color(85, 255, 85)).clickEvent(ClickEvent.runCommand("/hch team rival add " + name)).hoverEvent(Component.text("Declare Team " ).append(Component.text(name, TextColor.color(color.asRGB()))).append(Component.text(" a rival!")).asHoverEvent())) //Green!
+                                    .append(Component.text("[Return the favor?]", TextColor.color(85, 255, 85)).clickEvent(ClickEvent.runCommand("/rival add " + name.toLowerCase())).hoverEvent(Component.text("Declare Team " ).append(Component.text(name, TextColor.color(color.asRGB()))).append(Component.text(" a rival!")).asHoverEvent())) //Green!
                             );
                         else
                             player.sendMessage(Component.text()
@@ -385,13 +425,15 @@ public class TeamManager {
                             );
                     }
                 }
+                TeamManager.sendFakeTeamPackets(this);
+                TeamManager.sendFakeTeamPackets(rival);
             }
         }
 
-        public void removeRival(Team rival){
-            if(rivals.contains(rival)){
+        public void removeRival(Team rival) {
+            if (rivals.contains(rival)) {
                 rivals.remove(rival);
-                for(UUID uuid : rival.members) {
+                for (UUID uuid : rival.members) {
                     Player player = Bukkit.getServer().getPlayer(uuid);
                     if (player != null) {
                         if (!rival.rivals.contains(this) && uuid == rival.getLeader())
@@ -399,7 +441,7 @@ public class TeamManager {
                                     .content("")
                                     .append(Component.text(name, TextColor.color(color.asRGB())))
                                     .append(Component.text(" has decided you aren't a threat. "))
-                                    .append(Component.text("[Return the favor?]", TextColor.color(85, 255, 85)).clickEvent(ClickEvent.runCommand("/hch team rival remove " + name)).hoverEvent(Component.text("Dismiss Team " ).append(Component.text(name, TextColor.color(color.asRGB()))).asHoverEvent())) //Green!
+                                    .append(Component.text("[Return the favor?]", TextColor.color(85, 255, 85)).clickEvent(ClickEvent.runCommand("/rival remove " + name.toLowerCase())).hoverEvent(Component.text("Dismiss Team ").append(Component.text(name, TextColor.color(color.asRGB()))).asHoverEvent())) //Green!
                             );
                         else
                             player.sendMessage(Component.text()
@@ -409,6 +451,8 @@ public class TeamManager {
                             );
                     }
                 }
+                TeamManager.sendFakeTeamPackets(this);
+                TeamManager.sendFakeTeamPackets(rival);
             }
         }
 
@@ -431,6 +475,17 @@ public class TeamManager {
     }
 
     /**
+     * Remove a team manager instance from {@link #instances}.
+     * @param referenceObject The reference object that identifies the manager instance. This could be a world, plugin reference, or some other persistent object you keep a reference to. A {@link TeamManagerInstance} is not a valid reference and will throw {@link IllegalArgumentException} if passed in.
+     * @return The removed instance, or null if it cannot be found.
+     */
+    public static TeamManagerInstance destroyInstance(Object referenceObject){
+        if(referenceObject instanceof TeamManagerInstance)
+            throw new IllegalArgumentException("A TeamManagerInstance cannot be used as an identifier!");
+        return instances.remove(referenceObject);
+    }
+
+    /**
      * Get a team manager instance from its identifier.
      * @param referenceObject The reference object that identifies the manager instance. This could be a world, plugin reference, or some other persistent object you keep a reference to. A {@link TeamManagerInstance} is not a valid reference and will throw {@link IllegalArgumentException} if passed in.
      * @return The manager instance, or null if it cannot be found.
@@ -441,27 +496,27 @@ public class TeamManager {
         return instances.getOrDefault(referenceObject, null);
     }
 
-    public static TeamManagerInstance getOrCreateWorldInstance(World world){
+    public static @NotNull TeamManagerInstance getOrCreateWorldInstance(World world){
         if(instances.containsKey(world))
             return instances.get(world);
         else
             return newInstance(world);
     }
 
-    /**
+    /*/**
      * Add a team to a manager instance.
      * @param reference A manager instance or the reference object that identifies the manager instance. This could be a world, plugin reference, or some other persistent object you keep a reference to. A {@link TeamManagerInstance} is not a valid reference and will be directly used as the instance.
      * @param name The name of the team. Teams can be renamed later.
      * @return The newly created team, or null if the manager instance could not be found or the name is already taken.
      */
-    public static Team addTeam(Object reference, String name){
+    /*public static Team addTeam(Object reference, String name){
         TeamManagerInstance instance = reference instanceof TeamManagerInstance teamManagerInstance ? teamManagerInstance : instances.get(reference);
-        if(instance == null || instance.teams.containsKey(name))
+        if(instance == null || instance.teams.containsKey(name.toLowerCase(Locale.ROOT)))
             return null;
         Team team = new Team(name, instance);
-        instance.teams.put(name.toLowerCase(), team);
+        instance.teams.put(name.toLowerCase(Locale.ROOT), team);
         return team;
-    }
+    }*/
 
     /**
      * Searches through all active instances and finds the first team with this player. Use this method minimally, as it is costly.
@@ -493,6 +548,11 @@ public class TeamManager {
      */
     public static boolean allianceAddCommand(Player player, String desiredTeam){
         Team team = findPlayerTeam(player);
+        TeamManagerInstance teamManagerInstance = getInstance(player.getWorld());
+        //if(teamManagerInstance != null)
+        //    HollowCrownHubPlugin.getPlugin(HollowCrownHubPlugin.class).getLogger().info("passed arg: " + desiredTeam + ", instance: " + teamManagerInstance + ", ref: " + teamManagerInstance.getIdentifier() + ", teams: " + teamManagerInstance.teams);
+        //else
+        //    HollowCrownHubPlugin.getPlugin(HollowCrownHubPlugin.class).getLogger().info("passed arg: " + desiredTeam + ", instance is null, all instances: " + TeamManager.instances);
         if(team == null) {
             player.sendMessage(Component.text("You are not on a team!", TextColor.color(255, 85, 85)));
             return false;
@@ -502,7 +562,7 @@ public class TeamManager {
             player.sendMessage(Component.text(desiredTeam + " could not be found!", TextColor.color(255, 85, 85)));
             return false;
         }
-        if(checkAllianceInvite(team, other)){
+        if(checkAllianceInvite(other, team)){
             //This team is accepting an invite.
             //addAlly() sends messages to all players on both teams if it's successful, so no need to do that here.
             boolean success = other.addAlly(team); //Because this team (team) is accepting an alliance invite from another team (other), the other team (other) "owns" the alliance. In actuality, all this means is that the chat notification recognizes that the other team took the first step.
@@ -521,7 +581,7 @@ public class TeamManager {
             allianceInvites.add(new AllianceInvite(team, other));
             player.sendMessage(Component.text()
                     .content("You have offered an alliance to ")
-                    .append(Component.text(team.name, TextColor.color(team.color.asRGB())))
+                    .append(Component.text(other.name, TextColor.color(other.color.asRGB())))
                     .append(Component.text("."))
             );
             Player otherLeader = Bukkit.getServer().getPlayer(other.getLeader());
@@ -530,7 +590,7 @@ public class TeamManager {
                         .content("")
                         .append(Component.text(team.name, TextColor.color(team.color.asRGB())))
                         .append(Component.text(" has offered an alliance. "))
-                        .append(Component.text("[Accept?]", TextColor.color(85, 255, 85)).clickEvent(ClickEvent.runCommand("/hch team ally add " + team.name)).hoverEvent(Component.text("Form alliance with ").append(Component.text(team.name, TextColor.color(team.color.asRGB()))).asHoverEvent())) //Green!
+                        .append(Component.text("[Accept?]", TextColor.color(85, 255, 85)).clickEvent(ClickEvent.runCommand("/ally add " + team.name.toLowerCase(Locale.ROOT))).hoverEvent(Component.text("Form alliance with ").append(Component.text(team.name, TextColor.color(team.color.asRGB()))).asHoverEvent())) //Green!
                 );
             }
             return true;
@@ -713,12 +773,14 @@ public class TeamManager {
             if(player != null)
                 players.add(player);
         }
+        //I finally fixed it!
+        //Bukkit.getLogger().info("teamManagerInstance: " + team.teamManagerInstance + ", ref: " + team.teamManagerInstance.getIdentifier() + ", loader: " + TeamManager.class.getClassLoader() + " hash: " + System.identityHashCode(TeamManager.instances) + ", all instances: " + instances);
         //Keep track of which players have already been sent a customized team packet
         ArrayList<Player> inTeams = new ArrayList<>(playersPerTeam * team.teamManagerInstance.teams.size());
         for(Team otherTeam : team.teamManagerInstance.teams.values()){
             FakeTeam fake = new FakeTeam(team.name)
                     .color(otherTeam == team ? FakeTeam.PlayerNameColor.GREEN : (otherTeam.allies.contains(team) ? FakeTeam.PlayerNameColor.AQUA : (otherTeam.rivals.contains(team) ? FakeTeam.PlayerNameColor.GOLD : FakeTeam.PlayerNameColor.RED)))
-                    .stringSuffixColored("[" + team.name + "] ", team.color)
+                    .stringPrefixColored("[" + team.name + "] ", team.color)
                     .players(players);
             for(UUID uuid : otherTeam.members){
                 Player player = server.getPlayer(uuid);
@@ -731,11 +793,89 @@ public class TeamManager {
         //Send any non-teamed player (spectators) a packet that declares this team to them without enemy/ally coloration.
         FakeTeam fake = new FakeTeam(team.name)
                 .color(FakeTeam.PlayerNameColor.WHITE)
-                .stringSuffixColored("[" + team.name + "] ", team.color)
+                .stringPrefixColored("[" + team.name + "] ", team.color)
                 .players(players);
         for(Player player : server.getOnlinePlayers()){
             if(!inTeams.contains(player))
                 fake.sendTo(player);
+        }
+        return true;
+    }
+
+    /**
+     * Collects fake team packets for every team in the world and sends them to the specified player.
+     * @param player The player to send the data to.
+     * @return true if it succeeded, false if it failed.
+     */
+    public static boolean sendFakeTeamPacketsTo(Player player){
+        TeamManagerInstance teamManagerInstance = getInstance(player.getWorld());
+        Team team = null;
+        if(teamManagerInstance == null) {
+            team = TeamManager.findPlayerTeam(player);
+            if(team == null)
+                return false;
+            else{
+                teamManagerInstance = team.teamManagerInstance;
+            }
+        }
+        else{
+            team = teamManagerInstance.findPlayerTeam(player);
+        }
+
+        Server server = Bukkit.getServer();
+        if(team == null) {
+            for (Team other : teamManagerInstance.teams.values()) {
+                ArrayList<Player> teamMembers = new ArrayList<>(other.members.size());
+                for(UUID uuid : other.members){
+                    Player teamMember = server.getPlayer(uuid);
+                    if(teamMember != null)
+                        teamMembers.add(teamMember);
+                }
+                new FakeTeam(other.name)
+                        .color(FakeTeam.PlayerNameColor.WHITE)
+                        .stringPrefixColored("[" + other.name + "] ", other.color)
+                        .players(teamMembers)
+                        .sendTo(player);
+            }
+        }
+        else{
+            for (Team other : teamManagerInstance.teams.values()) {
+                ArrayList<Player> teamMembers = new ArrayList<>(other.members.size());
+                for(UUID uuid : other.members){
+                    Player teamMember = server.getPlayer(uuid);
+                    if(teamMember != null)
+                        teamMembers.add(teamMember);
+                }
+                new FakeTeam(other.name)
+                        .color(team == other ? FakeTeam.PlayerNameColor.GREEN : (team.allies.contains(other) ? FakeTeam.PlayerNameColor.AQUA : (team.rivals.contains(other) ? FakeTeam.PlayerNameColor.GOLD : FakeTeam.PlayerNameColor.RED)))
+                        .stringPrefixColored("[" + other.name + "] ", other.color)
+                        .players(teamMembers)
+                        .sendTo(player);
+            }
+        }
+        return true;
+    }
+
+    public static boolean sendFakeTeamPacketsTo(Team team) {
+        TeamManagerInstance teamManagerInstance = team.teamManagerInstance;
+        Server server = Bukkit.getServer();
+        for (Team other : teamManagerInstance.teams.values()) {
+            ArrayList<Player> teamMembers = new ArrayList<>(other.members.size());
+            for (UUID uuid : other.members) {
+                Player teamMember = server.getPlayer(uuid);
+                if (teamMember != null)
+                    teamMembers.add(teamMember);
+            }
+            FakeTeam fakeTeam = new FakeTeam(other.name)
+                    .color(team == other ? FakeTeam.PlayerNameColor.GREEN : (team.allies.contains(other) ? FakeTeam.PlayerNameColor.AQUA : (team.rivals.contains(other) ? FakeTeam.PlayerNameColor.GOLD : FakeTeam.PlayerNameColor.RED)))
+                    .stringPrefixColored("[" + other.name + "] ", other.color)
+                    .players(teamMembers);
+            for(UUID member : team.members){
+                Player player = server.getPlayer(member);
+                if(player != null)
+                    fakeTeam.sendTo(player);
+            }
+
         }
         return true;
     }
@@ -753,6 +893,22 @@ public class TeamManager {
         for(Team team : instance.teams.values())
             sendFakeTeamPackets(team);
         return true;
+    }
+
+    public static void nukeTeamsForWorld(World world){
+        FakeTeam nuke = new FakeTeam("tempTeamToTerrorizeTemporaryTeamTitles")
+                .players(world.getPlayers());
+        Bukkit.getLogger().info("Nuking teams with team containing " + world.getPlayers());
+        for(Player player : Bukkit.getOnlinePlayers()){
+            nuke.sendTo(player);
+            Bukkit.getLogger().info("Sending nuke to " + player);
+        }
+        Bukkit.getScheduler().runTaskLater(HollowCrownHubPlugin.get(), () -> {
+            for(Player player : Bukkit.getOnlinePlayers()){
+                nuke.sendRemovalTo(player);
+                Bukkit.getLogger().info("Sending nuke removal to " + player);
+            }
+        }, 5);
     }
 
     static Vector3f rgbToHsv(Color color) {
