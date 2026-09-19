@@ -31,6 +31,12 @@
       <groupId>redis.clients</groupId>
       <artifactId>jedis</artifactId>
     </dependency>
+      <dependency>
+          <groupId>com.hollowcrown</groupId>
+          <artifactId>hollowcrown-hub</artifactId>
+          <version>1.21.4-a0.1.4</version>
+          <scope>provided</scope>
+      </dependency>
   </dependencies>
 
   <build>

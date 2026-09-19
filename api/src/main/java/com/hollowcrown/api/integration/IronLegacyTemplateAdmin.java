@@ -82,6 +82,10 @@ public interface IronLegacyTemplateAdmin {
 
     boolean setTeamSizeMax(String templateKey, int teamSizeMax);
 
+    boolean setTeamFriendlyFire(String templateKey, boolean teamFriendlyFire);
+
+    boolean setAllyFriendlyFire(String templateKey, boolean allyFriendlyFire);
+
     boolean setIconKey(String templateKey, String iconKey);
 
     boolean setMinimumPercentage(String templateKey, int percentage);

@@ -140,6 +140,8 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
         yaml.set(b + ".status", yaml.getString(b + ".status", "EDIT"));
         yaml.set(b + ".maxPlayers", yaml.getInt(b + ".maxPlayers", 100));
         yaml.set(b + ".teamSizeMax", yaml.getInt(b + ".teamSizeMax", 5));
+        yaml.set(b + ".teamFriendlyFire", yaml.getBoolean(b + ".teamFriendlyFire", false));
+        yaml.set(b + ".allyFriendlyFire", yaml.getBoolean(b + ".allyFriendlyFire", true));
         yaml.set(b + ".iconKey", yaml.getString(b + ".iconKey", "default"));
         yaml.set(b + ".version", yaml.getInt(b + ".version", 0));
         int pct = yaml.getInt(b + ".limbo.minimumPercentage", 80);
@@ -263,6 +265,8 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
                         yaml.getBoolean(b + ".enabled", true),
                         yaml.getInt(b + ".maxPlayers", 100),
                         yaml.getInt(b + ".teamSizeMax", 5),
+                        yaml.getBoolean(b + ".teamFriendlyFire", false),
+                        yaml.getBoolean(b + ".allyFriendlyFire", true),
                         yaml.getString(b + ".iconKey", "default"),
                         yaml.getInt(b + ".version", 0)
                 ));
@@ -287,6 +291,8 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
                         yaml.getBoolean(b + ".enabled", true),
                         yaml.getInt(b + ".maxPlayers", 100),
                         yaml.getInt(b + ".teamSizeMax", 5),
+                        yaml.getBoolean(b + ".teamFriendlyFire", false),
+                        yaml.getBoolean(b + ".allyFriendlyFire", true),
                         yaml.getString(b + ".iconKey", "default"),
                         yaml.getInt(b + ".version", 0)
                 ));
@@ -390,6 +396,12 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
     @Override public boolean setTeamSizeMax(String templateKey, int teamSizeMax) {
         if (teamSizeMax < 1) return false;
         return editTemplate(templateKey, (yaml, b) -> { yaml.set(b + ".teamSizeMax", teamSizeMax); return true; });
+    }
+    @Override public boolean setTeamFriendlyFire(String templateKey, boolean teamFriendlyFire) {
+        return editTemplate(templateKey, (yaml, b) -> { yaml.set(b + ".teamFriendlyFire", teamFriendlyFire); return true; });
+    }
+    @Override public boolean setAllyFriendlyFire(String templateKey, boolean allyFriendlyFire) {
+        return editTemplate(templateKey, (yaml, b) -> { yaml.set(b + ".allyFriendlyFire", allyFriendlyFire); return true; });
     }
     @Override public boolean setIconKey(String templateKey, String iconKey) {
         if (iconKey == null || iconKey.isBlank()) return false;

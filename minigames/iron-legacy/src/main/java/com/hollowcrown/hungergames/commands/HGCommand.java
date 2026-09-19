@@ -1,15 +1,16 @@
 package com.hollowcrown.hungergames.commands;
 
+import com.hollowcrown.hub.team.TeamManager;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
 import com.hollowcrown.hungergames.ChatInput;
 import com.hollowcrown.hungergames.managers.*;
 import com.hollowcrown.hungergames.gui.MainMenu;
 import com.hollowcrown.hungergames.gui.TeamsMenu;
 import com.hollowcrown.hungergames.gui.AdminControlCenterMenu;
+import com.hollowcrown.hungergames.util.TeamNamingRules;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.Material;
@@ -22,12 +23,9 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -39,7 +37,6 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.Collections;
 import java.util.Random;
-import java.util.HashSet;
 import java.util.Set;
 
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -48,13 +45,13 @@ import com.hollowcrown.hungergames.gui.EnvoyAdminMenu;
 public class HGCommand implements CommandExecutor, TabCompleter {
 
     private final GameManager game;
-    private final TeamManager teams;
+    //private final TeamManager teams;
     private final SpawnManager spawns;
     private final ChatInput chatInput;
 
-    public HGCommand(GameManager game, TeamManager teams, SpawnManager spawns, ChatInput chatInput) {
+    public HGCommand(GameManager game, SpawnManager spawns, ChatInput chatInput) {
         this.game = game;
-        this.teams = teams;
+        //this.teams = teams;
         this.spawns = spawns;
         this.chatInput = chatInput;
     }
@@ -70,7 +67,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
             sb.append(allowed[i].name().toLowerCase());
         }
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                "\u00A7cThis action is disabled on " + current.name().toLowerCase() + " role. Allowed: " + sb));
+                "§cThis action is disabled on " + current.name().toLowerCase() + " role. Allowed: " + sb));
         return false;
     }
 
@@ -86,32 +83,32 @@ public class HGCommand implements CommandExecutor, TabCompleter {
 
     private void sendHelp(CommandSender sender, String label) {
         boolean op = sender.isOp();
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A76HCIronLegacy Commands"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§6HCIronLegacy Commands"));
 
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7bPlayer Commands"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " help\u00A77 - show this help menu"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " party\u00A77 - open Hollow Crown Hub party menu"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/hub\u00A77 (or /lobby) — teleport to Hollow Crown hub + utility hotbar"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " teams\u00A77 - in limbo: Hub party menu; otherwise OP teams/main GUI"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " leaderboard|lb\u00A77 - show top kills"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§bPlayer Commands"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " help§7 - show this help menu"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " party§7 - open Hollow Crown Hub party menu"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/hub§7 (or /lobby) — teleport to Hollow Crown hub + utility hotbar"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " teams§7 - in limbo: Hub party menu; otherwise OP teams/main GUI"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " leaderboard|lb§7 - show top kills"));
 
         if (!op) return;
 
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7bAdmin - Menus/Worlds"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " gui\u00A77 - open teams/main menu"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " admin\u00A77 - open unified admin control center"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/hch template create <key>\u00A77 - create editable map (Hub)"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/hch template worlds …\u00A77 \u00A78|\u00A77 \u00A7e/hch gui maps\u00A77 — templates, publish, snapshots (was /" + label + " game / gameedit)"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " joingame <worldname>\u00A77 - OP direct world join (bypass cap)"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§bAdmin - Menus/Worlds"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " gui§7 - open teams/main menu"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " admin§7 - open unified admin control center"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/hch template create <key>§7 - create editable map (Hub)"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/hch template worlds …§7 §8|§7 §e/hch gui maps§7 — templates, publish, snapshots (was /" + label + " game / gameedit)"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " joingame <worldname>§7 - OP direct world join (bypass cap)"));
 
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7bAdmin - Hub world (HollowCrownHub)"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A77Use \u00A7e/hch sethub\u00A7r, \u00A7e/hub\u00A7r, \u00A7e/hch hubworld …\u00A77 for spawn, radius, build mode, pads."));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7bAdmin - Limbo / Match"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " hostilemobspawn <true|false|t|f>\u00A77 - hostile spawns in \u00A7elimbo\u00A77 worlds"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " passivemobspawn <true|false|t|f>\u00A77 - passive spawns in \u00A7elimbo\u00A77 worlds"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " start [limbo_world|template]\u00A77 - force limbo match countdown (like lobby full)"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " stop\u00A77 - stop match + cancel limbo queues, send players to hub"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " reload\u00A77 - reload config/rules/templates/icons"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§bAdmin - Hub world (HollowCrownHub)"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§7Use §e/hch sethub§r, §e/hub§r, §e/hch hubworld …§7 for spawn, radius, build mode, pads."));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§bAdmin - Limbo / Match"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " hostilemobspawn <true|false|t|f>§7 - hostile spawns in §elimbo§7 worlds"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " passivemobspawn <true|false|t|f>§7 - passive spawns in §elimbo§7 worlds"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " start [limbo_world|template]§7 - force limbo match countdown (like lobby full)"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " stop§7 - stop match + cancel limbo queues, send players to hub"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " reload§7 - reload config/rules/templates/icons"));
 
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7bAdmin - Spawns/Teams/Rules"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " addspawn|clearspawns|removespawn|listspawns"));
@@ -152,72 +149,72 @@ public class HGCommand implements CommandExecutor, TabCompleter {
         switch (args[0].toLowerCase()) {
             case "envoy" -> {
                 if (!(sender instanceof Player p)) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("Players only.")); return true; }
-                if (!p.isOp()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cOnly OPs can use envoy commands.")); return true; }
+                if (!p.isOp()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cOnly OPs can use envoy commands.")); return true; }
                 var env = HungerGamesPlugin.get().envoys();
                 var tkWorld = HungerGamesPlugin.get().templates().resolveTemplateKeyForWorld(p.getWorld().getName());
-                if (args.length < 2) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " envoy <start|stop|addloc|clearlocs|listlocs|wave|random|gui>")); return true; }
+                if (args.length < 2) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " envoy <start|stop|addloc|clearlocs|listlocs|wave|random|gui>")); return true; }
                 switch (args[1].toLowerCase()) {
                     case "start" -> {
                         if (tkWorld.isEmpty()) {
-                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cStand in a template or match world."));
+                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cStand in a template or match world."));
                             return true;
                         }
                         env.start(tkWorld.get());
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aEnvoys started for this map."));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aEnvoys started for this map."));
                     }
-                    case "stop" -> { env.stop(); sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eEnvoys stopped.")); }
+                    case "stop" -> { env.stop(); sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eEnvoys stopped.")); }
                     case "addloc" -> {
                         if (tkWorld.isEmpty()) {
-                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cStand in a template or match world."));
+                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cStand in a template or match world."));
                             return true;
                         }
                         env.addLocation(p.getLocation(), tkWorld.get());
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aAdded envoy location."));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aAdded envoy location."));
                     }
                     case "clearlocs" -> {
                         if (tkWorld.isEmpty()) {
-                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cStand in a template or match world."));
+                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cStand in a template or match world."));
                             return true;
                         }
                         env.clearLocations(tkWorld.get());
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eCleared envoy locations for this map."));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eCleared envoy locations for this map."));
                     }
                     case "listlocs" -> {
                         if (tkWorld.isEmpty()) {
-                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cStand in a template or match world."));
+                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cStand in a template or match world."));
                             return true;
                         }
                         int n = env.getSpawnLocations(tkWorld.get()).size();
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A76Envoy locations (this map): " + n));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§6Envoy locations (this map): " + n));
                     }
                     case "wave" -> {
                         if (tkWorld.isEmpty()) {
-                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cStand in a template or match world."));
+                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cStand in a template or match world."));
                             return true;
                         }
                         int count = 3;
                         if (args.length >= 3) try { count = Math.max(1, Integer.parseInt(args[2])); } catch (Exception ignored) {}
                         env.spawnWave(tkWorld.get(), count);
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aSpawned envoy wave of " + count + "."));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aSpawned envoy wave of " + count + "."));
                     }
                     case "random" -> {
                         if (tkWorld.isEmpty()) {
-                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cStand in a template or match world."));
+                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cStand in a template or match world."));
                             return true;
                         }
                         int count = 1;
                         if (args.length >= 3) try { count = Math.max(1, Integer.parseInt(args[2])); } catch (Exception ignored) {}
                         env.spawnRandomForagerDrops(tkWorld.get(), count);
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aSpawned " + count + " random forager drop(s)."));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aSpawned " + count + " random forager drop(s)."));
                     }
                     case "gui" -> {
                         if (tkWorld.isEmpty()) {
-                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cStand in a template or match world (not hub)."));
+                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cStand in a template or match world (not hub)."));
                             return true;
                         }
                         p.openInventory(new EnvoyAdminMenu(tkWorld.get()).getInventory());
                     }
-                    default -> sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUnknown envoy subcommand."));
+                    default -> sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUnknown envoy subcommand."));
                 }
                 return true;
             }
@@ -226,49 +223,49 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 var gd = HungerGamesPlugin.get().giftDrops();
                 List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
                 gd.spawnGiftDropsForPlayers(players);
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aGift drops spawned for " + players.size() + " players."));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aGift drops spawned for " + players.size() + " players."));
                 return true;
             }
             case "addchests" -> {
-                if (!(sender instanceof Player p) || !p.isOp()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cOPs only.")); return true; }
+                if (!(sender instanceof Player p) || !p.isOp()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cOPs only.")); return true; }
                 var add = HungerGamesPlugin.get().addMode();
-                if (args.length < 2) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " addchests <start|stop|give>")); return true; }
+                if (args.length < 2) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " addchests <start|stop|give>")); return true; }
                 switch (args[1].toLowerCase()) {
                     case "start" -> add.setEnabled(p, true);
                     case "stop" -> add.setEnabled(p, false);
                     case "give" -> add.giveWand(p);
-                    default -> sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUnknown subcommand."));
+                    default -> sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUnknown subcommand."));
                 }
                 return true;
             }
             case "massaddchests", "addmanychests" -> { // It's easy to add aliases to commands if you want them. I've gone ahead and added "addmanychests" as an alias to this command, but you can remove it if you want.
-                if (!(sender instanceof Player p) || !p.isOp()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cOPs only.")); return true; }
-                if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " massaddchests <radius> <placeholderblock> <tier>")); return true; }
+                if (!(sender instanceof Player p) || !p.isOp()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cOPs only.")); return true; }
+                if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " massaddchests <radius> <placeholderblock> <tier>")); return true; }
                 //Extract radius as a number
                 String clean = args[1].replaceAll("[^0-9.-]", "");
                 clean = clean.replaceAll("(?<=.)-", "").replaceFirst("\\.", "D").replaceAll("\\.", "").replace("D", ".");
                 if (clean.isEmpty()){
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cInvalid radius."));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cInvalid radius."));
                     return true;
                 }
                 int radius;
                 try{
                     radius = (int)(Double.parseDouble(clean)); // Decimal places should be treated as so, but then rounded down and ignored.
                 } catch (NumberFormatException e) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cInvalid radius."));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cInvalid radius."));
                     return true;
                 }
 
                 //Extract material
                 Material material = Material.getMaterial(args[2]);
                 if(material == null || !material.isBlock()) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cInvalid placeholder block."));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cInvalid placeholder block."));
                     return true;
                 }
 
                 String tier = args[3];
                 if(!List.of("T1", "T2", "T3", "T4").contains(tier)){ //If you ever decide to make ReplenishManager's tierlist (as found in startScheduleInternal()) public, replace this so it references that instead.
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cInvalid tier."));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cInvalid tier."));
                     return true;
                 }
 
@@ -383,7 +380,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                         }
                     }*/
                     if(speedTest)
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aEstimated Time:" + DurationFormatUtils.formatDurationHMS(Duration.between(instant, Instant.now()).multipliedBy(total / iterationsPerTick).toMillis())));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aEstimated Time:" + DurationFormatUtils.formatDurationHMS(Duration.between(instant, Instant.now()).multipliedBy(total / iterationsPerTick).toMillis())));
                     /*for (int y = finalMinY; y <= finalMaxY; y++) {
                         for (int z = minZ; z <= maxZ; z++) {
                             Block block = world.getBlockAt(currentXAndProgress[0], y, z);
@@ -408,13 +405,13 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                         float progress = (float) ((currentXYZAndProgress[3] / Math.ceil((double) total / iterationsPerTick)) * 100);
                         if((int)progress != currentXYZAndProgress[4]){
                             currentXYZAndProgress[4] = (int)progress;
-                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7a" + (((int)progress)) + "%"));
+                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a" + (((int)progress)) + "%"));
                         }
                         if(taskHolder[0] != null)
                             Bukkit.getScheduler().runTaskLater(HungerGamesPlugin.get(), taskHolder[0], 1);
                     }
                     else{
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aMass place complete!"));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aMass place complete!"));
                     }
                 };
                 taskHolder[0] = task;
@@ -422,23 +419,23 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 //While an async task would be helpful here, you can't access the world from one.
                 //Instead, this takes the naive approach of pausing every tick after completing a small section of the task, then resuming.
                 //This should prevent crashes from watchdog. They may still occur if the radius is too large. With 1024 radius, that's 786,816 block checks per tick. Be careful!
-                //sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aStarting mass place... Estimated:" + (int)(((radius * 2f) + 1f) / 20f) + "s"));
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aStarting mass place..."));
+                //sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aStarting mass place... Estimated:" + (int)(((radius * 2f) + 1f) / 20f) + "s"));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aStarting mass place..."));
                 Bukkit.getScheduler().runTaskLater(HungerGamesPlugin.get(), taskHolder[0], 1);
 
                 return true;
             }
             case "replenish" -> {
-                if (args.length < 2) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " replenish <T1|T2|T3|T4|mode>")); return true; }
+                if (args.length < 2) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " replenish <T1|T2|T3|T4|mode>")); return true; }
                 if (args[1].equalsIgnoreCase("mode")) {
-                    if (!(sender instanceof Player p) || !p.isOp()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cOPs only.")); return true; }
-                    if (args.length == 2) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " replenish mode <start|stop|give>")); return true; }
+                    if (!(sender instanceof Player p) || !p.isOp()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cOPs only.")); return true; }
+                    if (args.length == 2) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " replenish mode <start|stop|give>")); return true; }
                     var rm = HungerGamesPlugin.get().replenishMode();
                     switch (args[2].toLowerCase()) {
                         case "start" -> rm.setEnabled(p, true);
                         case "stop" -> rm.setEnabled(p, false);
                         case "give" -> rm.giveWand(p);
-                        default -> sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUnknown subcommand."));
+                        default -> sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUnknown subcommand."));
                     }
                     return true;
                 }
@@ -446,14 +443,14 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 if (sender instanceof Player pl) {
                     var tk = HungerGamesPlugin.get().templates().resolveTemplateKeyForWorld(pl.getWorld().getName());
                     if (tk.isEmpty()) {
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cStand in a template or match world to replenish."));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cStand in a template or match world to replenish."));
                         return true;
                     }
                     HungerGamesPlugin.get().replenish().replenishTier(tier, tk.get(), pl.getWorld());
                 } else {
                     HungerGamesPlugin.get().replenish().replenishTier(tier);
                 }
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aReplenish " + tier + " triggered."));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aReplenish " + tier + " triggered."));
                 return true;
             }
             case "gui" -> {
@@ -462,11 +459,11 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 if (!p.isOp()) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cOPs only."));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cOPs only."));
                     return true;
                 }
                 boolean openTeamsFirst = HungerGamesPlugin.get().getConfig().getBoolean("ui.openTeamsFirst", false);
-                if (openTeamsFirst) p.openInventory(new TeamsMenu().getInventory());
+                if (openTeamsFirst) p.openInventory(new TeamsMenu(p.getWorld()).getInventory());
                 else p.openInventory(new MainMenu(p).getInventory());
                 return true;
             }
@@ -479,15 +476,15 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                     HungerGamesPlugin.get().hubPlayerMenus().ifPresentOrElse(
                             m -> m.openPartyMenu(p),
                             () -> p.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                                    "\u00A7cParty menu unavailable. HollowCrownHub must be installed.")));
+                                    "§cParty menu unavailable. HollowCrownHub must be installed.")));
                     return true;
                 }
                 if (!p.isOp()) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cOPs only."));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cOPs only."));
                     return true;
                 }
                 boolean openTeamsFirst = HungerGamesPlugin.get().getConfig().getBoolean("ui.openTeamsFirst", false);
-                if (openTeamsFirst) p.openInventory(new TeamsMenu().getInventory());
+                if (openTeamsFirst) p.openInventory(new TeamsMenu(p.getWorld()).getInventory());
                 else p.openInventory(new MainMenu(p).getInventory());
                 return true;
             }
@@ -497,7 +494,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 if (!p.isOp()) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cOPs only."));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cOPs only."));
                     return true;
                 }
                 p.openInventory(new AdminControlCenterMenu().getInventory());
@@ -511,31 +508,31 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 HungerGamesPlugin.get().hubPlayerMenus().ifPresentOrElse(
                         m -> m.openPartyMenu(p),
                         () -> p.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                                "\u00A7cParty menu unavailable. HollowCrownHub must be installed.")));
+                                "§cParty menu unavailable. HollowCrownHub must be installed.")));
                 return true;
             }
             case "leaderboard", "lb" -> {
                 var top = HungerGamesPlugin.get().leaderboard().top(10);
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A76Top Kills:"));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§6Top Kills:"));
                 if (top.isEmpty()) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A77No kills recorded yet."));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§7No kills recorded yet."));
                     return true;
                 }
                 int rank = 1;
                 for (var entry : top) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                            "\u00A7e#" + rank++ + " \u00A7f" + entry.name() + " \u00A77- \u00A7c" + entry.kills()));
+                            "§e#" + rank++ + " §f" + entry.name() + " §7- §c" + entry.kills()));
                 }
                 return true;
             }
             case "hostilemobspawn", "hostilemobspawns" -> {
                 if (!requireRole(sender, "hostilemobspawn", ServerRoleManager.Role.HUB, ServerRoleManager.Role.STANDALONE)) return true;
                 if (args.length < 2) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " hostilemobspawn <true|false|t|f>"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " hostilemobspawn <true|false|t|f>"));
                     return true;
                 }
                 if (!(sender instanceof Player p) || !p.isOp()) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cOPs only."));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cOPs only."));
                     return true;
                 }
                 String rawH = args[1].toLowerCase();
@@ -545,22 +542,22 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                     default -> null;
                 };
                 if (onH == null) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUse true/false or t/f."));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUse true/false or t/f."));
                     return true;
                 }
                 HungerGamesPlugin.get().lobby().setAllowHostileMobSpawns(onH);
                 HungerGamesPlugin.get().history().log(p.getName(), "set_hostile_mob_spawn", onH.toString());
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aLimbo hostile mob spawns: " + onH));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aLimbo hostile mob spawns: " + onH));
                 return true;
             }
             case "passivemobspawn", "passivemobspawns" -> {
                 if (!requireRole(sender, "passivemobspawn", ServerRoleManager.Role.HUB, ServerRoleManager.Role.STANDALONE)) return true;
                 if (args.length < 2) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " passivemobspawn <true|false|t|f>"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " passivemobspawn <true|false|t|f>"));
                     return true;
                 }
                 if (!(sender instanceof Player p) || !p.isOp()) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cOPs only."));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cOPs only."));
                     return true;
                 }
                 String rawP = args[1].toLowerCase();
@@ -570,12 +567,12 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                     default -> null;
                 };
                 if (onP == null) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUse true/false or t/f."));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUse true/false or t/f."));
                     return true;
                 }
                 HungerGamesPlugin.get().lobby().setAllowPassiveMobSpawns(onP);
                 HungerGamesPlugin.get().history().log(p.getName(), "set_passive_mob_spawn", onP.toString());
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aLimbo passive mob spawns: " + onP));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aLimbo passive mob spawns: " + onP));
                 return true;
             }
             case "joingame" -> {
@@ -584,32 +581,32 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 if (!p.isOp()) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cOPs only."));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cOPs only."));
                     return true;
                 }
                 if (args.length < 2) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " joingame <worldname>"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " joingame <worldname>"));
                     return true;
                 }
                 World target = Bukkit.getWorld(args[1]);
                 if (target == null) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cWorld not found: " + args[1]));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cWorld not found: " + args[1]));
                     return true;
                 }
                 game.markJoinIntentBypass(p);
                 p.teleport(target.getSpawnLocation());
                 HungerGamesPlugin.get().history().log(p.getName(), "join_game_bypass", target.getName());
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aJoined game world (OP bypass): " + target.getName()));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aJoined game world (OP bypass): " + target.getName()));
                 return true;
             }
             case "game", "gameedit" -> {
                 sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                        "\u00A7eMoved:\u00A77 use \u00A7f/hch template worlds …\u00A77 or \u00A7f/hch gui maps\u00A77 (HollowCrownHub + HCIronLegacy)."));
+                        "§eMoved:§7 use §f/hch template worlds …§7 or §f/hch gui maps§7 (HollowCrownHub + HCIronLegacy)."));
                 return true;
             }
             case "reload" -> {
                 if (!sender.isOp()) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cOPs only."));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cOPs only."));
                     return true;
                 }
                 HungerGamesPlugin.get().reloadConfig();
@@ -620,22 +617,22 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 var recovery = HungerGamesPlugin.get().templates().recoverStaleInstances();
                 try { HungerGamesPlugin.get().icons().reload(); } catch (Throwable ignored) {}
                 var iconReport = HungerGamesPlugin.get().icons().validateIcons();
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aGame files/cache reloaded."));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aGame files/cache reloaded."));
                 HungerGamesPlugin.get().history().log(sender.getName(), "reload_all", "via_/il_reload");
                 sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                        "\u00A77Instances recovery: scanned=" + recovery.scanned()
+                        "§7Instances recovery: scanned=" + recovery.scanned()
                                 + ", cleaned=" + recovery.cleaned()
                                 + ", skipped=" + recovery.skipped()
                                 + ", failed=" + recovery.failed()));
                 sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                        "\u00A77Icons: total=" + iconReport.total() + ", valid=" + iconReport.valid() + ", warnings=" + iconReport.warnings().size()));
+                        "§7Icons: total=" + iconReport.total() + ", valid=" + iconReport.valid() + ", warnings=" + iconReport.warnings().size()));
                 int maxWarnings = Math.min(5, iconReport.warnings().size());
                 for (int i = 0; i < maxWarnings; i++) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e- " + iconReport.warnings().get(i)));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e- " + iconReport.warnings().get(i)));
                 }
                 if (iconReport.warnings().size() > maxWarnings) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                            "\u00A77... and " + (iconReport.warnings().size() - maxWarnings) + " more warning(s)."));
+                            "§7... and " + (iconReport.warnings().size() - maxWarnings) + " more warning(s)."));
                 }
                 return true;
             }
@@ -651,16 +648,16 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 }
                 if (key == null || key.isBlank()) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                            "\u00A7cUsage: /" + label + " start <limbo_instance_world|template_key>\u00A77 (or stand in the limbo instance)"));
+                            "§cUsage: /" + label + " start <limbo_instance_world|template_key>§7 (or stand in the limbo instance)"));
                     return true;
                 }
                 boolean ok = HungerGamesPlugin.get().limbo().forceBeginTeleportCountdown(key);
                 if (ok) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                            "\u00A7aLimbo match countdown started (same as lobby full)."));
+                            "§aLimbo match countdown started (same as lobby full)."));
                 } else {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                            "\u00A7cNo active limbo queue for \u00A7f" + key + "\u00A7c. Players must join limbo first."));
+                            "§cNo active limbo queue for §f" + key + "§c. Players must join limbo first."));
                 }
                 return true;
             }
@@ -668,7 +665,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 if (!requireRole(sender, "stop", ServerRoleManager.Role.GAME, ServerRoleManager.Role.STANDALONE)) return true;
                 HungerGamesPlugin.get().limbo().abortAllQueuesAndKickToHub();
                 game.stopGame(true);
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eStopped limbo queues and match (if any); players sent to hub."));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eStopped limbo queues and match (if any); players sent to hub."));
                 return true;
             }
             case "addspawn" -> {
@@ -786,10 +783,10 @@ public class HGCommand implements CommandExecutor, TabCompleter {
 
             // ===== CRAFTING TOGGLE =====
             case "crafting" -> {
-                if (args.length < 2) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " crafting <on|off>")); return true; }
+                if (args.length < 2) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " crafting <on|off>")); return true; }
                 boolean on = args[1].equalsIgnoreCase("on") || args[1].equalsIgnoreCase("true") || args[1].equalsIgnoreCase("enable");
                 HungerGamesPlugin.rules().setCraftingEnabled(on);
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eCrafting: " + (on ? "\u00A7aENABLED" : "\u00A7cDISABLED")));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eCrafting: " + (on ? "§aENABLED" : "§cDISABLED")));
                 return true;
             }
             //      DISPENSER TOGGLE
@@ -828,34 +825,34 @@ public class HGCommand implements CommandExecutor, TabCompleter {
             // ===== BUILD with categories =====
             case "build" -> {
                 if (args.length < 2) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " build <enable|disable|mode|add|remove|list>"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " build <enable|disable|mode|add|remove|list>"));
                     return true;
                 }
                 var rules = HungerGamesPlugin.rules();
                 switch (args[1].toLowerCase()) {
-                    case "enable" -> { rules.setBuildEnabled(true); sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eBuilding: \u00A7aENABLED")); }
-                    case "disable" -> { rules.setBuildEnabled(false); sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eBuilding: \u00A7cDISABLED")); }
+                    case "enable" -> { rules.setBuildEnabled(true); sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eBuilding: §aENABLED")); }
+                    case "disable" -> { rules.setBuildEnabled(false); sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eBuilding: §cDISABLED")); }
                     case "mode" -> {
-                        if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " build mode <whitelist|blacklist>")); return true; }
-                        if (!rules.setBuildMode(args[2])) sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cMode must be whitelist or blacklist."));
-                        else sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eBuild mode set to \u00A76" + args[2].toLowerCase()));
+                        if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " build mode <whitelist|blacklist>")); return true; }
+                        if (!rules.setBuildMode(args[2])) sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cMode must be whitelist or blacklist."));
+                        else sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eBuild mode set to §6" + args[2].toLowerCase()));
                     }
                     case "add" -> {
-                        if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " build add <MATERIAL|category:<name>|cat:<name>>")); return true; }
+                        if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " build add <MATERIAL|category:<name>|cat:<name>>")); return true; }
                         List<Material> mats = parseMaterialOrCategory(args[2]);
-                        if (mats.isEmpty()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cNo matching materials.")); return true; }
+                        if (mats.isEmpty()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cNo matching materials.")); return true; }
                         int added = rules.addBuildAll(mats);
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aAdded " + added + " entries to BUILD list."));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aAdded " + added + " entries to BUILD list."));
                     }
                     case "remove" -> {
-                        if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " build remove <MATERIAL|category:<name>|cat:<name>>")); return true; }
+                        if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " build remove <MATERIAL|category:<name>|cat:<name>>")); return true; }
                         List<Material> mats = parseMaterialOrCategory(args[2]);
-                        if (mats.isEmpty()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cNo matching materials.")); return true; }
+                        if (mats.isEmpty()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cNo matching materials.")); return true; }
                         int removed = rules.delBuildAll(mats);
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eRemoved " + removed + " entries from BUILD list."));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eRemoved " + removed + " entries from BUILD list."));
                     }
-                    case "list" -> sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A76Build " + rules.getBuildMode() + " list (" + rules.getBuildList().size() + "): "
-                            + "\u00A77" + rules.getBuildList().stream().map(Enum::name).sorted().collect(Collectors.joining(", "))));
+                    case "list" -> sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§6Build " + rules.getBuildMode() + " list (" + rules.getBuildList().size() + "): "
+                            + "§7" + rules.getBuildList().stream().map(Enum::name).sorted().collect(Collectors.joining(", "))));
                     default -> {}
                 }
                 return true;
@@ -864,34 +861,34 @@ public class HGCommand implements CommandExecutor, TabCompleter {
             // ===== DIG with categories =====
             case "dig" -> {
                 if (args.length < 2) {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " dig <enable|disable|mode|add|remove|list>"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " dig <enable|disable|mode|add|remove|list>"));
                     return true;
                 }
                 var rules = HungerGamesPlugin.rules();
                 switch (args[1].toLowerCase()) {
-                    case "enable" -> { rules.setDigEnabled(true); sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eDigging: \u00A7aENABLED")); }
-                    case "disable" -> { rules.setDigEnabled(false); sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eDigging: \u00A7cDISABLED")); }
+                    case "enable" -> { rules.setDigEnabled(true); sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eDigging: §aENABLED")); }
+                    case "disable" -> { rules.setDigEnabled(false); sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eDigging: §cDISABLED")); }
                     case "mode" -> {
-                        if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " dig mode <whitelist|blacklist>")); return true; }
-                        if (!rules.setDigMode(args[2])) sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cMode must be whitelist or blacklist."));
-                        else sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eDig mode set to \u00A76" + args[2].toLowerCase()));
+                        if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " dig mode <whitelist|blacklist>")); return true; }
+                        if (!rules.setDigMode(args[2])) sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cMode must be whitelist or blacklist."));
+                        else sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eDig mode set to §6" + args[2].toLowerCase()));
                     }
                     case "add" -> {
-                        if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " dig add <MATERIAL|category:<name>|cat:<name>>")); return true; }
+                        if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " dig add <MATERIAL|category:<name>|cat:<name>>")); return true; }
                         List<Material> mats = parseMaterialOrCategory(args[2]);
-                        if (mats.isEmpty()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cNo matching materials.")); return true; }
+                        if (mats.isEmpty()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cNo matching materials.")); return true; }
                         int added = rules.addDigAll(mats);
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aAdded " + added + " entries to DIG list."));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aAdded " + added + " entries to DIG list."));
                     }
                     case "remove" -> {
-                        if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " dig remove <MATERIAL|category:<name>|cat:<name>>")); return true; }
+                        if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " dig remove <MATERIAL|category:<name>|cat:<name>>")); return true; }
                         List<Material> mats = parseMaterialOrCategory(args[2]);
-                        if (mats.isEmpty()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cNo matching materials.")); return true; }
+                        if (mats.isEmpty()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cNo matching materials.")); return true; }
                         int removed = rules.delDigAll(mats);
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eRemoved " + removed + " entries from DIG list."));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eRemoved " + removed + " entries from DIG list."));
                     }
-                    case "list" -> sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A76Dig " + rules.getDigMode() + " list (" + rules.getDigList().size() + "): "
-                            + "\u00A77" + rules.getDigList().stream().map(Enum::name).sorted().collect(Collectors.joining(", "))));
+                    case "list" -> sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§6Dig " + rules.getDigMode() + " list (" + rules.getDigList().size() + "): "
+                            + "§7" + rules.getDigList().stream().map(Enum::name).sorted().collect(Collectors.joining(", "))));
                     default -> {}
                 }
                 return true;
@@ -899,35 +896,35 @@ public class HGCommand implements CommandExecutor, TabCompleter {
 
             // ===== RANDOM TEAMS: /hg randomteams <size> [forceop] =====
             case "randomteams" -> {
-                if (args.length < 2) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " randomteams <size> [forceop]")); return true; }
+                if (args.length < 2) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " randomteams <size> [forceop]")); return true; }
                 int size = parseInt(sender, args[1]);
-                if (size == Integer.MIN_VALUE || size < 1) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cSize must be >= 1")); return true; }
+                if (size == Integer.MIN_VALUE || size < 1) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cSize must be >= 1")); return true; }
                 boolean includeOps = args.length >= 3 && args[2].equalsIgnoreCase("forceop");
                 runRandomTeams(size, includeOps, sender, label);
                 return true;
             }
 
             case "set" -> {
-                if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " set <teamsize|countdown|penaltyheight|titlecolor> <value>")); return true; }
+                if (args.length < 3) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " set <teamsize|countdown|penaltyheight|titlecolor> <value>")); return true; }
                 String key = args[1].toLowerCase();
                 switch (key) {
                     case "teamsize" -> {
                         int val = parseInt(sender, args[2]); if (val == Integer.MIN_VALUE) return true;
                         var pl = HungerGamesPlugin.get();
                         pl.getConfig().set("game.teamSize", val); pl.saveConfig();
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aTeam size = " + val)); return true;
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aTeam size = " + val)); return true;
                     }
                     case "countdown" -> {
                         int val = parseInt(sender, args[2]); if (val == Integer.MIN_VALUE) return true;
                         var pl = HungerGamesPlugin.get();
                         pl.getConfig().set("game.countdownSeconds", val); pl.saveConfig();
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aCountdown = " + val)); return true;
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aCountdown = " + val)); return true;
                     }
                     case "penaltyheight" -> {
                         int val = parseInt(sender, args[2]); if (val == Integer.MIN_VALUE) return true;
                         var pl = HungerGamesPlugin.get();
                         pl.getConfig().set("game.freezePenaltyHeight", val); pl.saveConfig();
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aPenalty height = " + val)); return true;
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aPenalty height = " + val)); return true;
                     }
                     case "titlecolor" -> {
                         try {
@@ -935,12 +932,12 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                             var c = ChatColor.valueOf(args[2].toUpperCase());
                             var pl = HungerGamesPlugin.get();
                             pl.getConfig().set("game.countdownColor", c.name()); pl.saveConfig();
-                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aCountdown title color = " + c.name())); return true;
+                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aCountdown title color = " + c.name())); return true;
                         } catch (Exception ex) {
-                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUse a valid ChatColor, e.g. GOLD or RED.")); return true;
+                            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUse a valid ChatColor, e.g. GOLD or RED.")); return true;
                         }
                     }
-                    default -> { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUnknown key.")); return true; }
+                    default -> { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUnknown key.")); return true; }
                 }
             }
             case "border" -> {
@@ -956,49 +953,49 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                         pl.getConfig().set("worldborder.shrinkDelaySeconds", delay);
                         pl.getConfig().set("worldborder.shrinkDurationSeconds", duration);
                         pl.saveConfig();
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aBorder updated: start=" + start + " end=" + end + " delay=" + delay + "s duration=" + duration + "s"));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aBorder updated: start=" + start + " end=" + end + " delay=" + delay + "s duration=" + duration + "s"));
                     } catch (Exception ex) {
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cNumbers expected."));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cNumbers expected."));
                     }
                     return true;
                 } else {
-                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " border set <start> <end> <delaySec> <durationSec>"));
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " border set <start> <end> <delaySec> <durationSec>"));
                     return true;
                 }
             }
             case "toggle" -> {
-                if (args.length < 2) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUsage: /" + label + " toggle <deathmsgs|cannon|defaultteams|launchonmove>")); return true; }
+                if (args.length < 2) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUsage: /" + label + " toggle <deathmsgs|cannon|defaultteams|launchonmove>")); return true; }
                 var pl = HungerGamesPlugin.get();
                 switch (args[1].toLowerCase()) {
                     case "deathmsgs" -> {
                         boolean cur = pl.getConfig().getBoolean("game.suppressDeathMessages", true);
                         pl.getConfig().set("game.suppressDeathMessages", !cur);
                         pl.saveConfig();
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aSuppress death messages: " + (!cur)));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aSuppress death messages: " + (!cur)));
                         return true;
                     }
                     case "cannon" -> {
                         boolean cur = pl.getConfig().getBoolean("game.playCannonOnDeath", true);
                         pl.getConfig().set("game.playCannonOnDeath", !cur);
                         pl.saveConfig();
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aPlay cannon on death: " + (!cur)));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aPlay cannon on death: " + (!cur)));
                         return true;
                     }
                     case "defaultteams" -> {
                         boolean cur = pl.getConfig().getBoolean("ui.openTeamsFirst", false);
                         pl.getConfig().set("ui.openTeamsFirst", !cur);
                         pl.saveConfig();
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aTeams-first GUI: " + (!cur)));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aTeams-first GUI: " + (!cur)));
                         return true;
                     }
                     case "launchonmove" -> {
                         boolean cur = pl.getConfig().getBoolean("game.launchOnMove", true);
                         pl.getConfig().set("game.launchOnMove", !cur);
                         pl.saveConfig();
-                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aLaunch on move: " + (!cur)));
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aLaunch on move: " + (!cur)));
                         return true;
                     }
-                    default -> { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cUnknown toggle.")); return true; }
+                    default -> { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cUnknown toggle.")); return true; }
                 }
             }
         }
@@ -1008,7 +1005,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
 
     private int parseInt(CommandSender sender, String s) {
         try { return Integer.parseInt(s); }
-        catch (Exception ex) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cNumber expected.")); return Integer.MIN_VALUE; }
+        catch (Exception ex) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cNumber expected.")); return Integer.MIN_VALUE; }
     }
 
     /** token may be "STONE", "category:logs", "cat:planks", or any substring like "category:slab" */
@@ -1048,62 +1045,51 @@ public class HGCommand implements CommandExecutor, TabCompleter {
         pl.getConfig().set("game.teamSize", size); pl.saveConfig();
 
         // Nuke old teams (uses TeamManager.clearAllTeams() if present)
-        wipeAllTeamsHard();
+        //wipeAllTeamsHard();
 
         // Build pool (exclude OPs unless forceop specified)
         List<Player> pool = Bukkit.getOnlinePlayers().stream()
                 .filter(p -> includeOps || !p.isOp())
                 .collect(Collectors.toList());
 
-        if (pool.isEmpty()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cNo eligible players to assign.")); return; }
+        if (pool.isEmpty()) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cNo eligible players to assign.")); return; }
+
+        TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getOrCreateWorldInstance(pool.getFirst().getWorld());
+        //Actually nuke old teams
+        teamManagerInstance.clearAllTeams();
 
         Collections.shuffle(pool, new Random());
 
-        Set<ChatColor> used = new HashSet<>();
-        Random rnd = new Random();
+        //Set<ChatColor> used = new HashSet<>();
+        //Random rnd = new Random();
         int made = 0;
-        int teamIndex = 1;
+        //int teamIndex = 1;
 
         for (int i = 0; i < pool.size(); i += size) {
             List<Player> group = pool.subList(i, Math.min(i + size, pool.size()));
 
-            String base = "Team " + teamIndex++;
-            String name = base;
-            int bump = 2;
-            while (teams.nameTaken(name)) name = base + " #" + bump++;
-
-            ChatColor color = null;
-            if (used.size() < ALLOWED_COLORS.length) {
-                for (int guard = 0; guard < 40; guard++) {
-                    ChatColor c = ALLOWED_COLORS[rnd.nextInt(ALLOWED_COLORS.length)];
-                    if (!used.contains(c)) { color = c; break; }
-                }
-            }
-            if (color == null) color = ALLOWED_COLORS[rnd.nextInt(ALLOWED_COLORS.length)];
-            used.add(color);
-
-            var t = teams.createTeam(name, color, group.get(0).getUniqueId()); // owner = first
-            for (int j = 1; j < group.size(); j++) {
-                try { teams.addMember(t, group.get(j).getUniqueId()); }
-                catch (Exception ex) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cCould not add " + group.get(j).getName() + ": " + ex.getMessage())); }
-            }
+            String name = TeamNamingRules.randomTeamName(teamManagerInstance);
+            Color color = teamManagerInstance.getRandomUnusedColor();
+            TeamManager.Team t = new TeamManager.Team(name, color, teamManagerInstance); //The new teams automatically assign the first player as the team leader.
+            group.forEach((player) -> t.members.add(player.getUniqueId()));
             made++;
         }
 
-        try { teams.save(); } catch (Throwable ignored) {}
-        game.applyTeamColors();
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7aRandomized " + pool.size() + " players into " + made + " teams of size " + size + (includeOps ? " (including OPs)." : " (excluding OPs).")));
+        //try { teams.save(); } catch (Throwable ignored) {}
+        //game.applyTeamColors();
+        teamManagerInstance.sendAllFakeTeamPackets();
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aRandomized " + pool.size() + " players into " + made + " teams of size " + size + (includeOps ? " (including OPs)." : " (excluding OPs).")));
     }
 
     /** Try to delete all existing teams cleanly. Uses TeamManager.clearAllTeams() if present, otherwise falls back. */
-    private void wipeAllTeamsHard() {
+    /*private void wipeAllTeamsHard() {
         try {
             teams.clearAllTeams();
             return;
         } catch (Throwable ignored) {}
 
         try { teams.save(); } catch (Throwable ignored) {}
-    }
+    }*/
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {

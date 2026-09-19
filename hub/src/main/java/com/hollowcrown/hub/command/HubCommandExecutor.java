@@ -6,6 +6,7 @@ import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.HubLog;
 import com.hollowcrown.hub.integration.HubIronLegacySupport;
 import com.hollowcrown.hub.platform.HubHubSpawns;
+import com.hollowcrown.hub.team.TeamManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
@@ -23,6 +24,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
 
@@ -55,6 +57,9 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
         }
         if (args[0].equalsIgnoreCase("party")) {
             return HubPartyCommands.handle(plugin, sender, args);
+        }
+        if (args[0].equalsIgnoreCase("team")) {
+            return TeamCommands.handle(plugin, sender, args);
         }
         if (args[0].equalsIgnoreCase("queue")) {
             return HubQueueCommands.handle(plugin, sender, args);
@@ -254,6 +259,9 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
         if (args.length >= 2 && args[0].equalsIgnoreCase("party")) {
             return tabParty(args);
         }
+        if (args.length >= 2 && args[0].equalsIgnoreCase("team") && sender instanceof Player player) {
+            return tabTeam(args, player);
+        }
         if (args.length >= 2 && args[0].equalsIgnoreCase("queue")) {
             return tabQueue(plugin, args);
         }
@@ -415,7 +423,7 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
             var il = HubIronLegacySupport.ilAdmin();
             if (il.isPresent() && HubIlWorldInput.matchesAnyTemplate(il.get(), keyArg)) {
                 List<String> out = new ArrayList<>();
-                for (String f : List.of("display", "enabled", "maxplayers", "teamsize", "icon", "minimumpercentage", "gamerule")) {
+                for (String f : List.of("display", "enabled", "maxplayers", "teamsize", "teamfriendlyfire", "allyfriendlyfire", "icon", "minimumpercentage", "gamerule")) {
                     if (f.toLowerCase(Locale.ROOT).startsWith(p)) {
                         out.add(f);
                     }
@@ -534,5 +542,59 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
             return out;
         }
         return List.of();
+    }
+
+
+    private static List<String> tabTeam(String[] args, Player player) {
+        if (args.length == 2) {
+            String p = args[1].toLowerCase(Locale.ROOT);
+            List<String> out = new ArrayList<>();
+            for (String c : List.of("ally", "rival")) {
+                if (c.startsWith(p)) {
+                    out.add(c);
+                }
+            }
+            return out;
+        }
+        if (args.length == 3 && (args[1].equalsIgnoreCase("ally") || args[1].equalsIgnoreCase("rival"))) {
+            return partial(args[2].toLowerCase(Locale.ROOT), List.of("add", "remove"));
+        }
+        if (args.length >= 4 && (args[1].equalsIgnoreCase("ally"))) {
+            TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getInstance(player.getWorld());
+            if (teamManagerInstance == null)
+                return List.of("No Teams Found!");
+            TeamManager.Team team = teamManagerInstance.findPlayerTeam(player);
+            if (team == null)
+                return List.of();
+            ArrayList<String> allies = new ArrayList<>(team.allies.size());
+            for (TeamManager.Team other : team.allies)
+                allies.add(other.getName().toLowerCase(Locale.ROOT));
+            if (args[2].equalsIgnoreCase("add")) {
+                return partial(args[1].toLowerCase(Locale.ROOT), teamManagerInstance.teams.keySet().stream().filter((e) -> !(e.toLowerCase(Locale.ROOT).equals(team.getName().toLowerCase(Locale.ROOT)) || allies.contains(e.toLowerCase(Locale.ROOT)))).sorted().toList());
+            } else if (args[2].equalsIgnoreCase("remove")) {
+                return partial(args[1].toLowerCase(Locale.ROOT), allies);
+            }
+        }
+        if (args.length >= 4 && (args[1].equalsIgnoreCase("rival"))) {
+            TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getInstance(player.getWorld());
+            if (teamManagerInstance == null)
+                return List.of("No Teams Found!");
+            TeamManager.Team team = teamManagerInstance.findPlayerTeam(player);
+            if (team == null)
+                return List.of();
+            ArrayList<String> rivals = new ArrayList<>(team.allies.size());
+            for (TeamManager.Team other : team.rivals)
+                rivals.add(other.getName().toLowerCase(Locale.ROOT));
+            if (args[2].equalsIgnoreCase("add")) {
+                return partial(args[1].toLowerCase(Locale.ROOT), teamManagerInstance.teams.keySet().stream().filter((e) -> !(e.toLowerCase(Locale.ROOT).equals(team.getName().toLowerCase(Locale.ROOT)) || rivals.contains(e.toLowerCase(Locale.ROOT)))).sorted().toList());
+            } else if (args[2].equalsIgnoreCase("remove")){
+                return partial(args[1].toLowerCase(Locale.ROOT), rivals);
+            }
+        }
+        return List.of();
+    }
+
+    private static List<String> partial(String arg, List<String> options) {
+        return options.stream().filter(s -> s.toLowerCase().startsWith(arg.toLowerCase())).collect(Collectors.toList());
     }
 }

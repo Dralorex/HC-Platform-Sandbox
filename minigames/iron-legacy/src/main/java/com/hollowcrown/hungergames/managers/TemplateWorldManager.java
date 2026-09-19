@@ -111,9 +111,11 @@ public class TemplateWorldManager {
             boolean enabled = worldsCfg.getBoolean(base + ".enabled", true);
             int maxPlayers = worldsCfg.getInt(base + ".maxPlayers", 100);
             int teamSizeMax = worldsCfg.getInt(base + ".teamSizeMax", 5);
+            boolean teamFriendlyFire = worldsCfg.getBoolean(base + ".teamFriendlyFire", false);
+            boolean allyFriendlyFire = worldsCfg.getBoolean(base + ".allyFriendlyFire", true);
             String iconKey = worldsCfg.getString(base + ".iconKey", "default");
             int version = worldsCfg.getInt(base + ".version", 0);
-            out.add(new TemplateInfo(key, worldName, displayName, status, enabled, maxPlayers, teamSizeMax, iconKey, version));
+            out.add(new TemplateInfo(key, worldName, displayName, status, enabled, maxPlayers, teamSizeMax, teamFriendlyFire, allyFriendlyFire, iconKey, version));
         }
         if (plugin.getConfig().getBoolean("integrations.mergeHubTemplatesIntoList", true)) {
             Set<String> present = new LinkedHashSet<>();
@@ -139,6 +141,8 @@ public class TemplateWorldManager {
                             has,
                             Math.max(cap, 24),
                             Math.max(1, Math.min(cap, 64)),
+                            false,
+                            true,
                             "default",
                             0));
                     present.add(k);
@@ -159,9 +163,11 @@ public class TemplateWorldManager {
             boolean enabled = worldsCfg.getBoolean(base + ".enabled", true);
             int maxPlayers = worldsCfg.getInt(base + ".maxPlayers", 100);
             int teamSizeMax = worldsCfg.getInt(base + ".teamSizeMax", 5);
+            boolean teamFriendlyFire = worldsCfg.getBoolean(base + ".teamFriendlyFire", false);
+            boolean allyFriendlyFire = worldsCfg.getBoolean(base + ".allyFriendlyFire", true);
             String iconKey = worldsCfg.getString(base + ".iconKey", "default");
             int version = worldsCfg.getInt(base + ".version", 0);
-            return new TemplateInfo(key, worldName, displayName, status, enabled, maxPlayers, teamSizeMax, iconKey, version);
+            return new TemplateInfo(key, worldName, displayName, status, enabled, maxPlayers, teamSizeMax, teamFriendlyFire, allyFriendlyFire, iconKey, version);
         }
         return getTemplateByWorldName(keyOrWorld);
     }
@@ -289,6 +295,8 @@ public class TemplateWorldManager {
         int cap = e.queueMaxUnitSize();
         worldsCfg.set(base + ".maxPlayers", Math.max(cap, 24));
         worldsCfg.set(base + ".teamSizeMax", Math.max(1, Math.min(cap, 64)));
+        worldsCfg.set(base + ".teamFriendlyFire", false);
+        worldsCfg.set(base + ".allyFriendlyFire", true);
         worldsCfg.set(base + ".iconKey", "default");
         worldsCfg.set(base + ".limbo.minimumPercentage", clampPercentage(80));
         worldsCfg.set(base + ".serverTarget", "");
@@ -309,6 +317,8 @@ public class TemplateWorldManager {
         int cap = e.queueMaxUnitSize();
         worldsCfg.set(base + ".maxPlayers", Math.max(cap, 24));
         worldsCfg.set(base + ".teamSizeMax", Math.max(1, Math.min(cap, 64)));
+        worldsCfg.set(base + ".teamFriendlyFire", false);
+        worldsCfg.set(base + ".allyFriendlyFire", true);
         worldsCfg.set(base + ".enabled", e.hasSourceWorld());
         if (worldsCfg.getBoolean(base + ".hubImported", false) && e.hasSourceWorld()) {
             worldsCfg.set(base + ".worldName", e.sourceWorldName().trim());
@@ -557,6 +567,22 @@ public class TemplateWorldManager {
         String base = basePath(templateName);
         if (!worldsCfg.isConfigurationSection(base)) return false;
         worldsCfg.set(base + ".teamSizeMax", size);
+        save();
+        return true;
+    }
+
+    public boolean setTeamFriendlyFire(String templateName, boolean teamFriendlyFire) {
+        String base = basePath(templateName);
+        if (!worldsCfg.isConfigurationSection(base)) return false;
+        worldsCfg.set(base + ".teamFriendlyFire", teamFriendlyFire);
+        save();
+        return true;
+    }
+
+    public boolean setAllyFriendlyFire(String templateName, boolean allyFriendlyFire) {
+        String base = basePath(templateName);
+        if (!worldsCfg.isConfigurationSection(base)) return false;
+        worldsCfg.set(base + ".allyFriendlyFire", allyFriendlyFire);
         save();
         return true;
     }
@@ -1357,6 +1383,8 @@ public class TemplateWorldManager {
             boolean enabled,
             int maxPlayers,
             int teamSizeMax,
+            boolean teamFriendlyFire,
+            boolean allyFriendlyFire,
             String iconKey,
             int version
     ) {}

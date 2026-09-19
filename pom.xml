@@ -29,7 +29,7 @@
     <hc.plugins.zip.tag>a0.1.20</hc.plugins.zip.tag>
     <java.version>21</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <paper.api.version>1.21.4-R0.1-SNAPSHOT</paper.api.version>
+    <paper.api.version>1.21.4-R0.1-SNAPSHOT</paper.api.version> <!-- This is a single-line comment in a POM file -->
     <maven.compiler.release>${java.version}</maven.compiler.release>
     <maven.compiler.plugin.version>3.13.0</maven.compiler.plugin.version>
     <maven.shade.plugin.version>3.5.3</maven.shade.plugin.version>

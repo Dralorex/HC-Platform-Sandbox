@@ -1,5 +1,6 @@
 package com.hollowcrown.hungergames.gui;
 
+import com.hollowcrown.hub.team.TeamManager;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -14,6 +15,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /** Lists preset team names; OP bulk-add via chat. */
 public class TeamNameDatabaseAdminMenu extends MenuView {
@@ -58,7 +60,8 @@ public class TeamNameDatabaseAdminMenu extends MenuView {
 
     private void build() {
         inv.clear();
-        List<String> names = HungerGamesPlugin.get().teamNames().namesAlphabetical();
+        //List<String> names = HungerGamesPlugin.get().teamNames().namesAlphabetical();
+        List<String> names = TeamManager.instances.values().stream().flatMap(teamManagerInstance -> teamManagerInstance.teams.keySet().stream()).sorted().toList();
         int start = page * HEAD_SLOTS;
         for (int i = 0; i < HEAD_SLOTS; i++) {
             int idx = start + i;
@@ -96,6 +99,7 @@ public class TeamNameDatabaseAdminMenu extends MenuView {
 
     private static void handleBulkLine(Player p, String line) {
         HungerGamesPlugin plugin = HungerGamesPlugin.get();
+        TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getOrCreateWorldInstance(p.getWorld());
         String s = line == null ? "" : line.trim();
         if (s.equalsIgnoreCase("stop")) {
             p.sendMessage(Component.text("Finished adding names.", NamedTextColor.GREEN));
@@ -106,7 +110,7 @@ public class TeamNameDatabaseAdminMenu extends MenuView {
             promptNextBulkName(p);
             return;
         }
-        if (!plugin.teamNames().tryAddName(s)) {
+        if (teamManagerInstance.teams.containsKey(s.toLowerCase(Locale.ROOT))) {
             p.sendMessage(Component.text("Name already in use,", NamedTextColor.RED));
             p.sendMessage(Component.text("Try Again", NamedTextColor.RED));
             promptNextBulkName(p);
@@ -121,7 +125,8 @@ public class TeamNameDatabaseAdminMenu extends MenuView {
         if (!(e.getWhoClicked() instanceof Player p)) return;
         if (!p.isOp()) return;
         int slot = e.getRawSlot();
-        List<String> names = HungerGamesPlugin.get().teamNames().namesAlphabetical();
+        //List<String> names = HungerGamesPlugin.get().teamNames().namesAlphabetical();
+        List<String> names = TeamManager.instances.values().stream().flatMap(teamManagerInstance -> teamManagerInstance.teams.keySet().stream()).sorted().toList();
 
         if (slot == SLOT_BACK) {
             p.openInventory(new WorldsAdminRootMenu().getInventory());

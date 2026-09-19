@@ -98,7 +98,7 @@ public class AdminControlCenterMenu extends MenuView {
         var recovery = plugin.templates().recoverStaleInstances();
         try { plugin.icons().reload(); } catch (Throwable ignored) {}
         try { plugin.worldSettings().reload(); } catch (Throwable ignored) {}
-        try { plugin.teamNames().reload(); } catch (Throwable ignored) {}
+        //try { plugin.teamNames().reload(); } catch (Throwable ignored) {}
         var iconReport = plugin.icons().validateIcons();
 
         p.sendMessage(Component.text("Reload complete.", NamedTextColor.GREEN));

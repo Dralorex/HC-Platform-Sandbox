@@ -4,23 +4,17 @@ import com.hollowcrown.api.integration.IronLegacyLimboBridge;
 import com.hollowcrown.api.integration.IronLegacyWorldsCatalog;
 import com.hollowcrown.api.party.PartyService;
 import com.hollowcrown.api.party.PartyView;
+import com.hollowcrown.hub.team.TeamManager;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
 import com.hollowcrown.hungergames.util.TeamNamingRules;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Location;
-import org.bukkit.World;
-import org.bukkit.WorldCreator;
+import org.bukkit.*;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
+//TODO: [Hydraulic] Hook new teams system up, probably here.
 /**
  * Engine hooks for Hub-owned pre-match limbo (templates, match start, teams, lobby routing).
  */
@@ -148,20 +142,24 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
             return;
         }
 
+        World world = Objects.requireNonNull(plugin.getServer().getPlayer(onlinePlayerIds.stream().findFirst().orElseThrow())).getWorld();
+        TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getOrCreateWorldInstance(world);
         for (UUID id : onlinePlayerIds) {
-            if (plugin.teams().getTeamOf(id) != null) continue;
-            var candidate = plugin.teams().getTeams().stream()
-                    .filter(t -> t.getMembers().size() < maxSize)
+            //if (plugin.teams().getTeamOf(id) != null) continue;
+            if(teamManagerInstance.findPlayerTeam(id) != null) continue;
+            var candidate = teamManagerInstance.teams.values().stream()
+                    .filter(t -> t.members.size() < maxSize)
                     .findFirst().orElse(null);
             if (candidate != null) {
                 try {
-                    plugin.teams().addMember(candidate, id);
+                    //plugin.teams().addMember(candidate, id);
+                    candidate.members.add(id);
                 } catch (Exception ignored) {
                 }
             }
         }
 
-        List<UUID> unteamed = onlinePlayerIds.stream().filter(id -> plugin.teams().getTeamOf(id) == null).toList();
+        List<UUID> unteamed = onlinePlayerIds.stream().filter(id -> teamManagerInstance.findPlayerTeam(id) == null).toList();
         if (!unteamed.isEmpty()) {
             autoCreateRandomTeams(unteamed, maxSize);
         }
@@ -266,30 +264,35 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
         if (players.isEmpty()) return;
         List<UUID> pool = new ArrayList<>(players);
         Collections.shuffle(pool);
+        World world = Objects.requireNonNull(plugin.getServer().getPlayer(pool.getFirst())).getWorld();
+        TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getOrCreateWorldInstance(world);
         int idx = 0;
-        int nameIdx = 0;
+        //int nameIdx = 0;
         while (idx < pool.size()) {
             UUID owner = pool.get(idx++);
-            if (plugin.teams().getTeamOf(owner) != null) continue;
-            String base = randomTeamNames.get(nameIdx % randomTeamNames.size());
-            nameIdx++;
-            String teamName = base;
-            int bump = 2;
-            while (plugin.teams().nameTaken(teamName)) teamName = base + " " + bump++;
-            ChatColor color = ChatColor.values()[Math.floorMod(teamName.hashCode(), ChatColor.values().length)];
-            if (!color.isColor()) color = ChatColor.WHITE;
-            var team = plugin.teams().createTeam(teamName, color, owner);
+            if (teamManagerInstance.findPlayerTeam(owner) != null) continue;
+            //String base = randomTeamNames.get(nameIdx % randomTeamNames.size());
+            //nameIdx++;
+            //String teamName = base;
+            //int bump = 2;
+            //while (teamManagerInstance.teams.containsKey(teamName)) teamName = base + " " + bump++;
+            String teamName = TeamNamingRules.randomTeamName(teamManagerInstance);
+            Color color = teamManagerInstance.getRandomUnusedColor();
+            TeamManager.Team team = teamManagerInstance.teams.put(teamName, new TeamManager.Team(teamName, color, teamManagerInstance));
+            assert team != null;
+            team.members.add(owner);
             int filled = 1;
             while (idx < pool.size() && filled < maxSize) {
                 UUID id = pool.get(idx++);
-                if (plugin.teams().getTeamOf(id) != null) continue;
+                if (teamManagerInstance.findPlayerTeam(id) != null) continue;
                 try {
-                    plugin.teams().addMember(team, id);
+                    team.members.add(id);
                     filled++;
                 } catch (Exception ignored) {
                 }
             }
         }
+        teamManagerInstance.sendAllFakeTeamPackets();
     }
 
     private void bindPartiesIntoTeams(Set<UUID> onlinePlayers, int maxSize) {
@@ -298,29 +301,44 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
             return;
         }
         PartyService ps = psOpt.get();
+        World world = Objects.requireNonNull(plugin.getServer().getPlayer(onlinePlayers.stream().findFirst().orElseThrow())).getWorld();
+        TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getOrCreateWorldInstance(world);
         for (UUID id : onlinePlayers) {
             Optional<PartyView> view = ps.partyForMember(id);
             if (view.isEmpty() || !view.get().isLeader(id)) {
                 continue;
             }
             PartyView party = view.get();
-            if (plugin.teams().getTeamOf(id) == null) {
-                String name = TeamNamingRules.resolveBindTeamName(plugin, party, plugin.teams());
-                ChatColor color = ChatColor.values()[Math.floorMod(name.hashCode(), ChatColor.values().length)];
-                if (!color.isColor()) color = ChatColor.WHITE;
-                plugin.teams().createTeam(name, color, id);
+            if (teamManagerInstance.findPlayerTeam(id) == null) {
+                String name = TeamNamingRules.resolveBindTeamName(plugin, party, teamManagerInstance);
+                Color color = Arrays.stream(TeamManager.colorSwatch)
+                        .filter((e) -> !teamManagerInstance.takenColors.contains(e))
+                        .collect(Collectors.collectingAndThen(
+                                Collectors.toCollection(ArrayList::new),
+                                subList -> {
+                                    Collections.shuffle(subList);
+                                    return subList.stream().findFirst().orElse(null);
+                                }
+                        ));
+                if(color == null)
+                    color = Color.WHITE;
+                //plugin.teams().createTeam(name, color, id);
+                new TeamManager.Team(name, color, teamManagerInstance).members.add(id);
+
+
             }
-            var team = plugin.teams().getTeamOf(id);
+            var team = teamManagerInstance.findPlayerTeam(id);
             if (team == null) continue;
             for (UUID member : party.membersJoinOrder()) {
                 if (!onlinePlayers.contains(member)) continue;
-                if (plugin.teams().getTeamOf(member) != null) continue;
-                if (team.getMembers().size() >= maxSize) break;
+                if (teamManagerInstance.findPlayerTeam(member) != null) continue;
+                if (team.members.size() >= maxSize) break;
                 try {
-                    plugin.teams().addMember(team, member);
+                    team.members.add(member);
                 } catch (Exception ignored) {
                 }
             }
         }
+        teamManagerInstance.sendAllFakeTeamPackets();
     }
 }

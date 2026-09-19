@@ -5,6 +5,10 @@ import com.hollowcrown.hungergames.HungerGamesPlugin;
 import com.hollowcrown.hungergames.integration.HubIntegrationRouting;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import com.hollowcrown.hungergames.util.TeamColorRgb;
+import com.hollowcrown.hub.team.TeamManager;
+import com.hollowcrown.hungergames.HungerGamesPlugin;
+import com.hollowcrown.hungergames.integration.HubIntegrationRouting;
+import com.hollowcrown.hungergames.util.TeamNamingRules;
 import org.bukkit.*;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -20,11 +24,8 @@ import org.bukkit.scoreboard.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import org.bukkit.OfflinePlayer; // needed
-
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.title.Title;
 import java.time.Duration;
 
@@ -32,7 +33,7 @@ public class GameManager implements Listener {
     public enum State { LOBBY, FREEZE, RUNNING, ENDED }
 
     private final HungerGamesPlugin plugin;
-    private final TeamManager teamManager;
+    //private final TeamManager teamManager;
     private final SpawnManager spawnManager;
     private State state = State.LOBBY;
     private final Set<UUID> participants = new HashSet<>();
@@ -60,9 +61,9 @@ public class GameManager implements Listener {
     // border shrink management
     private BorderShrinkManager borderShrinkManager;
 
-    public GameManager(HungerGamesPlugin plugin, TeamManager teams, SpawnManager spawns) {
+    public GameManager(HungerGamesPlugin plugin, SpawnManager spawns) {
         this.plugin = plugin;
-        this.teamManager = teams;
+        //this.teamManager = teams;
         this.spawnManager = spawns;
         this.scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
     }
@@ -147,7 +148,7 @@ public class GameManager implements Listener {
             plugin.getLogger().warning(lastError);
             return false;
         }
-        var instance = plugin.templates().createMatchInstanceFromTemplate(templateKey);
+        TemplateWorldManager.MatchInstance instance = plugin.templates().createMatchInstanceFromTemplate(templateKey);
         if (instance == null) {
             lastError = "Failed to create runtime instance from template: " + templateKey;
             plugin.getLogger().warning(lastError);
@@ -192,6 +193,9 @@ public class GameManager implements Listener {
             plugin.getLogger().warning(lastError);
             return false;
         }
+        TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getOrCreateWorldInstance(world);
+        teamManagerInstance.allowTeamCustomization = false;
+        teamManagerInstance.sendAllFakeTeamPackets();
 
         if (!skipTemplateClone) {
             // If a template world was selected, run the match on a cloned instance.
@@ -212,6 +216,8 @@ public class GameManager implements Listener {
                 }
                 world = iw;
                 activeInstanceWorldName = iw.getName();
+                teamManagerInstance.friendlyFire = templateInfo.teamFriendlyFire();
+                teamManagerInstance.allyFriendlyFire = templateInfo.allyFriendlyFire();
             } else {
                 activeInstanceWorldName = null;
             }
@@ -468,10 +474,12 @@ public class GameManager implements Listener {
     }
 
     public void stopGame(boolean announce) {
+        //Bukkit.getLogger().info("Stop Game Called!");
         if (state == State.LOBBY) {
             try { plugin.leaderboardSidebar().refreshAll(); } catch (Throwable ignored) {}
             return;
         }
+        //Bukkit.getLogger().info("Game Ending");
         state = State.ENDED;
         if (announce) Bukkit.broadcast(Component.text("[HCIronLegacy] Game ended.", NamedTextColor.YELLOW));
         try {
@@ -479,6 +487,9 @@ public class GameManager implements Listener {
             HungerGamesPlugin.get().replenish().clearMatchContext();
         } catch (Throwable ignored) {}
         runHooks(plugin.getConfig().getStringList("hooks.onGameEnd"));
+
+        //Bukkit.getLogger().info("beginning reset");
+
         assignedPads.clear();
         countedParticipants.clear();
         bypassParticipants.clear();
@@ -494,9 +505,20 @@ public class GameManager implements Listener {
         }
         
         clearMatchTeams();
+        TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getInstance(currentWorld);
+        if(teamManagerInstance != null) {
+            //Bukkit.getLogger().info("resetting team manager id: " + teamManagerInstance.getIdentifier());
+            teamManagerInstance.allowTeamCustomization = true;
+            teamManagerInstance.clearAllTeams();
+            //Bukkit.getLogger().info("destroying team manager id: " + teamManagerInstance.getIdentifier());
+            TeamManager.destroyInstance(teamManagerInstance.getIdentifier());
+        }
+        //Bukkit.getLogger().info("beginning nuke");
+        //TeamManager.nukeTeamsForWorld(currentWorld);
 
         // Cleanup: remove scoreboard teams we created and reset player display/list names
-        try {
+        //[Hydraulic] This will be handled by FakeTeam stuff above.
+        /*try {
             for (Team t : new ArrayList<>(scoreboard.getTeams())) {
                 String n = t.getName();
                 if (n != null && n.startsWith("hg_")) {
@@ -510,7 +532,7 @@ public class GameManager implements Listener {
                     p.displayName(null);
                 }
             }
-        } catch (Throwable ignored) {}
+        } catch (Throwable ignored) {}*/
 
         // Tear down runtime match instance worlds when the match ends.
         if (activeInstanceWorldName != null) {
@@ -617,7 +639,7 @@ public class GameManager implements Listener {
         return name != null && name.trim().matches("(?i)team\\s+\\d+(?:\\s*#\\d+)?");
     }
 
-    public void applyTeamColors() {
+    /*public void applyTeamColors() {
         for (com.hollowcrown.hungergames.model.Team t : teamManager.getTeams()) {
             String sbName = ("hg_" + t.getName()).replaceAll("[^A-Za-z0-9_]", "").toLowerCase();
             Team sbTeam = scoreboard.getTeam(sbName);
@@ -657,7 +679,7 @@ public class GameManager implements Listener {
                 }
             }
         }
-    }
+    }*/
 
     @EventHandler
     public void onMove(PlayerMoveEvent e) {
@@ -810,7 +832,7 @@ public class GameManager implements Listener {
             Player p = Bukkit.getPlayer(id);
             if (p == null || p.isDead()) continue;
 
-            var team = teamManager.getTeamOf(id);
+            var team = TeamManager.findPlayerTeam(id);
             String key = (team != null) ? "team:" + team.getName().toLowerCase() : "solo:" + id;
             aliveGroups.merge(key, 1, Integer::sum);
         }
@@ -863,29 +885,31 @@ public class GameManager implements Listener {
     private void assignAutoTeamsIfNeeded(List<Player> plist) {
         if (activeMatchSettings == null || !activeMatchSettings.autoAssignTeams()) return;
 
+        TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getOrCreateWorldInstance(plist.getFirst().getWorld());
+
         var info = activeMatchTemplateKey != null ? plugin.templates().getTemplateByNameKey(activeMatchTemplateKey) : null;
         int teamCap = info != null ? Math.max(1, info.teamSizeMax()) : Math.max(1, plugin.getConfig().getInt("game.teamSize", 2));
 
         Set<UUID> pIds = plist.stream().map(Player::getUniqueId).collect(Collectors.toCollection(HashSet::new));
         List<UUID> unassigned = new ArrayList<>();
         for (Player p : plist) {
-            if (teamManager.getTeamOf(p.getUniqueId()) == null) unassigned.add(p.getUniqueId());
+            if (teamManagerInstance.findPlayerTeam(p.getUniqueId()) == null) unassigned.add(p.getUniqueId());
         }
         if (unassigned.isEmpty()) return;
         Collections.shuffle(unassigned);
 
-        List<com.hollowcrown.hungergames.model.Team> partial = teamManager.getTeams().stream()
-                .filter(t -> t.getMembers().stream().anyMatch(pIds::contains))
-                .filter(t -> t.getMembers().size() < teamCap)
-                .sorted((a, b) -> Integer.compare(b.getMembers().size(), a.getMembers().size()))
-                .collect(Collectors.toList());
+        List<TeamManager.Team> partial = teamManagerInstance.teams.values().stream()
+                .filter(t -> t.members.stream().anyMatch(pIds::contains))
+                .filter(t -> t.members.size() < teamCap)
+                .sorted((a, b) -> Integer.compare(b.members.size(), a.members.size()))
+                .toList();
 
         Iterator<UUID> it = unassigned.iterator();
-        for (com.hollowcrown.hungergames.model.Team t : partial) {
-            while (t.getMembers().size() < teamCap && it.hasNext()) {
+        for (TeamManager.Team t : partial) {
+            while (t.members.size() < teamCap && it.hasNext()) {
                 UUID nid = it.next();
                 try {
-                    teamManager.addMember(t, nid);
+                    t.members.add(nid);
                 } catch (IllegalStateException ignored) {
                     break;
                 }
@@ -895,23 +919,26 @@ public class GameManager implements Listener {
         List<UUID> remaining = new ArrayList<>();
         while (it.hasNext()) remaining.add(it.next());
 
-        TeamNameDatabaseManager db = plugin.teamNames();
+        //TeamNameDatabaseManager db = plugin.teamNames();
         while (!remaining.isEmpty()) {
             UUID owner = remaining.remove(0);
-            String nm = db.takeUnusedNameForNewTeam();
-            if (nm == null) nm = db.generateSequentialTeamName();
-            ChatColor color = db.pickUnusedChatColor();
-            com.hollowcrown.hungergames.model.Team created = teamManager.createTeam(nm, color, owner);
-            while (created.getMembers().size() < teamCap && !remaining.isEmpty()) {
-                UUID nid = remaining.remove(0);
+            String nm = TeamNamingRules.randomTeamName(teamManagerInstance);
+            //String nm = db.takeUnusedNameForNewTeam();
+            //if (nm == null) nm = db.generateSequentialTeamName();
+            //ChatColor color = db.pickUnusedChatColor();
+            Color color = teamManagerInstance.getRandomUnusedColor();
+            TeamManager.Team created = new TeamManager.Team(nm, color, teamManagerInstance);
+            created.members.add(owner);
+            while (created.members.size() < teamCap && !remaining.isEmpty()) {
+                UUID nid = remaining.removeFirst();
                 try {
-                    teamManager.addMember(created, nid);
+                    created.members.add(nid);
                 } catch (IllegalStateException ignored) {
                     break;
                 }
             }
         }
-        applyTeamColors();
+        teamManagerInstance.sendAllFakeTeamPackets();
     }
 
     private void removeFromGame(UUID id) {
@@ -921,7 +948,9 @@ public class GameManager implements Listener {
         eliminated.add(id);
         assignedPads.remove(id);
         punished.remove(id);
-        teamManager.removeMember(id);
+        TeamManager.Team team = TeamManager.findPlayerTeam(id);
+        if(team != null)
+            team.members.remove(id);
     }
 
     private void sendPlayerToHub(Player p) {

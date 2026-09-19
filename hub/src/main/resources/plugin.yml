@@ -3,7 +3,7 @@ version: '${project.version}'
 main: com.hollowcrown.hub.HollowCrownHubPlugin
 api-version: '1.21'
 load: POSTWORLD
-depend: [HC-Foundation]
+depend: [HC-Foundation, FakeTeamAPI]
 authors: [HollowCrownStudio]
 description: Hollow Crown Hub — world templates, lobby instances, platform services.
 commands:
@@ -16,11 +16,13 @@ commands:
     usage: /hub | /hub join <hubNumber>
     aliases: [lobby, spawnhub]
   ally:
-    description: Form an alliance with another team in your match
-    usage: /ally <teamName>  |  /ally accept <teamName>
-  enemy:
-    description: Mark another team as a sworn enemy (orange) in your match
-    usage: /enemy <teamName>
+    description: Make and break team alliances.
+    usage: /ally <add|remove> <team>
+    aliases: [ alliance, truce ]
+  rival:
+    description: Add and remove team rivalries.
+    usage: /rival <add|remove> <team>
+    aliases: [ rivalry, nemesis ]
 permissions:
   hollowcrownhub.use:
     default: true
@@ -28,6 +30,9 @@ permissions:
     default: true
     description: Open the join GUI and teleport into Hub-managed lobby instances
   hollowcrownhub.party:
+    default: true
+    description: Use Hub party commands and invite papers
+  hollowcrownhub.team:
     default: true
     description: Use Hub party commands and invite papers
   hollowcrownhub.queue:

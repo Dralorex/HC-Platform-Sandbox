@@ -31,7 +31,7 @@ public record IronLegacyTemplateAdminImpl(HungerGamesPlugin plugin) implements I
                 .orElseGet(() -> plugin.templates().listTemplateInfos().stream().map(t ->
                         new IronLegacyWorldsCatalog.TemplateInfo(
                                 t.key(), t.worldName(), t.displayName(), t.status(), t.enabled(),
-                                t.maxPlayers(), t.teamSizeMax(), t.iconKey(), t.version())).toList());
+                                t.maxPlayers(), t.teamSizeMax(), t.teamFriendlyFire(), t.allyFriendlyFire(), t.iconKey(), t.version())).toList());
         for (IronLegacyWorldsCatalog.TemplateInfo info : list) {
             out.add(new IronLegacyTemplateRow(
                     info.key(),
@@ -230,6 +230,16 @@ public record IronLegacyTemplateAdminImpl(HungerGamesPlugin plugin) implements I
     @Override
     public boolean setTeamSizeMax(String templateKey, int teamSizeMax) {
         return requireWorldsCatalog().setTeamSizeMax(templateKey, teamSizeMax);
+    }
+
+    @Override
+    public boolean setTeamFriendlyFire(String templateKey, boolean teamFriendlyFire) {
+        return requireWorldsCatalog().setTeamFriendlyFire(templateKey, teamFriendlyFire);
+    }
+
+    @Override
+    public boolean setAllyFriendlyFire(String templateKey, boolean allyFriendlyFire) {
+        return requireWorldsCatalog().setAllyFriendlyFire(templateKey, allyFriendlyFire);
     }
 
     @Override

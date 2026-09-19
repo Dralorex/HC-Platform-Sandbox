@@ -15,9 +15,10 @@ import com.hollowcrown.api.platform.GamePlatform;
 import com.hollowcrown.api.platform.HubSpawn;
 import com.hollowcrown.api.storage.StorageProvider;
 import com.hollowcrown.api.template.TemplateRegistry;
-import com.hollowcrown.api.team.TeamService;
 import com.hollowcrown.hub.command.HubCommandExecutor;
 import com.hollowcrown.hub.command.HubPlayerCommand;
+import com.hollowcrown.hub.command.TeamAllyCommandExecutor;
+import com.hollowcrown.hub.command.TeamRivalCommandExecutor;
 import com.hollowcrown.hub.platform.DefaultGamePlatform;
 import com.hollowcrown.hub.storage.HubSqlMigrations;
 import com.hollowcrown.hub.storage.HubSqlRuntime;
@@ -41,11 +42,11 @@ import com.hollowcrown.hub.policy.HubPluginPolicyApiAdapter;
 import com.hollowcrown.hub.policy.HubPluginPolicyEnforcer;
 import com.hollowcrown.hub.policy.HubPluginPolicyService;
 import com.hollowcrown.hub.queue.HubMatchQueueService;
+import com.hollowcrown.hub.team.TeamListener;
+import com.hollowcrown.hub.team.TeamManager;
 import com.hollowcrown.hub.template.HubTemplateApiRegistry;
 import com.hollowcrown.hub.template.HubManagedTemplateBootstrap;
 import com.hollowcrown.hub.template.HubTemplateRegistry;
-import com.hollowcrown.hub.team.HubTeamService;
-import com.hollowcrown.hub.platform.HubHubSpawns;
 import com.hollowcrown.hub.world.HubWorldYaml;
 import com.hollowcrown.hub.world.HubWorldManager;
 import net.kyori.adventure.text.Component;
@@ -75,7 +76,8 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
     private HubLobbyService lobbyService;
     private HubPartyService partyService;
     private HubMatchQueueService matchQueueService;
-    private HubTeamService teamService;
+    //private HubTeamService teamService; //Old teams system.
+    //private TeamManager teamManager;
     private HubWorldYaml hubWorldYaml;
     private HubWorldManager hubWorldManager;
     private DefaultHubPlayerMenus playerMenus;
@@ -128,7 +130,8 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         this.lobbyService = new HubLobbyService(this, lobbyInstanceRegistry, templateRegistry);
         this.partyService = new HubPartyService(this, jdbc);
         this.matchQueueService = new HubMatchQueueService(this, partyService, templateRegistry);
-        this.teamService = new HubTeamService(this);
+        //this.teamService = new HubTeamService(this);
+        //this.teamManager = new TeamManager();
         if (jdbc != null) {
             matchQueueService.attachJdbc(jdbc);
         }
@@ -158,6 +161,8 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new LobbyAdminMenuListener(), this);
         Bukkit.getPluginManager().registerEvents(new LobbyJoinMenuListener(), this);
         Bukkit.getPluginManager().registerEvents(new HubMenuListener(), this);
+        //getLogger().info("Sanity Check!");
+        Bukkit.getPluginManager().registerEvents(new TeamListener(), this);
         Bukkit.getPluginManager().registerEvents(new HubPartyListener(this, partyService), this);
         Bukkit.getPluginManager().registerEvents(hubWorldManager, this);
         Bukkit.getPluginManager().registerEvents(
@@ -199,12 +204,12 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
                 this,
                 ServicePriority.Normal
         );
-        Bukkit.getServicesManager().register(
-                TeamService.class,
-                teamService,
-                this,
-                ServicePriority.Normal
-        );
+        //Bukkit.getServicesManager().register(
+        //        TeamService.class,
+        //        teamService,
+        //        this,
+        //        ServicePriority.Normal
+        //);
         Bukkit.getServicesManager().register(
                 MatchQueueService.class,
                 matchQueueService,
@@ -320,6 +325,19 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
                 }
             }
         }, 100L, 100L);
+            TeamAllyCommandExecutor exec = new TeamAllyCommandExecutor(this);
+            getCommand("ally").setExecutor(exec);
+            getCommand("ally").setTabCompleter(exec);
+        } else {
+            getLogger().severe("Command 'ally' missing from plugin.yml");
+        }
+        if (getCommand("rival") != null) {
+            TeamRivalCommandExecutor exec = new TeamRivalCommandExecutor(this);
+            getCommand("rival").setExecutor(exec);
+            getCommand("rival").setTabCompleter(exec);
+        } else {
+            getLogger().severe("Command 'rival' missing from plugin.yml");
+        }
 
         HubLog.info(this, "action=hub_enable", "result=ok", "storage=" + storage.backend(),
                 "templates=" + templateRegistry.list().size(),

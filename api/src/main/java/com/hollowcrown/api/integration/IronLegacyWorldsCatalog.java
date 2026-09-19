@@ -16,6 +16,8 @@ public interface IronLegacyWorldsCatalog {
             boolean enabled,
             int maxPlayers,
             int teamSizeMax,
+            boolean teamFriendlyFire,
+            boolean allyFriendlyFire,
             String iconKey,
             int version
     ) {}
@@ -45,6 +47,10 @@ public interface IronLegacyWorldsCatalog {
     boolean setMaxPlayers(String templateKey, int maxPlayers);
 
     boolean setTeamSizeMax(String templateKey, int teamSizeMax);
+
+    boolean setTeamFriendlyFire(String templateKey, boolean teamFriendlyFire);
+
+    boolean setAllyFriendlyFire(String templateKey, boolean allyFriendlyFire);
 
     boolean setIconKey(String templateKey, String iconKey);
 
