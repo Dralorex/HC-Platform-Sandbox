@@ -1,8 +1,6 @@
-package com.hollowcrown.hungergames.gui;
+package com.hollowcrown.hub.gui;
 
-import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.team.TeamManager;
-import com.hollowcrown.hungergames.HungerGamesPlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
@@ -13,7 +11,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-public class TeamsMenu extends MenuView {
+public class TeamsMenu extends HubMenuView {
     private final Inventory inv;
 
     public TeamsMenu(World world) {

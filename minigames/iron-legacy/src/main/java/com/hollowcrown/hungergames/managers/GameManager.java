@@ -1,14 +1,13 @@
 package com.hollowcrown.hungergames.managers;
 
+import com.google.common.collect.Lists;
 import com.hollowcrown.api.integration.PreMatchLimboService;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
 import com.hollowcrown.hungergames.integration.HubIntegrationRouting;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.plugin.RegisteredServiceProvider;
-import com.hollowcrown.hungergames.util.TeamColorRgb;
 import com.hollowcrown.hub.team.TeamManager;
-import com.hollowcrown.hungergames.HungerGamesPlugin;
-import com.hollowcrown.hungergames.integration.HubIntegrationRouting;
-import com.hollowcrown.hungergames.util.TeamNamingRules;
+import com.hollowcrown.hub.team.TeamNamingRules;
 import org.bukkit.*;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -426,6 +425,17 @@ public class GameManager implements Listener {
         return result;
     }
 
+    public static String formatList(List<String> items) {
+        if (items == null || items.isEmpty())
+            return "";
+        if (items.size() == 1)
+            return items.get(0);
+        if (items.size() == 2)
+            return items.get(0) + " and " + items.get(1);
+        String standardElements = String.join(", ", items.subList(0, items.size() - 1));
+        return standardElements + ", and " + items.getLast();
+    }
+
     private void beginCountdown(List<Player> plist, World launchWorld) {
         hardFreezeActive = true; // punish moves from now on
 
@@ -504,35 +514,14 @@ public class GameManager implements Listener {
             borderShrinkManager = null;
         }
         
-        clearMatchTeams();
+        //clearMatchTeams();
         TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getInstance(currentWorld);
         if(teamManagerInstance != null) {
-            //Bukkit.getLogger().info("resetting team manager id: " + teamManagerInstance.getIdentifier());
             teamManagerInstance.allowTeamCustomization = true;
             teamManagerInstance.clearAllTeams();
-            //Bukkit.getLogger().info("destroying team manager id: " + teamManagerInstance.getIdentifier());
             TeamManager.destroyInstance(teamManagerInstance.getIdentifier());
         }
-        //Bukkit.getLogger().info("beginning nuke");
         //TeamManager.nukeTeamsForWorld(currentWorld);
-
-        // Cleanup: remove scoreboard teams we created and reset player display/list names
-        //[Hydraulic] This will be handled by FakeTeam stuff above.
-        /*try {
-            for (Team t : new ArrayList<>(scoreboard.getTeams())) {
-                String n = t.getName();
-                if (n != null && n.startsWith("hg_")) {
-                    t.unregister();
-                }
-            }
-            for (UUID id : participants) {
-                Player p = Bukkit.getPlayer(id);
-                if (p != null) {
-                    p.playerListName(null);
-                    p.displayName(null);
-                }
-            }
-        } catch (Throwable ignored) {}*/
 
         // Tear down runtime match instance worlds when the match ends.
         if (activeInstanceWorldName != null) {
@@ -555,7 +544,7 @@ public class GameManager implements Listener {
     }
 
     /** Clears match teams for this instance only — never wipes other lobbies/sessions. */
-    private void clearMatchTeams() {
+    /*private void clearMatchTeams() {
         try {
             Set<UUID> scoped = new HashSet<>(participants);
             scoped.addAll(eliminated);
@@ -572,7 +561,7 @@ public class GameManager implements Listener {
             }
         } catch (Throwable ignored) {
         }
-    }
+    }*/
 
     private void evacuatePlayersFromInstance(String instanceWorldName) {
         if (instanceWorldName == null || instanceWorldName.isBlank()) return;
@@ -729,7 +718,7 @@ public class GameManager implements Listener {
             if (pad != null) {
                 new BukkitRunnable() { @Override public void run() {
                     if (e.getPlayer().isOnline()) {
-                        e.getPlayer().teleport(pad);
+                        e.getPlayer().teleport(new Location(pad.getWorld(), pad.x(), pad.y(), pad.z())); //Don't pass a rotation so the player's is maintained
                         e.getPlayer().setFallDistance(0f);
                     }
                 }}.runTask(plugin);
@@ -833,7 +822,7 @@ public class GameManager implements Listener {
             if (p == null || p.isDead()) continue;
 
             var team = TeamManager.findPlayerTeam(id);
-            String key = (team != null) ? "team:" + team.getName().toLowerCase() : "solo:" + id;
+            String key = (team != null) ? "team:" + team.getName() : "solo:" + id;
             aliveGroups.merge(key, 1, Integer::sum);
         }
 
@@ -849,6 +838,24 @@ public class GameManager implements Listener {
             }
             if (winner != null) {
                 Player finalWinner = winner;
+                //If anyone in the future is trying to find where it announces the winning team, this is where it is!
+                com.hollowcrown.hub.team.TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getInstance(finalWinner.getWorld());
+                if(teamManagerInstance != null){
+                    TeamManager.Team team = teamManagerInstance.findPlayerTeam(winner);
+                    if(team != null) {
+                        Bukkit.broadcast(Component.text("[" + team.getName() + "]", TextColor.color(team.color.asRGB())).append(Component.text(" has won!", NamedTextColor.YELLOW)));
+                        List<String> playerNames = new ArrayList<>(team.members.size());
+                        //Bukkit.broadcast(Component.text(team.members.toString()));
+                        for(UUID uuid : team.members){
+                            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
+                            if(offlinePlayer.isOnline() || offlinePlayer.hasPlayedBefore()){
+                                if(offlinePlayer.getName() != null)
+                                    playerNames.add(offlinePlayer.getName());
+                            }
+                        }
+                        Bukkit.broadcast(Component.text("Congratulations " + formatList(playerNames) + "!", NamedTextColor.YELLOW));
+                    }
+                }
                 finalWinner.showTitle(Title.title(
                         Component.text("Congratulations!", NamedTextColor.GOLD),
                         Component.text("You have won!", NamedTextColor.YELLOW),
@@ -948,9 +955,10 @@ public class GameManager implements Listener {
         eliminated.add(id);
         assignedPads.remove(id);
         punished.remove(id);
-        TeamManager.Team team = TeamManager.findPlayerTeam(id);
-        if(team != null)
-            team.members.remove(id);
+        //Player should NOT be removed from their team when they die.
+        //TeamManager.Team team = TeamManager.findPlayerTeam(id);
+        //if(team != null)
+        //    team.members.remove(id);
     }
 
     private void sendPlayerToHub(Player p) {

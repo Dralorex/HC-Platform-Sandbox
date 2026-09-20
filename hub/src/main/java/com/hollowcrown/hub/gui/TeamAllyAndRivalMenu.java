@@ -1,14 +1,12 @@
-package com.hollowcrown.hungergames.gui;
+package com.hollowcrown.hub.gui;
 
 import com.hollowcrown.hub.team.TeamManager;
-import com.hollowcrown.hungergames.HungerGamesPlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
@@ -20,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-public class TeamAllyAndRivalMenu extends MenuView {
+public class TeamAllyAndRivalMenu extends HubMenuView {
     private final Inventory inv;
     TeamManager.TeamManagerInstance teamManagerInstance;
     Player viewer;
@@ -57,12 +55,12 @@ public class TeamAllyAndRivalMenu extends MenuView {
                 switch (relationship){
                     case 0 -> lore.add(Component.text("No action can be taken against your own team.", NamedTextColor.GRAY));
                     case 1 -> {
-                        lore.add(Component.text(team.allies.size() < TeamManager.maxAllies ? "Click to offer alliance." : "Maximum alliances reached.", NamedTextColor.GRAY));
+                        lore.add(Component.text(team.allies.size() < teamManagerInstance.maxAllies ? "Click to offer alliance." : "Maximum alliances reached.", NamedTextColor.GRAY));
                         lore.add(Component.text("Right Click to dismiss rivalry.", NamedTextColor.GRAY));
                     }
                     case 2 -> {
                         lore.add(Component.text("Click to break alliance.", NamedTextColor.GRAY));
-                        lore.add(Component.text(team.allies.size() < TeamManager.maxAllies ? "Right Click to declare rivalry." : "Maximum rivalries reached.", NamedTextColor.GRAY));
+                        lore.add(Component.text(team.allies.size() < teamManagerInstance.maxAllies ? "Right Click to declare rivalry." : "Maximum rivalries reached.", NamedTextColor.GRAY));
                     }
                     case 3 ->{
                         lore.add(Component.text("No action can be taken against this team", NamedTextColor.GRAY));
@@ -73,8 +71,8 @@ public class TeamAllyAndRivalMenu extends MenuView {
                         lore.add(Component.text("Click to accept.", NamedTextColor.GRAY));
                     }
                     default -> {
-                        lore.add(Component.text(team.allies.size() < TeamManager.maxAllies ? "Click to offer alliance." : "Maximum alliances reached.", NamedTextColor.GRAY));
-                        lore.add(Component.text(team.allies.size() < TeamManager.maxAllies ? "Right Click to declare rivalry." : "Maximum rivalries reached.", NamedTextColor.GRAY));
+                        lore.add(Component.text(team.allies.size() < teamManagerInstance.maxAllies ? "Click to offer alliance." : "Maximum alliances reached.", NamedTextColor.GRAY));
+                        lore.add(Component.text(team.allies.size() < teamManagerInstance.maxAllies ? "Right Click to declare rivalry." : "Maximum rivalries reached.", NamedTextColor.GRAY));
                     }
                 }
                 im.lore(lore);
@@ -104,7 +102,7 @@ public class TeamAllyAndRivalMenu extends MenuView {
             return;
         }
         String desired = PlainTextComponentSerializer.plainText().serialize(meta.customName());
-        Bukkit.getLogger().info("[HOLLOW CROWN DEBUG] Desired team: " + desired);
+        //Bukkit.getLogger().info("[HOLLOW CROWN DEBUG] Desired team: " + desired);
         TeamManager.Team t = teamManagerInstance.teams.get(desired.toLowerCase(Locale.ROOT));
         if(t == null){
             refresh();

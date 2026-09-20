@@ -114,7 +114,7 @@ rules:
   # If true, OPs always bypass build/dig rule checks. If false, OPs follow normal rules.
   opsBypassBuildDig: true
    
-   dispenserInteraction:
+  dispenserInteraction:
     enabled: false
     
   crafting:
@@ -156,10 +156,8 @@ spawns:
   pads: [ ]  # deprecated; per-template pads live in worlds.yml
 
 # =========================
-# Limbo / lobby team display names — substring block list (case-insensitive).
+# Limbo / lobby team display names — migrated to HollowCrown Hub config.yml
 # =========================
-limboTeamNaming:
-  blockedWords: [ ]
 
 # =========================
 # Teams (persisted here)

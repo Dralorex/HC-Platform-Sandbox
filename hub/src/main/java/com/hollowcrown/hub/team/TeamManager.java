@@ -32,9 +32,9 @@ import java.util.stream.Collectors;
  */
 public class TeamManager {
     //TODO: hook these into a config
-    public static int playersPerTeam = 2;
-    public static int maxAllies = 2;
-    public static int maxRivals = 2;
+    //public static int playersPerTeam = 2;
+    //public static int maxAllies = 2;
+    //public static int maxRivals = 2;
     public static int inviteSeconds = 120;
 
     //Color
@@ -103,6 +103,9 @@ public class TeamManager {
         public boolean allowAlliances = true; //Whether to allow alliances. Useful for disbanding alliances then disallowing new ones.
         public boolean friendlyFire = false; //Allow teammates to attack each-other
         public boolean allyFriendlyFire = true; //Allow allies to attack each-other
+        public int maxPlayersPerTeam = 2;
+        public int maxAllies = 2;
+        public int maxRivals = 2;
 
         public TeamManagerInstance(Object identifier) {
             this.identifier = identifier;
@@ -202,9 +205,9 @@ public class TeamManager {
         private String name;
         public Color color;
         TeamManagerInstance teamManagerInstance;
-        public ArrayList<UUID> members = new ArrayList<>(playersPerTeam);
-        public ArrayList<Team> allies = new ArrayList<>(maxAllies);
-        public ArrayList<Team> rivals = new ArrayList<>(maxRivals);
+        public ArrayList<UUID> members = new ArrayList<>();
+        public ArrayList<Team> allies = new ArrayList<>();
+        public ArrayList<Team> rivals = new ArrayList<>();
 
         public Team(String name, TeamManagerInstance teamManagerInstance){
             this.name = name;
@@ -228,11 +231,11 @@ public class TeamManager {
 
         /**
          * Set the members of a team.
-         * @param members The members to set. This collection must have exactly {@link #playersPerTeam} players.
+         * @param members The members to set. This collection must have exactly {@link TeamManagerInstance#maxPlayersPerTeam} players.
          * @return True if the members were set, or False if it would make the team invalid.
          */
         public boolean setMembers(Collection<Player> members){
-            if(members == null || members.size() != playersPerTeam)
+            if(members == null || members.size() != teamManagerInstance.maxPlayersPerTeam)
                 return false;
             this.members.clear();
             members.forEach((player -> this.members.add(player.getUniqueId())));
@@ -334,7 +337,7 @@ public class TeamManager {
          * @return True if the teams now have an alliance, False if they don't. This method returns true if the teams are already allied.
          */
         public boolean addAlly(Team other){
-            if(allies.size() >= maxAllies || other.allies.size() >= maxAllies)
+            if(allies.size() >= teamManagerInstance.maxAllies || other.allies.size() >= teamManagerInstance.maxAllies)
                 return false;
             if(allies.contains(other) || other.allies.contains(this))
                 return true;
@@ -569,10 +572,10 @@ public class TeamManager {
             if(!success){
                 if(team.allies.contains(other))
                     player.sendMessage(Component.text("You already have an alliance with Team " + other.name + '!', TextColor.color(255, 85, 85)));
-                else if(team.allies.size() >= maxAllies)
-                    player.sendMessage(Component.text("You cannot have more than " + maxAllies + (maxAllies == 1 ? " alliance!" : " alliances!"), TextColor.color(255, 85, 85)));
-                else if(other.allies.size() >= maxAllies)
-                    player.sendMessage(Component.text(other.name + " has already reached the maximum of " + maxAllies + (maxAllies == 1 ? " alliance!" : " alliances!"), TextColor.color(255, 85, 85)));
+                else if(team.allies.size() >= teamManagerInstance.maxAllies)
+                    player.sendMessage(Component.text("You cannot have more than " + teamManagerInstance.maxAllies + (teamManagerInstance.maxAllies == 1 ? " alliance!" : " alliances!"), TextColor.color(255, 85, 85)));
+                else if(other.allies.size() >= teamManagerInstance.maxAllies)
+                    player.sendMessage(Component.text(other.name + " has already reached the maximum of " + teamManagerInstance.maxAllies + (teamManagerInstance.maxAllies == 1 ? " alliance!" : " alliances!"), TextColor.color(255, 85, 85)));
             }
             return success;
         }
@@ -776,7 +779,7 @@ public class TeamManager {
         //I finally fixed it!
         //Bukkit.getLogger().info("teamManagerInstance: " + team.teamManagerInstance + ", ref: " + team.teamManagerInstance.getIdentifier() + ", loader: " + TeamManager.class.getClassLoader() + " hash: " + System.identityHashCode(TeamManager.instances) + ", all instances: " + instances);
         //Keep track of which players have already been sent a customized team packet
-        ArrayList<Player> inTeams = new ArrayList<>(playersPerTeam * team.teamManagerInstance.teams.size());
+        ArrayList<Player> inTeams = new ArrayList<>(team.getTeamManagerInstance().maxPlayersPerTeam * team.teamManagerInstance.teams.size());
         for(Team otherTeam : team.teamManagerInstance.teams.values()){
             FakeTeam fake = new FakeTeam(team.name)
                     .color(otherTeam == team ? FakeTeam.PlayerNameColor.GREEN : (otherTeam.allies.contains(team) ? FakeTeam.PlayerNameColor.AQUA : (otherTeam.rivals.contains(team) ? FakeTeam.PlayerNameColor.GOLD : FakeTeam.PlayerNameColor.RED)))

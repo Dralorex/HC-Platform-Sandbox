@@ -5,18 +5,15 @@ import com.hollowcrown.api.integration.IronLegacyLimboBridge;
 import com.hollowcrown.api.integration.PreMatchLimboService;
 import com.hollowcrown.api.party.PartyService;
 import com.hollowcrown.api.party.PartyView;
-import com.hollowcrown.api.team.TeamService;
-import com.hollowcrown.api.team.TeamView;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.HubLog;
 import com.hollowcrown.hub.team.HubLimboTeamFormation;
-import com.hollowcrown.hub.team.HubTeamAutoColors;
 import com.hollowcrown.hub.lobby.HubLobbyService;
+import com.hollowcrown.hub.team.TeamManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -166,7 +163,8 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
         HubLimboTeamFormation.bindPartyTeamOnLobbyJoin(hub, p, s.teamSizeMax);
         startQueueTaskIfNeeded(s);
         announceLobbyTeamPrompt(p);
-        hub.nametags().refreshWorld(lobbyWorld);
+        if(TeamManager.getInstance(lobbyWorld) != null)
+            TeamManager.getInstance(lobbyWorld).sendAllFakeTeamPackets();
         return true;
     }
 
@@ -176,13 +174,9 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
             @Override
             public void run() {
                 if (!p.isOnline() || !isInLimbo(p)) return;
-                RegisteredServiceProvider<TeamService> reg =
-                        Bukkit.getServicesManager().getRegistration(TeamService.class);
-                Optional<TeamView> team = reg == null
-                        ? Optional.empty()
-                        : reg.getProvider().teamOf(p.getUniqueId());
-                if (team.isPresent()) {
-                    String name = team.get().name();
+                TeamManager.Team team = TeamManager.getOrCreateWorldInstance(p.getWorld()).findPlayerTeam(p);
+                if (team != null) {
+                    String name = team.getName();
                     p.showTitle(Title.title(
                             Component.text(name, NamedTextColor.GOLD),
                             Component.text("Your party is on this match team", NamedTextColor.GREEN),
@@ -190,19 +184,17 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
                     p.sendMessage(Component.text(
                             "You are on " + name + ". Invite others from Match Team (slot 3) if you have room.",
                             NamedTextColor.GOLD));
-                    hub.nametags().refreshWorld(p.getWorld());
+                    TeamManager.getOrCreateWorldInstance(p.getWorld()).sendAllFakeTeamPackets();
                     return;
                 }
-                boolean legacyColors = HubTeamAutoColors.isLegacyColorMode(hub, p);
+                //boolean legacyColors = HubTeamAutoColors.isLegacyColorMode(hub, p);
                 p.showTitle(Title.title(
                         Component.text("Match Team", NamedTextColor.GOLD),
                         Component.text("Create or join a team in Match Team (slot 3)",
                                 NamedTextColor.YELLOW),
                         Title.Times.times(Duration.ofMillis(250), Duration.ofSeconds(4), Duration.ofMillis(500))));
                 p.sendMessage(Component.text(
-                        legacyColors
-                                ? "Create a team and pick a color in Match Team. Invite players up to the team cap."
-                                : "Create Team 1, Team 2, … in Match Team (slot 3) and invite teammates.",
+                        "Create Team 1, Team 2, … in Match Team (slot 3) and invite teammates.",
                         NamedTextColor.GOLD));
             }
         }.runTaskLater(hub, 20L);
@@ -550,7 +542,7 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
             hub.pluginPolicies().markWorldAsMatch(s.worldName);
             hub.lobbyService().onHubLobbyMatchStarted(s.templateKey, s.worldName);
             if (instanceWorld != null) {
-                hub.nametags().refreshWorld(instanceWorld);
+                TeamManager.getOrCreateWorldInstance(instanceWorld).sendAllFakeTeamPackets();
             }
         }
         cleanupLimboSession(s);
@@ -619,12 +611,9 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
         if (s == null || s.players.isEmpty()) {
             return;
         }
-        RegisteredServiceProvider<TeamService> reg =
-                Bukkit.getServicesManager().getRegistration(TeamService.class);
-        if (reg == null) {
-            return;
-        }
-        reg.getProvider().clearTeamsFor(new ArrayList<>(s.players));
+        World world = Bukkit.getWorld(s.worldName);
+        if(world != null)
+            TeamManager.getOrCreateWorldInstance(world).sendAllFakeTeamPackets();
     }
 
     @Override

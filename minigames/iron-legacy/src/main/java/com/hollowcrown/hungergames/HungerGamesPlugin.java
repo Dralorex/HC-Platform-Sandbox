@@ -139,7 +139,7 @@ public class HungerGamesPlugin extends JavaPlugin {
         this.resourcePackManager = new ResourcePackManager(this);
         this.killLeaderboardManager = new KillLeaderboardManager(this);
         this.killLeaderboardSidebarManager = new KillLeaderboardSidebarManager(this);
-        this.teamManager  = new TeamManager(this);
+        //this.teamManager  = new TeamManager(this);
         this.lobbyManager = new LobbyManager(this);
         this.lobbyShardManager = new LobbyShardManager(this);
         this.templateWorldManager = new TemplateWorldManager(this);
@@ -154,7 +154,7 @@ public class HungerGamesPlugin extends JavaPlugin {
         }
         this.spawnManager = new SpawnManager(this);
         this.spawnManager.load();
-        this.gameManager  = new GameManager(this, teamManager, spawnManager);
+        this.gameManager  = new GameManager(this, spawnManager);
         this.envoyManager = new EnvoyManager(this);
         this.giftDropManager = new GiftDropManager(this);
         this.addMode = new AddChestModeManager(this, envoyManager);

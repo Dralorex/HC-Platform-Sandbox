@@ -1,7 +1,6 @@
-package com.hollowcrown.hungergames.gui;
+package com.hollowcrown.hub.gui;
 
 import com.hollowcrown.hub.team.TeamManager;
-import com.hollowcrown.hungergames.HungerGamesPlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
@@ -17,7 +16,7 @@ import org.bukkit.inventory.meta.PotionMeta;
 import java.util.List;
 import java.util.UUID;
 
-public class TeamColorMenu extends MenuView {
+public class TeamColorMenu extends HubMenuView {
     private final Inventory inv;
     private final String teamName;
     private final UUID owner;
@@ -174,7 +173,7 @@ public class TeamColorMenu extends MenuView {
     }*/
 
     private void openAfterCreate(Player p) {
-        p.openInventory(new MainMenu(p).getInventory());
+        p.openInventory(new TeamMainMenu(p).getInventory());
     }
 
     @Override

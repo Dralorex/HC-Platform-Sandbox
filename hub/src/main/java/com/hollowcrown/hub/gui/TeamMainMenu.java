@@ -1,8 +1,8 @@
-package com.hollowcrown.hungergames.gui;
+package com.hollowcrown.hub.gui;
 
+import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.team.TeamManager;
-import com.hollowcrown.hungergames.HungerGamesPlugin;
-import com.hollowcrown.hungergames.util.TeamNamingRules;
+import com.hollowcrown.hub.team.TeamNamingRules;
 import net.hydraulicicecube.fakeTeamAPI.teams.FakeTeam;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -18,12 +18,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
-public class MainMenu extends MenuView {
+public class TeamMainMenu extends HubMenuView {
     private final Inventory inv;
-    private final HungerGamesPlugin plugin;
 
-    public MainMenu(Player viewer) {
-        this.plugin = HungerGamesPlugin.get();
+    public TeamMainMenu(Player viewer) {
         this.inv = Bukkit.createInventory(this, 27, Component.text("HCIronLegacy", NamedTextColor.DARK_GREEN));
         build(viewer);
     }
@@ -88,7 +86,6 @@ public class MainMenu extends MenuView {
         if (!(e.getWhoClicked() instanceof Player p)) return;
         int slot = e.getRawSlot();
         TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getOrCreateWorldInstance(p.getWorld());
-        var tm = HungerGamesPlugin.get().teams();
         var my = teamManagerInstance.findPlayerTeam(p.getUniqueId());
 
         if (slot == 11) {
@@ -102,17 +99,17 @@ public class MainMenu extends MenuView {
                 p.sendMessage(Component.text("You're already in a team. Leave it first, or ask an OP.", NamedTextColor.RED));
                 return;
             }
-            HungerGamesPlugin.get().chatInput().prompt(p,
+            HollowCrownHubPlugin.get().chatInput().prompt(p,
                     "Team name (max " + TeamNamingRules.MAX_NAME_LENGTH + " characters):",
-                    name -> org.bukkit.Bukkit.getScheduler().runTask(HungerGamesPlugin.get(), () -> {
-                        var err = TeamNamingRules.validateNewTeamName(name, HungerGamesPlugin.get(), p);
+                    name -> org.bukkit.Bukkit.getScheduler().runTask(HollowCrownHubPlugin.get(), () -> {
+                        var err = TeamNamingRules.validateNewTeamName(name, HollowCrownHubPlugin.get(), p);
                         if (err.isPresent()) {
                             p.sendMessage(Component.text(err.get(), NamedTextColor.RED));
                             return;
                         }
                         String chosen = TeamNamingRules.stripLegacyColorCodes(name).trim();
                         p.openInventory(new TeamColorMenu(chosen, p.getUniqueId()).getInventory());
-                    }), () -> org.bukkit.Bukkit.getScheduler().runTask(HungerGamesPlugin.get(), () -> {
+                    }), () -> org.bukkit.Bukkit.getScheduler().runTask(HollowCrownHubPlugin.get(), () -> {
                 p.sendMessage(Component.text("Team name not entered.", NamedTextColor.RED));
                 p.sendMessage(Component.text("Team creation canceled.", NamedTextColor.RED));
             }));
@@ -121,7 +118,7 @@ public class MainMenu extends MenuView {
         }
 
         if (slot == 15 && teamManagerInstance.allowTeamCustomization) {
-            p.openInventory(new JoinTeamMenu(p.getUniqueId()).getInventory());
+            p.openInventory(new TeamJoinMenu(p.getUniqueId()).getInventory());
             return;
         } else if (slot == 15) {
             p.openInventory(new TeamAllyAndRivalMenu(p, my).getInventory());
@@ -132,7 +129,7 @@ public class MainMenu extends MenuView {
                 p.sendMessage(Component.text("You don't own a team.", NamedTextColor.RED));
                 return;
             }
-            p.openInventory(new InviteMenu(my.getName(), 0).getInventory());
+            p.openInventory(new TeamInviteMenu(my.getName(), 0).getInventory());
             return;
         }
         if (slot == 12 && teamManagerInstance.allowTeamCustomization) { //Rename
@@ -140,10 +137,10 @@ public class MainMenu extends MenuView {
                 p.sendMessage(Component.text("You don't own a team.", NamedTextColor.RED));
                 return;
             }
-            HungerGamesPlugin.get().chatInput().prompt(p,
+            HollowCrownHubPlugin.get().chatInput().prompt(p,
                     "Team name (max " + TeamNamingRules.MAX_NAME_LENGTH + " characters):",
-                    name -> org.bukkit.Bukkit.getScheduler().runTask(HungerGamesPlugin.get(), () -> {
-                        var err = TeamNamingRules.validateNewTeamNameForRenaming(name, HungerGamesPlugin.get(), p);
+                    name -> org.bukkit.Bukkit.getScheduler().runTask(HollowCrownHubPlugin.get(), () -> {
+                        var err = TeamNamingRules.validateNewTeamNameForRenaming(name, HollowCrownHubPlugin.get(), p);
                         if (err.isPresent()) {
                             p.sendMessage(Component.text(err.get(), NamedTextColor.RED));
                             return;
@@ -155,8 +152,8 @@ public class MainMenu extends MenuView {
                         }
                         my.sendFakeTeamPackets();
                         TeamManager.sendFakeTeamPacketsTo(my);
-                        p.openInventory(new MainMenu(p).getInventory());
-                    }), () -> org.bukkit.Bukkit.getScheduler().runTask(HungerGamesPlugin.get(), () -> {
+                        p.openInventory(new TeamMainMenu(p).getInventory());
+                    }), () -> org.bukkit.Bukkit.getScheduler().runTask(HollowCrownHubPlugin.get(), () -> {
                         p.sendMessage(Component.text("Team name not entered.", NamedTextColor.RED));
                         p.sendMessage(Component.text("Team renaming canceled.", NamedTextColor.RED));
                     }));
@@ -194,7 +191,7 @@ public class MainMenu extends MenuView {
             }
             TeamManager.sendFakeTeamPackets(my);
             TeamManager.sendFakeTeamPacketsTo(p);
-            p.openInventory(new MainMenu(p).getInventory());
+            p.openInventory(new TeamMainMenu(p).getInventory());
             return;
         }
     }

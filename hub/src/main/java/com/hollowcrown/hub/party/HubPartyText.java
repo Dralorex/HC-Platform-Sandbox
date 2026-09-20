@@ -1,8 +1,7 @@
 package com.hollowcrown.hub.party;
 
-import com.hollowcrown.api.team.TeamView;
-import com.hollowcrown.api.team.TeamService;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
+import com.hollowcrown.hub.team.TeamManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
@@ -35,25 +34,19 @@ public final class HubPartyText {
     }
 
     private static TextColor resolveNameColor(UUID playerId) {
-        if (playerId == null) {
+        if (playerId == null)
             return BRONZE;
-        }
-        RegisteredServiceProvider<TeamService> reg =
-                Bukkit.getServicesManager().getRegistration(TeamService.class);
-        if (reg == null) {
+        Player player = Bukkit.getPlayer(playerId);
+        if (player == null)
             return BRONZE;
-        }
-        Optional<TeamView> team = reg.getProvider().teamOf(playerId);
-        if (team.isEmpty()) {
+        TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getInstance(player.getWorld());
+        if (teamManagerInstance == null)
             return BRONZE;
-        }
-        TeamView t = team.get();
-        if (t.displayRgb() != null) {
-            return TextColor.color(t.displayRgb());
-        }
-        ChatColor legacy = t.legacyColor();
-        if (legacy != null && legacy.isColor()) {
-            return legacyToTextColor(legacy);
+        TeamManager.Team team = teamManagerInstance.findPlayerTeam(playerId);
+        if(team == null)
+            return BRONZE;
+        if (team.color != null) {
+            return TextColor.color(team.color.asRGB());
         }
         return BRONZE;
     }

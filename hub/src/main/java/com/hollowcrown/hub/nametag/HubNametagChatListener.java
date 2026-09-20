@@ -14,6 +14,8 @@ import org.bukkit.event.entity.PlayerDeathEvent;
  * the viewer's relationship to the speaker. Death messages are rewritten once (server-broadcast);
  * per-viewer death messages would need packet-level intercepts so we use the speaker's own
  * perspective for the prefix and accept that the player-name colour reads as "self".
+ * <p>
+ * [Hydraulic] I'm doing fake packets anyway for per team name, how hard could it be for death messages?
  */
 public final class HubNametagChatListener implements Listener {
 

@@ -4,9 +4,10 @@ import com.hollowcrown.api.integration.IronLegacyLimboBridge;
 import com.hollowcrown.api.integration.IronLegacyWorldsCatalog;
 import com.hollowcrown.api.party.PartyService;
 import com.hollowcrown.api.party.PartyView;
+import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.team.TeamManager;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
-import com.hollowcrown.hungergames.util.TeamNamingRules;
+import com.hollowcrown.hub.team.TeamNamingRules;
 import org.bukkit.*;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
@@ -278,8 +279,7 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
             //while (teamManagerInstance.teams.containsKey(teamName)) teamName = base + " " + bump++;
             String teamName = TeamNamingRules.randomTeamName(teamManagerInstance);
             Color color = teamManagerInstance.getRandomUnusedColor();
-            TeamManager.Team team = teamManagerInstance.teams.put(teamName, new TeamManager.Team(teamName, color, teamManagerInstance));
-            assert team != null;
+            TeamManager.Team team = new TeamManager.Team(teamName, color, teamManagerInstance);
             team.members.add(owner);
             int filled = 1;
             while (idx < pool.size() && filled < maxSize) {
@@ -310,7 +310,7 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
             }
             PartyView party = view.get();
             if (teamManagerInstance.findPlayerTeam(id) == null) {
-                String name = TeamNamingRules.resolveBindTeamName(plugin, party, teamManagerInstance);
+                String name = TeamNamingRules.resolveBindTeamName(HollowCrownHubPlugin.get(), party, teamManagerInstance);
                 Color color = Arrays.stream(TeamManager.colorSwatch)
                         .filter((e) -> !teamManagerInstance.takenColors.contains(e))
                         .collect(Collectors.collectingAndThen(

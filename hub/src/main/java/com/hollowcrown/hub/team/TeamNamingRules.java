@@ -1,8 +1,7 @@
-package com.hollowcrown.hungergames.util;
+package com.hollowcrown.hub.team;
 
 import com.hollowcrown.api.party.PartyView;
-import com.hollowcrown.hub.team.TeamManager;
-import com.hollowcrown.hungergames.HungerGamesPlugin;
+import com.hollowcrown.hub.HollowCrownHubPlugin;
 import org.bukkit.entity.Player;
 
 import java.util.List;
@@ -21,17 +20,17 @@ public final class TeamNamingRules {
             "Squad", "Crew", "Unit", "Team", "Cell", "Fireteam");
 
     private static final String[] RANDOM_NAME_PRIMARIES = new String[]{
-            "! Squad", "! Crew", "! Unit", "! Team", "! Cell", "! Fireteam"
+            "! Squad", "! Crew", "! Unit", "! Team", "! Collective", "! Fireteam", "! Army", "Voice of !", "! Guild", "! Syndicate"
     };
 
-    //Assorted names for teams based on categories (currently 66, with 6 primaries that makes 396 unique names, making a ~1% chance of a joke name per team, or a ~40% chance of a joke name showing up among 50 randomly generated names. As most teams won't have randomly generated names, it's only around a 10% chance with 10 random names. As it is absolutely essential for at least one joke name to enter the game, I nominate the C Team!)
+    //Assorted names for teams based on categories (currently 66, with 10 primaries that makes 660 unique names, making a ~0.6% chance of a joke name per team, or a ~26% chance of a joke name showing up among 50 randomly generated names. As most teams won't have randomly generated names, it's only around a 6% chance with 10 random names.
     private static final String[] RANDOM_NAME_SECONDARIES = new String[]{
             //Trees
             "Oak", "Birch", "Spruce", "Dark Oak", "Pale Oak", "Acacia", "Jungle", "Mangrove", "Warped", "Crimson", "Azalea",
             //Stones
             "Stone", "Granite", "Andesite", "Diorite", "Calcite", "Deepslate", "Basalt", "Netherrack", "Blackstone", "Bedrock",
-            //Resources
-            "Copper", "Iron", "Gold", "Diamond", "Emerald", "Lapis", "Redstone", "Coal", "Netherite", "Amethyst", "Quartz",
+            //Resources, including some cool sounding non-minecraft ones (placed at beginning)
+            "Steel", "Bismuth", "Copper", "Iron", "Gold", "Diamond", "Emerald", "Lapis", "Redstone", "Coal", "Netherite", "Amethyst", "Quartz",
             //Planty things
             "Moss", "Leaf", "Bamboo", "Kelp", "Coral", "Mushroom", "Fungus", "Spore", "Blossom", "Vine", "Berry", "Flower",
             //Turf
@@ -67,7 +66,7 @@ public final class TeamNamingRules {
     /**
      * @return empty if valid, otherwise a short player-facing English reason
      */
-    public static Optional<String> validateNewTeamName(String raw, HungerGamesPlugin plugin, Player player) {
+    public static Optional<String> validateNewTeamName(String raw, HollowCrownHubPlugin plugin, Player player) {
         String stripped = stripLegacyColorCodes(raw).trim();
         if (stripped.isEmpty()) {
             return Optional.of("Team name cannot be empty.");
@@ -92,7 +91,7 @@ public final class TeamNamingRules {
         return Optional.empty();
     }
 
-    public static Optional<String> validateNewTeamNameForRenaming(String raw, HungerGamesPlugin plugin, Player player) {
+    public static Optional<String> validateNewTeamNameForRenaming(String raw, HollowCrownHubPlugin plugin, Player player) {
         String stripped = stripLegacyColorCodes(raw).trim();
         if (stripped.isEmpty()) {
             return Optional.of("Team name cannot be empty.");
@@ -120,7 +119,7 @@ public final class TeamNamingRules {
     /**
      * Team name when binding a Hub party at match start if the leader never finished a custom naming flow.
      */
-    public static String resolveBindTeamName(HungerGamesPlugin plugin, PartyView party, TeamManager.TeamManagerInstance teams) {
+    public static String resolveBindTeamName(HollowCrownHubPlugin plugin, PartyView party, TeamManager.TeamManagerInstance teams) {
         String candidate = stripLegacyColorCodes(party.displayName()).trim();
         if (candidate.isEmpty()) {
             candidate = "Party";
@@ -147,8 +146,8 @@ public final class TeamNamingRules {
 
     //[Hydraulic] generate a valid "random" name
     public static String randomTeamName(TeamManager.TeamManagerInstance teams) {
-        if(!teams.teams.containsKey("C Team".toLowerCase()))
-            return "C Team";
+        //if(!teams.teams.containsKey("C Team".toLowerCase()))
+        //    return "C Team";
         Random random = new Random();
         int tries = 0;
         String name = RANDOM_NAME_PRIMARIES[random.nextInt(0, RANDOM_NAME_PRIMARIES.length)];
@@ -201,7 +200,7 @@ public final class TeamNamingRules {
         return true;
     }
 
-    private static boolean containsProfanity(String strippedDisplay, HungerGamesPlugin plugin) {
+    private static boolean containsProfanity(String strippedDisplay, HollowCrownHubPlugin plugin) {
         List<String> words = plugin.getConfig().getStringList("limboTeamNaming.blockedWords");
         if (words == null || words.isEmpty()) {
             return false;

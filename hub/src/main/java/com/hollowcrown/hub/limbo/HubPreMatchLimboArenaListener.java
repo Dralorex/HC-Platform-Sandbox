@@ -7,7 +7,7 @@ import com.hollowcrown.api.integration.PreMatchLimboService;
 import com.hollowcrown.api.party.PartyService;
 import com.hollowcrown.api.party.PartyView;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
-import com.hollowcrown.hub.gui.HubTeamMenu;
+import com.hollowcrown.hub.gui.TeamMainMenu;
 import com.hollowcrown.hub.party.HubPartyText;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -347,7 +347,8 @@ public final class HubPreMatchLimboArenaListener implements Listener {
                     return;
                 }
                 if (hubReg != null && hubReg.getProvider().isLimboTeamUtilityItem(p, hand)) {
-                    HubTeamMenu.open(hub, p);
+                    //HubTeamMenu.open(hub, p);
+                    p.openInventory(new TeamMainMenu(p).getInventory());
                     e.setCancelled(true);
                     return;
                 }

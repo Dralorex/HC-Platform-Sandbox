@@ -20,6 +20,7 @@ import com.hollowcrown.hub.command.HubPlayerCommand;
 import com.hollowcrown.hub.command.TeamAllyCommandExecutor;
 import com.hollowcrown.hub.command.TeamRivalCommandExecutor;
 import com.hollowcrown.hub.platform.DefaultGamePlatform;
+import com.hollowcrown.hub.platform.HubHubSpawns;
 import com.hollowcrown.hub.storage.HubSqlMigrations;
 import com.hollowcrown.hub.storage.HubSqlRuntime;
 import com.hollowcrown.hub.storage.HubYamlStorageProvider;
@@ -96,7 +97,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
     private HubAdminGui hubAdminGui;
     private HubPluginPolicyService pluginPolicyService;
     private com.hollowcrown.hub.policy.HubTemplatePolicyService templatePolicyService;
-    private com.hollowcrown.hub.alliance.HubAllianceService allianceService;
+    //private com.hollowcrown.hub.alliance.HubAllianceService allianceService;
     private com.hollowcrown.hub.nametag.HubNametagService nametagService;
     private com.hollowcrown.hub.template.HubTemplatePublishPending templatePublishPending;
     private com.hollowcrown.hub.util.HubChatInput chatInput;
@@ -153,8 +154,8 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         this.hubPreMatchLimboService = new HubPreMatchLimboService(this, hubLimboArenaState);
         this.pluginPolicyService = new HubPluginPolicyService(this);
         this.templatePolicyService = new com.hollowcrown.hub.policy.HubTemplatePolicyService(this);
-        this.allianceService = new com.hollowcrown.hub.alliance.HubAllianceService(this);
-        this.nametagService = new com.hollowcrown.hub.nametag.HubNametagService(this, allianceService);
+        //this.allianceService = new com.hollowcrown.hub.alliance.HubAllianceService(this);
+        this.nametagService = new com.hollowcrown.hub.nametag.HubNametagService(this);
         this.templatePublishPending = new com.hollowcrown.hub.template.HubTemplatePublishPending();
         this.chatInput = new com.hollowcrown.hub.util.HubChatInput(this);
 
@@ -167,10 +168,8 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(hubWorldManager, this);
         Bukkit.getPluginManager().registerEvents(
                 new HubPluginPolicyEnforcer(this, pluginPolicyService, templatePolicyService), this);
-        Bukkit.getPluginManager().registerEvents(
-                new com.hollowcrown.hub.alliance.HubAllianceListener(this, allianceService), this);
-        Bukkit.getPluginManager().registerEvents(
-                new com.hollowcrown.hub.nametag.HubNametagListener(this, nametagService), this);
+        //Bukkit.getPluginManager().registerEvents(
+        //        new com.hollowcrown.hub.alliance.HubAllianceListener(this, allianceService), this);
         Bukkit.getPluginManager().registerEvents(
                 new com.hollowcrown.hub.nametag.HubNametagChatListener(nametagService), this);
         Bukkit.getPluginManager().registerEvents(
@@ -299,7 +298,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         } else {
             getLogger().warning("Command 'hub' missing from plugin.yml (optional player teleport).");
         }
-        if (getCommand("ally") != null) {
+        /*if (getCommand("ally") != null) {
             var allyCmd = new com.hollowcrown.hub.command.HubAllyCommand(this, allianceService);
             getCommand("ally").setExecutor(allyCmd);
             getCommand("ally").setTabCompleter(allyCmd);
@@ -312,19 +311,23 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
             getCommand("enemy").setTabCompleter(enemyCmd);
         } else {
             getLogger().warning("Command 'enemy' missing from plugin.yml — designated-enemy command disabled.");
-        }
+        }*/
 
-        Bukkit.getScheduler().runTaskTimer(this,
-                () -> allianceService.tickPending(System.currentTimeMillis() / 50L),
-                40L, 40L);
+        //You don't need to tick alliance invites if you just give them a timestamp
+        //Bukkit.getScheduler().runTaskTimer(this,
+        //        () -> allianceService.tickPending(System.currentTimeMillis() / 50L),
+        //        40L, 40L);
 
         Bukkit.getScheduler().runTaskTimer(this, () -> {
-            for (org.bukkit.World w : Bukkit.getWorlds()) {
-                if (nametagService.isManagedWorld(w)) {
-                    nametagService.refreshWorld(w);
-                }
-            }
+            for(TeamManager.TeamManagerInstance teamManagerInstance : TeamManager.instances.values())
+                teamManagerInstance.sendAllFakeTeamPackets();
+            //for (org.bukkit.World w : Bukkit.getWorlds()) {
+            //    if (nametagService.isManagedWorld(w)) {
+            //        nametagService.refreshWorld(w);
+            //    }
+            //}
         }, 100L, 100L);
+        if (getCommand("ally") != null) {
             TeamAllyCommandExecutor exec = new TeamAllyCommandExecutor(this);
             getCommand("ally").setExecutor(exec);
             getCommand("ally").setTabCompleter(exec);
@@ -420,10 +423,6 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
 
     public com.hollowcrown.hub.util.HubChatInput chatInput() {
         return chatInput;
-    }
-
-    public com.hollowcrown.hub.alliance.HubAllianceService alliances() {
-        return allianceService;
     }
 
     public com.hollowcrown.hub.nametag.HubNametagService nametags() {

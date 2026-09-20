@@ -1,7 +1,6 @@
-package com.hollowcrown.hungergames.gui;
+package com.hollowcrown.hub.gui;
 
 import com.hollowcrown.hub.team.TeamManager;
-import com.hollowcrown.hungergames.HungerGamesPlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
@@ -18,7 +17,7 @@ import org.bukkit.inventory.meta.SkullMeta;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class InviteMenu extends MenuView {
+public class TeamInviteMenu extends HubMenuView {
     private final String teamName;
     private final int page; // 0-based
     private final Inventory inv;
@@ -27,7 +26,7 @@ public class InviteMenu extends MenuView {
     // show up to 45 heads per page; bottom row has nav
     private static final int PAGE_SIZE = 45;
 
-    public InviteMenu(String teamName, int page) {
+    public TeamInviteMenu(String teamName, int page) {
         this.teamName = teamName;
         this.page = Math.max(0, page);
         this.inv = Bukkit.createInventory(this, 54, Component.text("Invite to " + teamName + " (p." + (this.page + 1) + ")", NamedTextColor.GOLD));
@@ -36,8 +35,6 @@ public class InviteMenu extends MenuView {
 
     private void build() {
         index.clear();
-        var plugin = HungerGamesPlugin.get();
-        var tm = plugin.teams();
 
         // Candidate = every offline/online player who has joined, NOT already in a team
         List<OfflinePlayer> candidates = Arrays.stream(Bukkit.getOfflinePlayers())
@@ -97,7 +94,6 @@ public class InviteMenu extends MenuView {
         int slot = e.getRawSlot();
         if (slot >= inv.getSize()) return;
 
-        var tm = HungerGamesPlugin.get().teams();
         var my = TeamManager.getOrCreateWorldInstance(p.getWorld()).findPlayerTeam(p.getUniqueId());
         if (my == null || !my.getLeader().equals(p.getUniqueId()) || !my.getName().equalsIgnoreCase(teamName)) {
             p.sendMessage(Component.text("You no longer own this team.", NamedTextColor.RED));
@@ -106,11 +102,11 @@ public class InviteMenu extends MenuView {
         }
 
         if (slot == 45 && inv.getItem(45) != null && inv.getItem(45).getType() == Material.ARROW && page > 0) {
-            p.openInventory(new InviteMenu(teamName, page - 1).getInventory());
+            p.openInventory(new TeamInviteMenu(teamName, page - 1).getInventory());
             return;
         }
         if (slot == 53 && inv.getItem(53) != null && inv.getItem(53).getType() == Material.ARROW) {
-            p.openInventory(new InviteMenu(teamName, page + 1).getInventory());
+            p.openInventory(new TeamInviteMenu(teamName, page + 1).getInventory());
             return;
         }
         if (slot == 49) {
@@ -122,7 +118,7 @@ public class InviteMenu extends MenuView {
         if (targetId == null) return;
         if (TeamManager.getOrCreateWorldInstance(p.getWorld()).findPlayerTeam(targetId) != null) {
             p.sendMessage(Component.text("That player already joined a team.", NamedTextColor.RED));
-            p.openInventory(new InviteMenu(teamName, page).getInventory());
+            p.openInventory(new TeamInviteMenu(teamName, page).getInventory());
             return;
         }
 
@@ -143,7 +139,7 @@ public class InviteMenu extends MenuView {
 
         // Refresh page (their head disappears once they have a team; invite alone keeps them here,
         // but we keep the UX simple and just refresh UI)
-        p.openInventory(new InviteMenu(teamName, page).getInventory());
+        p.openInventory(new TeamInviteMenu(teamName, page).getInventory());
     }
 
     @Override

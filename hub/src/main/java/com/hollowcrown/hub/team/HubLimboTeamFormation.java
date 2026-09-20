@@ -2,8 +2,7 @@ package com.hollowcrown.hub.team;
 
 import com.hollowcrown.api.party.PartyService;
 import com.hollowcrown.api.party.PartyView;
-import com.hollowcrown.api.team.TeamService;
-import com.hollowcrown.api.team.TeamView;
+//import com.hollowcrown.api.team.TeamView;
 import com.hollowcrown.api.integration.PreMatchLimboService;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import net.kyori.adventure.text.Component;
@@ -29,11 +28,7 @@ public final class HubLimboTeamFormation {
         if (plugin == null || player == null) {
             return;
         }
-        TeamService teams = teams();
-        if (teams == null) {
-            return;
-        }
-        teams.clearTeamsFor(java.util.List.of(player.getUniqueId()));
+        //Reset player team here, or too lazy ig
         refreshNametags(plugin, player.getWorld());
     }
 
@@ -41,11 +36,7 @@ public final class HubLimboTeamFormation {
         if (plugin == null || playerIds == null || playerIds.isEmpty()) {
             return;
         }
-        TeamService teams = teams();
-        if (teams == null) {
-            return;
-        }
-        teams.clearTeamsFor(playerIds);
+        //Reset player team here, or too lazy ig
         for (UUID id : playerIds) {
             Player p = Bukkit.getPlayer(id);
             if (p != null && p.isOnline()) {
@@ -57,10 +48,10 @@ public final class HubLimboTeamFormation {
     /**
      * Creates a numbered team for the leader only. Other players join via team invites.
      */
-    public static boolean createTeam(
+    /*public static boolean createTeam(
             HollowCrownHubPlugin plugin,
             Player leader,
-            TeamService teams,
+            TeamManager.TeamManagerInstance teamManagerInstance,
             HubTeamAutoColors.AutoColor color,
             boolean legacyManualPick
     ) {
@@ -85,7 +76,7 @@ public final class HubLimboTeamFormation {
         }
         refreshNametags(plugin, leader.getWorld());
         return true;
-    }
+    }*/
 
     /**
      * When a party joins lobby limbo, place members on one numbered team up to {@code teamSizeMax}.
@@ -100,8 +91,9 @@ public final class HubLimboTeamFormation {
             return Optional.empty();
         }
         PartyService parties = parties();
-        TeamService teams = teams();
-        if (parties == null || teams == null) {
+        //TeamService teams = teams();
+        TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getInstance(player.getWorld());
+        if (parties == null || teamManagerInstance == null) {
             return Optional.empty();
         }
         Optional<PartyView> partyOpt = parties.partyForMember(player.getUniqueId());
@@ -111,72 +103,34 @@ public final class HubLimboTeamFormation {
         PartyView party = partyOpt.get();
         UUID leaderId = party.leaderId();
 
-        Optional<TeamView> leaderTeam = teams.teamOf(leaderId);
-        if (leaderTeam.isPresent()) {
-            TeamView team = leaderTeam.get();
-            if (party.isMember(player.getUniqueId()) && teams.teamOf(player.getUniqueId()).isEmpty()) {
-                if (team.memberCount() < teamSizeMax) {
-                    try {
-                        teams.addMember(team.name(), player.getUniqueId());
-                    } catch (RuntimeException ignored) {
-                    }
-                }
-            }
-            refreshNametags(plugin, player.getWorld());
-            return teams.teamOf(player.getUniqueId()).map(TeamView::name);
-        }
-
-        if (!party.isLeader(player.getUniqueId())) {
+        TeamManager.Team leaderTeam = TeamManager.findPlayerTeam(leaderId);
+        if(leaderTeam != null || party.memberCount() > teamSizeMax || !party.isLeader(player.getUniqueId()))
             return Optional.empty();
-        }
 
-        HubTeamAutoColors.AutoColor color = HubTeamAutoColors.nextAvailable(teams);
-        String teamName = HubTeamNamingRules.allocateNumberedTeamName(teams);
-        teams.createTeam(teamName, color.legacyColor(), leaderId, color.displayRgb());
+        TeamManager.Team team = new TeamManager.Team(TeamNamingRules.randomTeamName(teamManagerInstance), teamManagerInstance.getRandomUnusedColor(), teamManagerInstance);
+        team.members.add(leaderId);
+        for(UUID uuid : party.membersJoinOrder())
+            if(!team.members.contains(uuid) && team.members.size() < teamSizeMax)
+                team.members.add(uuid);
 
-        Set<UUID> session = sessionPlayerIds(player);
-        for (UUID memberId : party.membersJoinOrder()) {
-            if (memberId.equals(leaderId)) {
-                continue;
-            }
-            if (!session.contains(memberId)) {
-                continue;
-            }
-            if (teams.teamOf(memberId).isPresent()) {
-                continue;
-            }
-            TeamView current = teams.teamOf(leaderId).orElse(null);
-            if (current == null || current.memberCount() >= teamSizeMax) {
-                break;
-            }
-            try {
-                teams.addMember(current.name(), memberId);
-            } catch (RuntimeException ignored) {
-            }
-        }
-        refreshNametags(plugin, player.getWorld());
-        return teams.teamOf(player.getUniqueId()).map(TeamView::name);
+        TeamManager.sendFakeTeamPackets(team);
+        TeamManager.sendFakeTeamPacketsTo(team);
+        return Optional.of(team.getName());
     }
 
-    public static String previewNextTeamName(TeamService teams) {
-        return HubTeamNamingRules.previewNextTeamName(teams);
-    }
+    //public static String previewNextTeamName(TeamService teams) {
+    //    return HubTeamNamingRules.previewNextTeamName(teams);
+    //}
 
     public static int memberCap(HollowCrownHubPlugin plugin, Player player) {
         if (plugin == null) {
             return 2;
         }
-        TeamService teams = teams();
-        if (teams instanceof HubTeamService hubTeams) {
-            return hubTeams.resolveMemberCap(player);
-        }
+        //TeamService teams = teams();
+        //if (teams instanceof HubTeamService hubTeams) {
+        //    return hubTeams.resolveMemberCap(player);
+        //}
         return Math.max(1, plugin.getConfig().getInt("teams.memberCap", 2));
-    }
-
-    private static TeamService teams() {
-        RegisteredServiceProvider<TeamService> reg =
-                Bukkit.getServicesManager().getRegistration(TeamService.class);
-        return reg == null ? null : reg.getProvider();
     }
 
     private static PartyService parties() {
@@ -198,7 +152,8 @@ public final class HubLimboTeamFormation {
         if (plugin == null || world == null) {
             return;
         }
-        plugin.nametags().onTeamRosterChanged(world, java.util.Set.of());
+        //plugin.nametags().onTeamRosterChanged(world, java.util.Set.of());
+        TeamManager.getOrCreateWorldInstance(world).sendAllFakeTeamPackets();
     }
 
     private static String prettyColorName(ChatColor c) {

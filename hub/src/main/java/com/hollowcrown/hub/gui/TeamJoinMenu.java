@@ -1,7 +1,6 @@
-package com.hollowcrown.hungergames.gui;
+package com.hollowcrown.hub.gui;
 
 import com.hollowcrown.hub.team.TeamManager;
-import com.hollowcrown.hungergames.HungerGamesPlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
@@ -16,14 +15,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
-public class JoinTeamMenu extends MenuView {
+public class TeamJoinMenu extends HubMenuView {
     private final Inventory inv;
     private final UUID viewer;
 
-    public JoinTeamMenu(UUID viewer) {
+    public TeamJoinMenu(UUID viewer) {
         this.viewer = viewer;
         inv = Bukkit.createInventory(this, 54, Component.text("Join Team", NamedTextColor.AQUA));
-        var tm = HungerGamesPlugin.get().teams();
         int i = 0;
         for (TeamManager.TeamJoinInvite invite : TeamManager.getTeamJoinInvites(viewer)) {
             TeamManager.Team t = invite.offeringTeam;
@@ -48,18 +46,18 @@ public class JoinTeamMenu extends MenuView {
         if (it == null || !it.hasItemMeta() || it.getItemMeta().displayName() == null) return;
         TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getOrCreateWorldInstance(p.getWorld());
         String plain = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(it.getItemMeta().displayName());
-        if (teamManagerInstance.teams.containsKey(plain.toLowerCase(Locale.ROOT))) return;
-        TeamManager.Team team = teamManagerInstance.teams.get(plain);
+        if (!teamManagerInstance.teams.containsKey(plain.toLowerCase(Locale.ROOT))) return;
+        TeamManager.Team team = teamManagerInstance.teams.get(plain.toLowerCase(Locale.ROOT));
         try {
-            if (team.members.size() >= TeamManager.playersPerTeam || !TeamManager.checkTeamJoinInvite(team, p.getUniqueId())) {
+            if (team.members.size() >= teamManagerInstance.maxPlayersPerTeam || !TeamManager.checkTeamJoinInvite(team, p.getUniqueId())) {
                 p.sendMessage(Component.text("Could not accept that invite.", NamedTextColor.RED));
                 return;
             }
             p.sendMessage(Component.text("Joined team ", NamedTextColor.GREEN)
                 .append(Component.text(team.getName(), TextColor.color(team.color.asRGB()))));
             //HungerGamesPlugin.get().game().applyTeamColors();
-            TeamManager.sendFakeTeamPackets(team);
             team.members.add(p.getUniqueId());
+            TeamManager.sendFakeTeamPackets(team);
             p.closeInventory();
         } catch (IllegalStateException ex) {
             p.sendMessage(Component.text(ex.getMessage() != null ? ex.getMessage() : "Could not join team.", NamedTextColor.RED));

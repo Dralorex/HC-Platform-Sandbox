@@ -4,10 +4,10 @@ import com.hollowcrown.hub.team.TeamManager;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
 import com.hollowcrown.hungergames.ChatInput;
 import com.hollowcrown.hungergames.managers.*;
-import com.hollowcrown.hungergames.gui.MainMenu;
-import com.hollowcrown.hungergames.gui.TeamsMenu;
+import com.hollowcrown.hub.gui.TeamMainMenu;
+import com.hollowcrown.hub.gui.TeamsMenu;
 import com.hollowcrown.hungergames.gui.AdminControlCenterMenu;
-import com.hollowcrown.hungergames.util.TeamNamingRules;
+import com.hollowcrown.hub.team.TeamNamingRules;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -464,7 +464,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 }
                 boolean openTeamsFirst = HungerGamesPlugin.get().getConfig().getBoolean("ui.openTeamsFirst", false);
                 if (openTeamsFirst) p.openInventory(new TeamsMenu(p.getWorld()).getInventory());
-                else p.openInventory(new MainMenu(p).getInventory());
+                else p.openInventory(new TeamMainMenu(p).getInventory());
                 return true;
             }
             case "teams" -> {
@@ -485,7 +485,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 }
                 boolean openTeamsFirst = HungerGamesPlugin.get().getConfig().getBoolean("ui.openTeamsFirst", false);
                 if (openTeamsFirst) p.openInventory(new TeamsMenu(p.getWorld()).getInventory());
-                else p.openInventory(new MainMenu(p).getInventory());
+                else p.openInventory(new TeamMainMenu(p).getInventory());
                 return true;
             }
             case "admin" -> {

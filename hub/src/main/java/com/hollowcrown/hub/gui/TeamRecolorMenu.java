@@ -1,4 +1,4 @@
-package com.hollowcrown.hungergames.gui;
+package com.hollowcrown.hub.gui;
 
 import com.hollowcrown.hub.team.TeamManager;
 import net.kyori.adventure.text.Component;
@@ -16,9 +16,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.PotionMeta;
 
 import java.util.List;
-import java.util.UUID;
 
-public class TeamRecolorMenu extends MenuView {
+public class TeamRecolorMenu extends HubMenuView {
     private final Inventory inv;
     private final TeamManager.Team team;
 
@@ -86,7 +85,7 @@ public class TeamRecolorMenu extends MenuView {
     }
 
     private void openAfterCreate(Player p) {
-        p.openInventory(new MainMenu(p).getInventory());
+        p.openInventory(new TeamMainMenu(p).getInventory());
     }
 
     @Override

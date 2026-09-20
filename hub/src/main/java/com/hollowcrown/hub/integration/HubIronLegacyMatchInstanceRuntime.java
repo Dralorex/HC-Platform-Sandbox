@@ -5,6 +5,7 @@ import com.hollowcrown.api.integration.IronLegacyWorldsCatalog;
 import com.hollowcrown.api.platform.GamePlatform;
 import com.hollowcrown.api.platform.HubSpawn;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
+import com.hollowcrown.hub.team.TeamManager;
 import com.hollowcrown.hub.util.WorldFolderCopier;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -14,10 +15,7 @@ import org.bukkit.plugin.RegisteredServiceProvider;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 /** Hub implementation for Iron Legacy match world create/destroy. */
 public final class HubIronLegacyMatchInstanceRuntime implements IronLegacyMatchInstanceRuntime {
@@ -138,11 +136,8 @@ public final class HubIronLegacyMatchInstanceRuntime implements IronLegacyMatchI
         if (playerIds == null || playerIds.isEmpty()) {
             return;
         }
-        RegisteredServiceProvider<com.hollowcrown.api.team.TeamService> reg =
-                org.bukkit.Bukkit.getServicesManager().getRegistration(com.hollowcrown.api.team.TeamService.class);
-        if (reg == null) {
-            return;
+        for(TeamManager.TeamManagerInstance teamManagerInstance : TeamManager.instances.values()){
+            teamManagerInstance.teams.values().removeIf(team -> !Collections.disjoint(team.members, playerIds));
         }
-        reg.getProvider().clearTeamsFor(playerIds);
     }
 }
