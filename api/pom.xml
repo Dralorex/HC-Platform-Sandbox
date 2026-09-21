@@ -11,7 +11,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <version>1.21.4-a0.1.13</version>
+  <version>1.21.4-a0.1.14</version>
   <artifactId>hollowcrown-api</artifactId>
   <packaging>jar</packaging>
   <name>HC-API</name>
