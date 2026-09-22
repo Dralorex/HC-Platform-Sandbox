@@ -7,6 +7,7 @@ import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -21,15 +22,17 @@ public class TeamInviteMenu extends HubMenuView {
     private final String teamName;
     private final int page; // 0-based
     private final Inventory inv;
+    private final World world;
     private final Map<Integer, UUID> index = new HashMap<>();
 
     // show up to 45 heads per page; bottom row has nav
     private static final int PAGE_SIZE = 45;
 
-    public TeamInviteMenu(String teamName, int page) {
+    public TeamInviteMenu(String teamName, int page, World world) {
         this.teamName = teamName;
         this.page = Math.max(0, page);
         this.inv = Bukkit.createInventory(this, 54, Component.text("Invite to " + teamName + " (p." + (this.page + 1) + ")", NamedTextColor.GOLD));
+        this.world = world;
         build();
     }
 
@@ -37,18 +40,36 @@ public class TeamInviteMenu extends HubMenuView {
         index.clear();
 
         // Candidate = every offline/online player who has joined, NOT already in a team
-        List<OfflinePlayer> candidates = Arrays.stream(Bukkit.getOfflinePlayers())
-                .filter(op -> op.getUniqueId() != null && op.getName() != null)
-                .filter(op -> TeamManager.findPlayerTeam(op.getUniqueId()) == null)
+        //While this is good, we need to pull from a list of players in the lobby, not every player that has ever joined the server.
+        //List<OfflinePlayer> candidates = Arrays.stream(Bukkit.getOfflinePlayers())
+        //        .filter(op -> op.getUniqueId() != null && op.getName() != null)
+        //        .filter(op -> TeamManager.findPlayerTeam(op.getUniqueId()) == null)
+        //        .sorted(Comparator.comparing(op -> op.getName().toLowerCase()))
+        //        .collect(Collectors.toList());
+
+        //A version that fits better,
+        // Candidate = ever online player currently in the lobby, NOT already in a team.
+        //This does stop you from inviting offline players, but ehh
+        TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getOrCreateWorldInstance(this.world);
+        List<Player> alreadyTeamed = new ArrayList<>();
+        for(TeamManager.Team team : teamManagerInstance.teams.values()){
+            for(UUID uuid : team.members){
+                Player player = Bukkit.getPlayer(uuid);
+                if(player != null && !alreadyTeamed.contains(player))
+                    alreadyTeamed.add(player);
+            }
+        }
+        List<Player> candidates = this.world.getPlayers().stream()
+                .filter(op -> !alreadyTeamed.contains(op)) //get rid of the rather expensive findPlayerTeam calls
                 .sorted(Comparator.comparing(op -> op.getName().toLowerCase()))
-                .collect(Collectors.toList());
+                .toList();
 
         int start = page * PAGE_SIZE;
         int end = Math.min(start + PAGE_SIZE, candidates.size());
-        List<OfflinePlayer> pageList = candidates.subList(Math.min(start, candidates.size()), end);
+        List<Player> pageList = candidates.subList(Math.min(start, candidates.size()), end);
 
         int slot = 0;
-        for (OfflinePlayer op : pageList) {
+        for (Player op : pageList) {
             if (slot >= PAGE_SIZE) break;
             ItemStack head = new ItemStack(Material.PLAYER_HEAD);
             SkullMeta sm = (SkullMeta) head.getItemMeta();
@@ -102,11 +123,11 @@ public class TeamInviteMenu extends HubMenuView {
         }
 
         if (slot == 45 && inv.getItem(45) != null && inv.getItem(45).getType() == Material.ARROW && page > 0) {
-            p.openInventory(new TeamInviteMenu(teamName, page - 1).getInventory());
+            p.openInventory(new TeamInviteMenu(teamName, page - 1, this.world).getInventory());
             return;
         }
         if (slot == 53 && inv.getItem(53) != null && inv.getItem(53).getType() == Material.ARROW) {
-            p.openInventory(new TeamInviteMenu(teamName, page + 1).getInventory());
+            p.openInventory(new TeamInviteMenu(teamName, page + 1, this.world).getInventory());
             return;
         }
         if (slot == 49) {
@@ -118,7 +139,7 @@ public class TeamInviteMenu extends HubMenuView {
         if (targetId == null) return;
         if (TeamManager.getOrCreateWorldInstance(p.getWorld()).findPlayerTeam(targetId) != null) {
             p.sendMessage(Component.text("That player already joined a team.", NamedTextColor.RED));
-            p.openInventory(new TeamInviteMenu(teamName, page).getInventory());
+            p.openInventory(new TeamInviteMenu(teamName, page, this.world).getInventory());
             return;
         }
 
@@ -139,7 +160,7 @@ public class TeamInviteMenu extends HubMenuView {
 
         // Refresh page (their head disappears once they have a team; invite alone keeps them here,
         // but we keep the UX simple and just refresh UI)
-        p.openInventory(new TeamInviteMenu(teamName, page).getInventory());
+        p.openInventory(new TeamInviteMenu(teamName, page, this.world).getInventory());
     }
 
     @Override

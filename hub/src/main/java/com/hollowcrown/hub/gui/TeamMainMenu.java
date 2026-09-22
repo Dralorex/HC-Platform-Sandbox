@@ -129,7 +129,7 @@ public class TeamMainMenu extends HubMenuView {
                 p.sendMessage(Component.text("You don't own a team.", NamedTextColor.RED));
                 return;
             }
-            p.openInventory(new TeamInviteMenu(my.getName(), 0).getInventory());
+            p.openInventory(new TeamInviteMenu(my.getName(), 0, p.getWorld()).getInventory());
             return;
         }
         if (slot == 12 && teamManagerInstance.allowTeamCustomization) { //Rename
