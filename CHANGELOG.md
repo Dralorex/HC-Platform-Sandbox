@@ -9,6 +9,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [HC-Plugins-a0.1.21] - 2026-09-21
+
+Tagged plugins: **API a0.1.14**, **Foundation a0.1.5**, **Hub a0.1.17**, **Iron Legacy a0.3.21**.
+
+### Added
+
+- New Hub-owned teams system (`TeamManager` + FakeTeamAPI): create/join/invite/color GUIs, `/ally` and `/rival`, chat styling, and match win announcement for the winning team and players.
+
+### Removed
+
+- Legacy Hub `TeamService` / alliance stack and Iron Legacy’s old in-plugin `TeamManager` (teams are Hub-owned end-to-end).
+- API `TeamService` / `TeamView` contracts replaced by the Hub team rewrite.
+
 ## [HC-Plugins-a0.1.20] - 2026-09-12
 
 Tagged plugins: **API a0.1.13**, **Foundation a0.1.5**, **Hub a0.1.16**, **Iron Legacy a0.3.20**.

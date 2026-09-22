@@ -6,7 +6,7 @@ Copy-paste reference for **HC-Foundation**, **HollowCrownHub**, and **HCIronLega
 
 **Detail (GUIs, integration flows):** `docs/PLATFORM_REFERENCE.md`
 
-**Bundle baseline:** HC-Plugins a0.1.20
+**Bundle baseline:** HC-Plugins a0.1.21
 
 **Load order:** HC-Foundation (STARTUP) → HollowCrownHub → HCIronLegacy
 
@@ -22,7 +22,6 @@ Provides (classpath types for Hub + minigames)
   GamePlatform, HubSpawn, MatchInstanceReservation
   MinigameMechanic, MinigameBootstrap, MechanicContext
   PartyService, PartyView
-  TeamService, TeamView, TeamChatProvider
   MatchQueueService, MatchEnqueueResult
   TemplateRegistry, TemplateEntry
   HubWorldApi, HubPlayerMenus, HubAdminGui
@@ -30,6 +29,7 @@ Provides (classpath types for Hub + minigames)
   IronLegacyWorldsCatalog, IronLegacyMatchInstanceRuntime
   HubTemplatePublishLifecycle, HubPluginPolicyApi
   GameWorldScopeResolver, EnvironmentalHazardsLifecycle (SPI)
+  (Teams: Hub TeamManager + FakeTeamAPI — not API TeamService)
 
 Depends on
   Nothing. Hub and minigames depend on Foundation.
@@ -199,85 +199,46 @@ Separate from match teams
   Party accept does NOT auto-add to leader match team (except lobby auto-team below).
 
 ================================================================================
-HOLLOWCROWNHUB — Match teams (session, per lobby/match)
+HOLLOWCROWNHUB — Teams (Hub-owned, FakeTeamAPI)
 ================================================================================
 
-Team 1, Team 2, … naming
+TeamManager (per-world instances)
   Status: Implemented
-  Numbered names. [Team N] nametag prefix.
+  Create / join / invite / leave / recolor. UUID team ids. Depends on FakeTeamAPI.
 
-Match Team menu (limbo slot 3)
+Team GUIs
   Status: Implemented
-  Create, invite, accept/decline, members, leave. Mirrors party UX.
+  TeamMainMenu, TeamsMenu, TeamJoinMenu, TeamInviteMenu, TeamColorMenu,
+  TeamRecolorMenu, TeamAllyAndRivalMenu (moved from Iron Legacy).
 
-Team cap
+/ally and /rival
   Status: Implemented
-  Template teamSizeMax in limbo. Global teams.memberCap fallback.
+  /ally add|remove <team>, /rival add|remove <team> (replaces legacy /enemy).
 
-Color modes
+Chat styling + win announce
   Status: Implemented
-  TEAM: auto RGB prefix + relationship name colors. LEGACY: wool picker.
+  Team-aware chat; Iron Legacy announces winning team and players on match end.
 
-Reset on lobby entry
+Team cap / colors / invites
   Status: Implemented
-  Stale team cleared when entering new lobby limbo.
+  Template teamSizeMax; color pickers; TeamInviteMenu; session cleanup on match end.
 
 Party auto-team on lobby join
-  Status: Implemented (Unreleased)
-  Party placed on one team up to cap. Solo gets create/join prompt.
-
-Session-scoped team cleanup
-  Status: Implemented (Unreleased)
-  Lobby destroy / match end clears teams only for that session players.
-  clearAllTeams is admin/backup only.
-
-Independent team invites
   Status: Implemented
-  Any player can invite others to their team.
+  Party placed on one team up to cap when applicable.
 
-Nametag refresh on team change
-  Status: Implemented (Unreleased)
-  Create/join/leave re-syncs nametags for all players in world.
-
-================================================================================
-HOLLOWCROWNHUB — Alliances & enemies
-================================================================================
-
-/ally and /ally accept
-  Status: Implemented
-  Team leaders form alliances. Blue nametag color for allies.
-
-/enemy
-  Status: Implemented
-  Designated enemy teams. Orange nametag color.
-
-Alliance caps & friendly fire
-  Status: Implemented
-  Per-template policy: allyMaxTeams, team FF, ally FF.
-
-Last-group lockout
-  Status: Implemented
-  Designated-enemy rules when one alliance remains.
-
-Gated by template
-  Status: Implemented
-  alliesEnabled must be true on template policy.
+Removed legacy stack
+  Status: Removed
+  API TeamService/TeamView, HubTeamService, HubAlliance*, /enemy, HubTeamMenu,
+  IL TeamManager / TeamChatProvider / old IL-only team GUIs.
 
 ================================================================================
 HOLLOWCROWNHUB — Nametags, TAB, chat
 ================================================================================
 
-Per-viewer scoreboards
+Per-viewer / team nametags
   Status: Implemented
-  Private scoreboard per player in limbo/match for nametag rendering.
-
-Relationship colors
-  Status: Implemented
-  Green teammate, red enemy, blue ally, orange designated.
-
-Team prefix
-  Status: Implemented
-  [Team N] with team RGB (TEAM mode) or legacy ChatColor.
+  Team prefix and relationship colors via FakeTeamAPI / TeamManager.
 
 Sneak hides nametag
   Status: Implemented
@@ -292,7 +253,7 @@ Chat/death formatting
   HubNametagChatListener prefixes names consistently.
 
 Lobby world template resolution
-  Status: Implemented (Unreleased)
+  Status: Implemented
   *-L# worlds resolve template policy for nametag colors.
 
 ================================================================================
@@ -368,7 +329,8 @@ MySQL storage (optional)
   Parties, lobbies, queues when storage.type=MYSQL.
 
 Bukkit services registered by Hub
-  GamePlatform, HubWorldApi, TemplateRegistry, PartyService, TeamService,
+  GamePlatform, HubWorldApi, TemplateRegistry, PartyService,
+  MatchQueueService, limbo/publish/policy APIs (teams via Hub TeamManager)
   MatchQueueService, HubPlayerMenus, HubAdminGui, IronLegacyWorldsCatalog,
   IronLegacyMatchInstanceRuntime, PreMatchLimboService,
   HubTemplatePublishLifecycle, HubPluginPolicyApi
@@ -385,7 +347,7 @@ Party (nether star)
   HubPartyMenu + invite/members/pending submenus + HubPartyLobbyTrimMenu
 
 Match Team (limbo slot 3)
-  HubTeamMenu + members/invite/pending submenus
+  Hub TeamMainMenu / TeamsMenu flow (FakeTeamAPI)
 
 Admin
   HubAdminShellMenu, HubIlTemplateListMenu, HubIlTemplateDetailMenu,
@@ -509,22 +471,12 @@ random teams admin command
   Status: Implemented
 
 ================================================================================
-HCIRONLEGACY — Teams (delegated to Hub)
+HCIRONLEGACY — Teams (Hub-owned)
 ================================================================================
 
-TeamManager → Hub TeamService
+Uses Hub TeamManager / FakeTeamAPI
   Status: Implemented
-
-Legacy IL team GUIs (outside limbo)
-  Status: Implemented
-  MainMenu, TeamsMenu, JoinTeamMenu, InviteMenu, TeamColorMenu.
-
-In limbo
-  Status: Implemented
-  /il teams opens Hub Match Team menu.
-
-TeamChatProvider SPI
-  Status: Implemented
+  Match win announces winning team + players. No separate IL TeamManager.
 
 ================================================================================
 HCIRONLEGACY — Multi-server & admin

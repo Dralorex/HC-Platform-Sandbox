@@ -7,7 +7,7 @@ Copy-paste reference for all player and admin commands.
 **Feature descriptions:** `docs/PLATFORM_FEATURES.md`  
 **GUIs & integration:** `docs/PLATFORM_REFERENCE.md`
 
-**Bundle baseline:** HC-Plugins a0.1.20
+**Bundle baseline:** HC-Plugins a0.1.21
 
 ================================================================================
 PERMISSIONS
@@ -17,6 +17,7 @@ HollowCrownHub
   hollowcrownhub.use              default: true     /hub, basic access
   hollowcrownhub.join             default: true     Join GUI + lobby teleport
   hollowcrownhub.party            default: true     /hch party … + party menu
+  hollowcrownhub.team             default: true     /ally, /rival, team GUIs
   hollowcrownhub.queue            default: true     /hch queue …
   hollowcrownhub.queue.bypass     default: op       Bypass queue policy gates
   hollowcrownhub.admin            default: op       All /hch admin + GUIs
@@ -47,21 +48,32 @@ Permission: hollowcrownhub.use
   Teleport to numbered hub spawn (/hch sethub <n>).
 
 ================================================================================
-/ally
+/ally  —  aliases: alliance, truce
+Permission: hollowcrownhub.team
 ================================================================================
 
-/ally <teamName>
-  Team leader sends alliance invite to another team.
+/ally help
+  Show ally help.
 
-/ally accept <teamName>
-  Team leader accepts pending alliance.
+/ally add <team>
+  Offer an alliance to a team (or accept theirs).
+
+/ally remove <team>
+  Break an alliance with that team.
 
 ================================================================================
-/enemy
+/rival  —  aliases: rivalry, nemesis
+Permission: hollowcrownhub.team
 ================================================================================
 
-/enemy <teamName>
-  Team leader marks another team as designated enemy (orange nametags).
+/rival help
+  Show rival help.
+
+/rival add <team>
+  Add a rivalry with that team.
+
+/rival remove <team>
+  Remove a rivalry with that team.
 
 ================================================================================
 /hch  —  aliases: hollowcrownhub, hchub
@@ -460,7 +472,7 @@ Nether star (slot 9, hub)
   Opens HubPartyMenu
 
 Match Team item (slot 3, limbo only)
-  Opens HubTeamMenu
+  Opens Hub TeamMainMenu / TeamsMenu
 
 Barrier (slot 9, limbo only)
   Leave lobby → hub
@@ -472,7 +484,7 @@ COMMAND OWNERSHIP QUICK MAP
 Hub spawn           /hch sethub, /hub
 Join game           /hch join, compass GUI
 Party               /hch party, /il party
-Match team          limbo slot 3 GUI (not a command)
+Match team          limbo slot 3 GUI; /ally; /rival
 Lobby admin         /hch lobby, /hch gui lobby
 Template registry   /hch template set/list/…
 IL worlds admin     /hch template worlds …, /hch gui maps
