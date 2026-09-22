@@ -18,11 +18,11 @@ commands:
   ally:
     description: Make and break team alliances.
     usage: /ally <add|remove> <team>
-    aliases: [ alliance, truce ]
+    aliases: [ alliance, truce, friend ]
   rival:
     description: Add and remove team rivalries.
     usage: /rival <add|remove> <team>
-    aliases: [ rivalry, nemesis ]
+    aliases: [ rivalry, nemesis, enemy ]
 permissions:
   hollowcrownhub.use:
     default: true
