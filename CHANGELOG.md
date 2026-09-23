@@ -9,6 +9,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Limbo leave barrier uses Hub spawn #1 (`/hch sethub`) instead of IL lobby shard / `pickHubForSolo` routing that could land players in water; hub teleports also nudge out of liquid to a standable block. Solo hub routing always uses hub #1.
+
 ## [HC-Plugins-a0.1.21] - 2026-09-21
 
 Tagged plugins: **API a0.1.14**, **Foundation a0.1.5**, **Hub a0.1.17**, **Iron Legacy a0.3.21**.

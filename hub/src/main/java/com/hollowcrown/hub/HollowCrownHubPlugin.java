@@ -545,7 +545,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
             player.sendMessage(Component.text("Hub world is not loaded on this server.", NamedTextColor.RED));
             return false;
         }
-        Location loc = new Location(world, s.x(), s.y(), s.z(), s.yaw(), s.pitch());
+        Location loc = safeHubStandLocation(new Location(world, s.x(), s.y(), s.z(), s.yaw(), s.pitch()));
         player.teleportAsync(loc).thenAccept(ok -> {
             if (Boolean.TRUE.equals(ok)) {
                 hubWorldManager.applySurvivalHubLoadoutAfterTemplate(player);
@@ -590,11 +590,55 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
             player.sendMessage(Component.text("Hub world is not loaded on this server.", NamedTextColor.RED));
             return false;
         }
-        Location loc = new Location(world, s.x(), s.y(), s.z(), s.yaw(), s.pitch());
+        Location loc = safeHubStandLocation(new Location(world, s.x(), s.y(), s.z(), s.yaw(), s.pitch()));
         player.teleport(loc);
         hubWorldManager.applySurvivalHubLoadoutAfterTemplate(player);
         finishTemplateEditorReturn(player);
         return true;
+    }
+
+    /**
+     * If the configured hub point is inside water/lava (or the block below is missing), nudge to a
+     * standable spot so /hub and leave-lobby do not dump players underwater.
+     */
+    public static Location safeHubStandLocation(Location raw) {
+        if (raw == null || raw.getWorld() == null) {
+            return raw;
+        }
+        World world = raw.getWorld();
+        int x = raw.getBlockX();
+        int z = raw.getBlockZ();
+        int startY = Math.max(world.getMinHeight() + 1, Math.min(world.getMaxHeight() - 2, raw.getBlockY()));
+        if (isStandable(world, x, startY, z)) {
+            return new Location(world, x + 0.5, startY, z + 0.5, raw.getYaw(), raw.getPitch());
+        }
+        // Search upward then downward for air with solid below.
+        for (int dy = 1; dy <= 48; dy++) {
+            int up = startY + dy;
+            if (up < world.getMaxHeight() - 1 && isStandable(world, x, up, z)) {
+                return new Location(world, x + 0.5, up, z + 0.5, raw.getYaw(), raw.getPitch());
+            }
+            int down = startY - dy;
+            if (down > world.getMinHeight() && isStandable(world, x, down, z)) {
+                return new Location(world, x + 0.5, down, z + 0.5, raw.getYaw(), raw.getPitch());
+            }
+        }
+        int surface = world.getHighestBlockYAt(x, z) + 1;
+        surface = Math.max(world.getMinHeight() + 1, Math.min(world.getMaxHeight() - 2, surface));
+        return new Location(world, x + 0.5, surface, z + 0.5, raw.getYaw(), raw.getPitch());
+    }
+
+    private static boolean isStandable(World world, int x, int y, int z) {
+        var feet = world.getBlockAt(x, y, z).getType();
+        var head = world.getBlockAt(x, y + 1, z).getType();
+        var below = world.getBlockAt(x, y - 1, z).getType();
+        if (!feet.isAir() || !head.isAir()) {
+            return false;
+        }
+        if (!below.isSolid()) {
+            return false;
+        }
+        return below != org.bukkit.Material.MAGMA_BLOCK && below != org.bukkit.Material.CACTUS;
     }
 
     /** Teleport everyone in a world to hub spawn (lobby destroy, publish refresh, etc.). */

@@ -428,7 +428,9 @@ public final class HubPreMatchLimboArenaListener implements Listener {
             if (hubWorldApi != null) {
                 hubWorldApi.suppressGameLobbyGuiBriefly(mover, 1500L);
             }
-            bridge.sendToLobbyExact(mover, true, true);
+            // Use Hub /hch sethub (#1) — same as /hub. Do not route through IL sendToLobbyExact
+            // (shard offsets / pickHubForSolo can land players in water away from the set spawn).
+            hub.sendPlayerToHubSpawn(mover);
             if (mover.equals(actor)) {
                 mover.sendMessage(Component.text(
                         dragged ? "Left limbo queue. Your party came with you." : "Left limbo queue.",

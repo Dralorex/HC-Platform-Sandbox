@@ -1,6 +1,7 @@
 package com.hollowcrown.hungergames.managers;
 
 import com.hollowcrown.api.integration.HubWorldApi;
+import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -61,7 +62,7 @@ public final class LobbyManager {
             return;
         }
         Location spawn = resolveShardSpawn(p, center);
-        p.teleport(spawn);
+        p.teleport(HollowCrownHubPlugin.safeHubStandLocation(spawn));
         plugin.packs().applyIfEnabled(p);
         hubWorld().ifPresent(h -> h.applyHubUtilityLoadout(p, wipeInv, selectCompass));
         plugin.templates().restoreLobbyAfterLeavingTemplate(p);
@@ -71,18 +72,20 @@ public final class LobbyManager {
         int shard = plugin.lobbyShards().assignPlayer(p);
         if (shard < 0) {
             p.sendMessage(Component.text("All hub shards are currently full. Try again shortly.", NamedTextColor.RED));
-            return center;
+            return HollowCrownHubPlugin.safeHubStandLocation(center);
         }
         int total = Math.max(1, plugin.lobbyShards().shardCount());
         double spacing = Math.max(8.0, plugin.files().gameflow().getDouble("lobbies.shardSpacing", 48.0));
-        if (total == 1 || shard == 0) return center;
+        if (total == 1 || shard == 0) {
+            return HollowCrownHubPlugin.safeHubStandLocation(center);
+        }
         int ringIndex = shard - 1;
         int ringSlots = Math.max(1, total - 1);
         double angle = (2 * Math.PI * ringIndex) / ringSlots;
         Location out = center.clone();
         out.setX(center.getX() + (Math.cos(angle) * spacing));
         out.setZ(center.getZ() + (Math.sin(angle) * spacing));
-        return out;
+        return HollowCrownHubPlugin.safeHubStandLocation(out);
     }
 
     public void ensureLobbyLoadout(Player p, boolean selectCompass) {
