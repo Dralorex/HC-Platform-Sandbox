@@ -475,8 +475,8 @@ Each row traces: **player action → Java entry point → services → disk/API/
 | 8 | /il listspawns | count | HGCommand:480 → SpawnManager.getSpawnPads().size() |
 | 9 | /il showpads 10 | particles | HGCommand:493 BukkitRunnable Particle.DUST/END_ROD |
 | 10 | /il addspawnring 8 20 here | ring | HGCommand:481 → SpawnManager.addRing |
-| 11 | /il removespawn | nearest removed | HGCommand:473 → SpawnManager.removeNearest |
-| 12 | /il clearspawns | all cleared | HGCommand:472 → SpawnManager.clear |
+| 11 | /il clearspawn closest | nearest removed | HGCommand clearspawn closest → SpawnManager.removeNearest |
+| 12 | /il clearspawn all | all cleared | HGCommand clearspawn all → SpawnManager.clear |
 
 - ⬜ Subsection complete
 

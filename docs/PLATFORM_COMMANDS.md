@@ -362,11 +362,8 @@ Permission: hcironlegacy.use (admin subcommands: op / hcironlegacy.admin)
 /il addspawn
   Add spawn pad at feet for the current template world.
 
-/il clearspawns
-  Clear spawn pads for the current template.
-
-/il removespawn
-  Remove nearest spawn pad for the current template.
+/il clearspawn [closest|all]
+  Remove the closest spawn pad (default / closest) or clear all pads for the current template.
 
 /il listspawns
   List spawn pad count for the current template.

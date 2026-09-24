@@ -1172,15 +1172,15 @@ HOW TO USE WHEN SOMETHING FAILS
 
 ⬜  Phase: Phase 6 — Iron Legacy admin & template editing
     Subsection: 6.2 Spawn pads
-    Test #11: /il removespawn
+    Test #11: /il clearspawn closest
     Expected: nearest removed
-    Code path: HGCommand:473 → SpawnManager.removeNearest
+    Code path: HGCommand clearspawn closest → SpawnManager.removeNearest
 
 ⬜  Phase: Phase 6 — Iron Legacy admin & template editing
     Subsection: 6.2 Spawn pads
-    Test #12: /il clearspawns
+    Test #12: /il clearspawn all
     Expected: all cleared
-    Code path: HGCommand:472 → SpawnManager.clear
+    Code path: HGCommand clearspawn all → SpawnManager.clear
 
 ⬜  Phase: Phase 6 — Iron Legacy admin & template editing
     Subsection: 6.3 Game rules & toggles
