@@ -712,7 +712,6 @@ Permission: `hcironlegacy.use` (default true); admin subcommands require OP / `h
 │
 ├── addspawn                      [OP] Add spawn pad at feet
 ├── clearspawn [closest|all]      [OP] Remove closest pad (default) or clear all
-├── clearspawns / removespawn     [OP] Legacy aliases (all / closest)
 ├── listspawns                    [OP] List spawn pad count
 ├── addspawnring <count> <radius> [here|spawn]  [OP] Ring of pads
 ├── showpads [seconds]            [OP] Show pad particles temporarily

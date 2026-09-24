@@ -679,18 +679,12 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                                 + l.getBlockX() + "," + l.getBlockY() + "," + l.getBlockZ()));
                 return true;
             }
-            case "clearspawn", "clearspawns", "removespawn" -> {
+            case "clearspawn" -> {
                 if (!(sender instanceof Player p)) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("Players only.")); return true; }
                 var tk = requireSpawnTemplateKey(p);
                 if (tk.isEmpty()) return true;
-                String clearCmd = args[0].toLowerCase(java.util.Locale.ROOT);
                 String mode = args.length >= 2 ? args[1].trim().toLowerCase(java.util.Locale.ROOT) : "";
-                // Legacy aliases: clearspawns => all; removespawn => closest
-                if (clearCmd.equals("clearspawns")) {
-                    mode = "all";
-                } else if (clearCmd.equals("removespawn")) {
-                    mode = mode.isEmpty() ? "closest" : mode;
-                } else if (mode.isEmpty() || mode.equals("closest") || mode.equals("near") || mode.equals("nearest")) {
+                if (mode.isEmpty() || mode.equals("closest") || mode.equals("near") || mode.equals("nearest")) {
                     mode = "closest";
                 } else if (!mode.equals("all")) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
@@ -1111,7 +1105,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         if (args.length == 1) return partial(args[0], List.of(
-                "help","gui","teams","party","leaderboard","lb","admin","hostilemobspawn","hostilemobspawns","passivemobspawn","passivemobspawns","joingame","start","stop","addspawn","clearspawn","clearspawns","removespawn",
+                "help","gui","teams","party","leaderboard","lb","admin","hostilemobspawn","hostilemobspawns","passivemobspawn","passivemobspawns","joingame","start","stop","addspawn","clearspawn",
                 "listspawns","addspawnring","showpads","randomteams",
                 "set","border","toggle","reload","envoy","giftdrop","addchests","massaddchests","addmanychests","replenish",
                 "rules","crafting","dispenser","build","dig"
@@ -1193,8 +1187,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2 && args[0].equalsIgnoreCase("start")) return Bukkit.getWorlds().stream().map(World::getName).collect(Collectors.toList());
         if (args.length == 2 && args[0].equalsIgnoreCase("border")) return partial(args[1], List.of("set"));
         if (args.length == 2 && args[0].equalsIgnoreCase("addspawnring")) return partial(args[1], List.of("<count>"));
-        if (args.length == 2 && (args[0].equalsIgnoreCase("clearspawn") || args[0].equalsIgnoreCase("clearspawns")
-                || args[0].equalsIgnoreCase("removespawn"))) {
+        if (args.length == 2 && args[0].equalsIgnoreCase("clearspawn")) {
             return partial(args[1], List.of("closest", "all"));
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("addspawnring")) return partial(args[2], List.of("<radius>"));

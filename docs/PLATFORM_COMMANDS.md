@@ -364,7 +364,6 @@ Permission: hcironlegacy.use (admin subcommands: op / hcironlegacy.admin)
 
 /il clearspawn [closest|all]
   Remove the closest spawn pad (default / closest) or clear all pads for the current template.
-  Aliases: /il clearspawns (= all), /il removespawn (= closest).
 
 /il listspawns
   List spawn pad count for the current template.

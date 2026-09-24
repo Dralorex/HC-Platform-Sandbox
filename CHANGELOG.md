@@ -11,7 +11,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- `/il clearspawn [closest|all]` — clear closest pad (default) or all pads for the current template. Legacy `/il clearspawns` and `/il removespawn` still work.
+- `/il clearspawn [closest|all]` — clear closest pad (default) or all pads for the current template. Replaces `/il clearspawns` and `/il removespawn`.
 - Template lobby commands are `/hch template lobby wand`, `spawn`, and `help`. Internal and saved names that said limbo now say lobby. Hosting lobby worlds stays `/hch lobby`. Existing `worlds.yml` zone sections and plugin-policy scopes are copied onto the lobby keys on load.
 - Hub protection is the square around hub spawn again (`/hch hubworld size`). A saved hub circle is turned off on load.
 
