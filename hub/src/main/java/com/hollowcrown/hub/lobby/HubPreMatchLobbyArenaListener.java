@@ -28,9 +28,14 @@ import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -329,6 +334,49 @@ public final class HubPreMatchLobbyArenaListener implements Listener {
                 }
             }
         }.runTask(hub);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onDrop(PlayerDropItemEvent e) {
+        Player p = e.getPlayer();
+        if (!lobby.isInLobby(p)) return;
+        ItemStack dropped = e.getItemDrop().getItemStack();
+        if (isLockedLobbyItem(dropped)) {
+            e.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onSwapHands(PlayerSwapHandItemsEvent e) {
+        Player p = e.getPlayer();
+        if (!lobby.isInLobby(p)) return;
+        if (isLockedLobbyItem(e.getMainHandItem()) || isLockedLobbyItem(e.getOffHandItem())) {
+            e.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onInventoryClick(InventoryClickEvent e) {
+        if (!(e.getWhoClicked() instanceof Player p)) return;
+        if (!lobby.isInLobby(p)) return;
+        if (e.getClick() == ClickType.SWAP_OFFHAND) {
+            if (isLockedLobbyItem(e.getCurrentItem()) || isLockedLobbyItem(p.getInventory().getItemInOffHand())) {
+                e.setCancelled(true);
+                return;
+            }
+        }
+        if (isLockedLobbyItem(e.getCurrentItem()) || isLockedLobbyItem(e.getCursor())) {
+            e.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onInventoryDrag(InventoryDragEvent e) {
+        if (!(e.getWhoClicked() instanceof Player p)) return;
+        if (!lobby.isInLobby(p)) return;
+        if (isLockedLobbyItem(e.getOldCursor())) {
+            e.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)

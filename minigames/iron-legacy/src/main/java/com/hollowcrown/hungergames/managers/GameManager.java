@@ -505,9 +505,18 @@ public class GameManager implements Listener {
         bypassParticipants.clear();
         forcedParticipants = null;
         hardFreezeActive = false;
+        softLeashEndMs = 0L;
+        // Clear match membership so hub/lobby deaths never trigger "Your Legacy is Over".
+        participants.clear();
+        eliminated.clear();
+        punished.clear();
+        legacyDeathHold.clear();
+        countedJoinIntent.clear();
+        bypassJoinIntent.clear();
         activeMatchTemplateKey = null;
         activeMatchSettings = null;
-        
+        currentWorld = null;
+
         // Clean up border shrink manager
         if (borderShrinkManager != null) {
             borderShrinkManager.reset();
@@ -690,14 +699,19 @@ public class GameManager implements Listener {
         if (now < softLeashEndMs) {
             Location pad = assignedPads.get(id);
             if (pad != null) {
-                // if they left the pad block, snap them
+                // if they left the pad block, snap them (keep look direction)
                 if (e.getTo().getBlockX() != pad.getBlockX() ||
                     e.getTo().getBlockY() != pad.getBlockY() ||
                     e.getTo().getBlockZ() != pad.getBlockZ()) {
+                    Player mover = e.getPlayer();
+                    Location look = mover.getLocation();
+                    Location dest = pad.clone();
+                    dest.setYaw(look.getYaw());
+                    dest.setPitch(look.getPitch());
                     new BukkitRunnable() { @Override public void run() {
-                        if (e.getPlayer().isOnline()) {
-                            e.getPlayer().teleport(pad);
-                            e.getPlayer().setFallDistance(0f);
+                        if (mover.isOnline()) {
+                            mover.teleport(dest);
+                            mover.setFallDistance(0f);
                         }
                     }}.runTask(plugin);
                 }
@@ -705,42 +719,51 @@ public class GameManager implements Listener {
             return;
         }
 
-        // Hard freeze (the 30s countdown): default is teleport-back + damage.
+        // Hard freeze (the 30s countdown): cancel move (no camera snap) + damage/sound.
         if (hardFreezeActive) {
             long last = punished.getOrDefault(id, 0L);
             boolean launchMode = activeMatchSettings != null
                     ? activeMatchSettings.launchOnMove()
                     : plugin.getConfig().getBoolean("game.launchOnMove", false);
             long cooldownMs = launchMode ? 2000L : 500L;
-            if (now - last < cooldownMs) return;
-            punished.put(id, now);
-            Location pad = assignedPads.get(id);
-            if (pad != null) {
-                new BukkitRunnable() { @Override public void run() {
-                    if (e.getPlayer().isOnline()) {
-                        e.getPlayer().teleport(new Location(pad.getWorld(), pad.x(), pad.y(), pad.z())); //Don't pass a rotation so the player's is maintained
-                        e.getPlayer().setFallDistance(0f);
-                    }
-                }}.runTask(plugin);
+            if (now - last < cooldownMs) {
+                e.setCancelled(true);
+                return;
             }
+            punished.put(id, now);
+            e.setCancelled(true);
+
+            Player mover = e.getPlayer();
             if (launchMode) {
+                Location pad = assignedPads.get(id);
+                if (pad != null) {
+                    Location look = mover.getLocation();
+                    Location dest = pad.clone();
+                    dest.setYaw(look.getYaw());
+                    dest.setPitch(look.getPitch());
+                    new BukkitRunnable() { @Override public void run() {
+                        if (mover.isOnline()) {
+                            mover.teleport(dest);
+                            mover.setFallDistance(0f);
+                        }
+                    }}.runTask(plugin);
+                }
                 int height = activeMatchSettings != null
                         ? activeMatchSettings.freezePenaltyHeight()
                         : plugin.getConfig().getInt("game.freezePenaltyHeight", 100);
-                e.getPlayer().setVelocity(new org.bukkit.util.Vector(0, Math.max(2, height / 20.0), 0));
-                e.getPlayer().sendMessage(Component.text("You should not have moved!", NamedTextColor.RED));
+                mover.setVelocity(new org.bukkit.util.Vector(0, Math.max(2, height / 20.0), 0));
+                mover.sendMessage(Component.text("You should not have moved!", NamedTextColor.RED));
+                mover.playSound(mover.getLocation(), Sound.ENTITY_PLAYER_HURT, SoundCategory.PLAYERS, 1.0f, 1.0f);
                 new BukkitRunnable() {
                     @Override public void run() {
-                        if (e.getPlayer().isOnline() && e.getPlayer().getHealth() > 0) {
-                            e.getPlayer().setHealth(0.0);
+                        if (mover.isOnline() && mover.getHealth() > 0) {
+                            mover.setHealth(0.0);
                         }
                     }
                 }.runTaskLater(plugin, 40L);
-            } else {
-                Player mover = e.getPlayer();
-                if (mover.getHealth() > 0) {
-                    mover.setHealth(Math.max(0.0, mover.getHealth() - 1.0));
-                }
+            } else if (mover.getHealth() > 0) {
+                mover.setHealth(Math.max(0.0, mover.getHealth() - 1.0));
+                mover.playSound(mover.getLocation(), Sound.ENTITY_PLAYER_HURT, SoundCategory.PLAYERS, 1.0f, 1.0f);
             }
         }
     }
@@ -753,7 +776,9 @@ public class GameManager implements Listener {
         if (suppress) {
             e.deathMessage(null);
         }
-        boolean inGame = participants.contains(e.getEntity().getUniqueId());
+        // Only active match deaths — never hub/lobby PvP after stopGame / win return.
+        boolean inGame = (state == State.FREEZE || state == State.RUNNING)
+                && participants.contains(e.getEntity().getUniqueId());
         if (inGame) {
             Player dead = e.getEntity();
             final UUID deadId = dead.getUniqueId();
@@ -864,15 +889,19 @@ public class GameManager implements Listener {
                 finalWinner.setInvulnerable(true);
                 new BukkitRunnable() {
                     @Override public void run() {
+                        World matchWorld = currentWorld;
+                        WorldGameSettings settingsSnapshot = activeMatchSettings;
+                        // Drop match membership before hub return so hub PvP deaths are clean.
+                        removeFromGame(finalWinner.getUniqueId());
                         if (finalWinner.isOnline()) {
                             finalWinner.setInvulnerable(false);
                             sendPlayerToHub(finalWinner);
                         }
-                        if (currentWorld != null) {
-                            double start = activeMatchSettings != null
-                                    ? activeMatchSettings.borderStartSize()
+                        if (matchWorld != null) {
+                            double start = settingsSnapshot != null
+                                    ? settingsSnapshot.borderStartSize()
                                     : plugin.getConfig().getDouble("worldborder.startSize");
-                            currentWorld.getWorldBorder().setSize(start);
+                            matchWorld.getWorldBorder().setSize(start);
                         }
                         stopGame(true);
                     }
@@ -963,6 +992,8 @@ public class GameManager implements Listener {
 
     private void sendPlayerToHub(Player p) {
         if (p == null) return;
+        removeFromGame(p.getUniqueId());
+        legacyDeathHold.remove(p.getUniqueId());
         p.getInventory().clear();
         p.getInventory().setArmorContents(new ItemStack[4]);
         p.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
