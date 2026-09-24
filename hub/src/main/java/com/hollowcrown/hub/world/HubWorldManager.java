@@ -33,6 +33,8 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityPotionEffectEvent;
+import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -52,6 +54,7 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.RegisteredServiceProvider;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.HashMap;
@@ -694,6 +697,7 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         activateCountdown.remove(id);
         deactivateCountdown.remove(id);
         pendingDeactivateOnDeath.remove(id);
+        HubCombatVitals.clearAbsorptionAndRegen(p);
         sendPvpStatusLine(p, "PVP mode Activated", NamedTextColor.RED);
     }
 
@@ -715,6 +719,7 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         if (inZone || hadPad) {
             hubCenterLocation().ifPresent(lobby -> p.teleport(lobby));
         }
+        HubCombatVitals.resetAfterCombat(p);
     }
 
     private void sendPvpStatusLine(Player p, String text, NamedTextColor color) {
@@ -1023,8 +1028,39 @@ public final class HubWorldManager implements HubWorldApi, Listener {
                     hubCenterLocation().ifPresent(p::teleport);
                     applyHubUtilityLoadout(p, true, false);
                 }
+                HubCombatVitals.resetAfterCombat(p);
             }
         }.runTask(plugin);
+    }
+
+    /** No hunger/saturation healing while hub PvP is active. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onRegainHealth(EntityRegainHealthEvent e) {
+        if (!(e.getEntity() instanceof Player p)) return;
+        if (!pvpActive.contains(p.getUniqueId())) return;
+        EntityRegainHealthEvent.RegainReason reason = e.getRegainReason();
+        if (reason == EntityRegainHealthEvent.RegainReason.SATIATED
+                || reason == EntityRegainHealthEvent.RegainReason.REGEN
+                || reason == EntityRegainHealthEvent.RegainReason.EATING) {
+            e.setCancelled(true);
+        }
+    }
+
+    /** Block free absorption/regen potions while hub PvP is active (combat items mid-fight stay vanilla outside this). */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPotionEffect(EntityPotionEffectEvent e) {
+        if (!(e.getEntity() instanceof Player p)) return;
+        if (!pvpActive.contains(p.getUniqueId())) return;
+        if (e.getAction() != EntityPotionEffectEvent.Action.ADDED
+                && e.getAction() != EntityPotionEffectEvent.Action.CHANGED) {
+            return;
+        }
+        PotionEffectType type = e.getModifiedType();
+        if (type != null && (type.equals(PotionEffectType.ABSORPTION)
+                || type.equals(PotionEffectType.REGENERATION)
+                || type.equals(PotionEffectType.HEALTH_BOOST))) {
+            e.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
