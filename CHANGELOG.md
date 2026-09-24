@@ -15,7 +15,7 @@ Tagged plugins: **API a0.1.14**, **Foundation a0.1.5**, **Hub a0.1.18**, **Iron 
 
 ### Added
 
-- Circle lobby zone wand (`/hch hubworld lobby wand`): left-click center, right-click edge (radius + height), F cycles Center/Edge tip while holding the wand, particle border + action-bar status only while holding the wand, shift-right-click saves cylindrical hub protection to `hub-world.yml`.
+- Circle lobby zone wand (`/hch hubworld lobby wand`): left-click center, right-click edge (radius + height), Shift+scroll cycles Center/Edge and locks that hotbar slot while holding the wand, particle border + action-bar status only while holding the wand, shift-right-click saves cylindrical hub protection to `hub-world.yml`.
 
 ### Changed
 

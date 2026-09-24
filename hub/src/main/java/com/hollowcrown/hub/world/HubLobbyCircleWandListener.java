@@ -18,7 +18,6 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -33,14 +32,15 @@ import java.util.UUID;
 
 /**
  * Circle lobby-zone wand: left-click center, right-click edge (radius + height from Y).
- * Swap-hands (F) cycles Center/Edge tip while the wand is held (vanilla cannot read Left Alt).
+ * Hold Shift + scroll cycles Center/Edge and locks the hotbar slot while the wand is held.
+ * Left Alt is not sent by vanilla clients, so Shift is the server-detectable modifier.
  * Particle border + bottom action-bar status only while holding the wand.
  */
 public final class HubLobbyCircleWandListener implements Listener {
 
     static final String WAND_MARKER = "lobby_circle";
 
-    /** Active tip shown in the action bar (cycled with F). */
+    /** Active tip shown in the action bar (cycled with Shift+scroll). */
     public enum SelectMode {
         CENTER,
         EDGE
@@ -65,10 +65,10 @@ public final class HubLobbyCircleWandListener implements Listener {
             meta.lore(List.of(
                     Component.text("Left-click: set center", NamedTextColor.GRAY),
                     Component.text("Right-click: set edge (radius + height)", NamedTextColor.GRAY),
-                    Component.text("F (swap hands): cycle Center / Edge tip", NamedTextColor.AQUA),
+                    Component.text("Hold Shift + scroll: cycle Center / Edge tip", NamedTextColor.AQUA),
                     Component.text("Shift-right-click: save circle lobby zone", NamedTextColor.YELLOW),
                     Component.text("Border + HUD only while holding this wand", NamedTextColor.DARK_GRAY),
-                    Component.text("Note: Left Alt is not sent by vanilla clients", NamedTextColor.DARK_GRAY)
+                    Component.text("Shift+scroll stays on this slot; plain scroll changes hotbar", NamedTextColor.DARK_GRAY)
             ));
             meta.getPersistentDataContainer().set(
                     plugin.lobbyCircleWandKey(), PersistentDataType.STRING, WAND_MARKER);
@@ -77,13 +77,37 @@ public final class HubLobbyCircleWandListener implements Listener {
         return wand;
     }
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onSwapHands(PlayerSwapHandItemsEvent event) {
+    /**
+     * Shift + mouse-wheel while the wand is selected: cycle Center/Edge and keep that hotbar slot.
+     * Cancel plus a next-tick slot restore — cancel alone often leaves the client scrolled away.
+     * Adjacent/wraparound moves only (scroll). Plain scroll and number keys still change the hotbar.
+     */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onHotbarScroll(PlayerItemHeldEvent event) {
         Player p = event.getPlayer();
-        if (!isHoldingCircleWand(p)) {
+        if (!p.isSneaking()) {
+            return;
+        }
+        int prev = event.getPreviousSlot();
+        ItemStack wandSlot = p.getInventory().getItem(prev);
+        if (!isCircleWand(wandSlot)) {
+            return;
+        }
+        int next = event.getNewSlot();
+        int delta = Math.floorMod(next - prev, 9);
+        if (delta != 1 && delta != 8) {
             return;
         }
         event.setCancelled(true);
+        // Next-tick restore — client already scrolled locally; cancel packet alone is flaky.
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            if (!p.isOnline()) {
+                return;
+            }
+            if (p.getInventory().getHeldItemSlot() != prev) {
+                p.getInventory().setHeldItemSlot(prev);
+            }
+        });
         EditorState state = editors.computeIfAbsent(p.getUniqueId(), k -> new EditorState());
         state.mode = state.mode == SelectMode.CENTER ? SelectMode.EDGE : SelectMode.CENTER;
         sendHud(p, state);
@@ -172,11 +196,6 @@ public final class HubLobbyCircleWandListener implements Listener {
         }
     }
 
-    @EventHandler
-    public void onHotbar(PlayerItemHeldEvent event) {
-        // HUD task handles show/hide; no-op hook keeps listener registered for future use.
-    }
-
     private void startHudTask() {
         new BukkitRunnable() {
             @Override
@@ -255,7 +274,7 @@ public final class HubLobbyCircleWandListener implements Listener {
                 .append(Component.text("C:" + center + " ", NamedTextColor.GREEN))
                 .append(Component.text("E:" + edge + " ", NamedTextColor.YELLOW))
                 .append(Component.text("R:" + radius, NamedTextColor.WHITE))
-                .append(Component.text("  | F cycle", NamedTextColor.DARK_GRAY))
+                .append(Component.text("  | Shift+scroll", NamedTextColor.DARK_GRAY))
                 .build());
     }
 

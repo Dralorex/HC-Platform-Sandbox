@@ -150,7 +150,7 @@ Permission: hollowcrownhub.team
   Protection radius from hub spawn (square fallback when no circle saved).
 
 /hch hubworld lobby wand
-  Give Lobby Circle Wand (center LMB, edge RMB, F cycle tip, shift-RMB save).
+  Give Lobby Circle Wand (center LMB, edge RMB, Shift+scroll cycle tip, shift-RMB save).
   Alias: /hch hubworld circle wand
 
 /hch hubworld buildmode <true|false>

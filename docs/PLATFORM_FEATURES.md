@@ -57,8 +57,9 @@ Protection radius
 Circle lobby zone
   Status: Implemented
   /hch hubworld lobby wand — left-click center, right-click edge (radius + height),
-  F cycles Center/Edge tip while holding wand, particle border + action-bar only while
-  holding wand, shift-right saves cylinder to hub-world.yml (overrides square check).
+  Shift+scroll cycles Center/Edge tip and locks that hotbar slot while holding the wand
+  (Left Alt is not sent by vanilla), particle border + action-bar only while holding wand,
+  shift-right saves cylinder to hub-world.yml (overrides square check).
 
 Build mode
   Status: Implemented
