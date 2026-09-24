@@ -4,7 +4,7 @@ import org.bukkit.entity.Player;
 
 /**
  * Hub-owned player GUIs (join flow, party). HollowCrownHub registers the implementation;
- * minigames resolve this from {@code ServicesManager} for limbo/hotbar actions.
+ * minigames resolve this from {@code ServicesManager} for lobby/hotbar actions.
  */
 public interface HubPlayerMenus {
 

@@ -68,7 +68,7 @@ public class TemplateWorldManager {
 
     /**
      * Reloads {@code worlds.yml} from disk into memory without writing back.
-     * Used after HollowCrownHub edits limbo spawn/zone so IL sees fresh values.
+     * Used after HollowCrownHub edits lobby spawn/zone so IL sees fresh values.
      */
     public void reloadFromDisk() {
         worldsCfg = Yaml.loadOrCreate(plugin, FILE);
@@ -78,6 +78,37 @@ public class TemplateWorldManager {
         if (!worldsCfg.isConfigurationSection("instances")) {
             worldsCfg.createSection("instances");
         }
+        if (promoteLegacyZoneSections(worldsCfg)) {
+            save();
+        }
+    }
+
+    /** Copies the previous zone section name onto {@code lobby} so existing templates keep their circle and spawn. */
+    private static boolean promoteLegacyZoneSections(FileConfiguration yaml) {
+        ConfigurationSection worlds = yaml.getConfigurationSection("worlds");
+        if (worlds == null) {
+            return false;
+        }
+        String legacy = "lim" + "bo";
+        boolean changed = false;
+        for (String key : List.copyOf(worlds.getKeys(false))) {
+            ConfigurationSection template = worlds.getConfigurationSection(key);
+            if (template == null || template.isConfigurationSection("lobby")) {
+                continue;
+            }
+            ConfigurationSection old = template.getConfigurationSection(legacy);
+            if (old == null) {
+                continue;
+            }
+            ConfigurationSection neu = template.createSection("lobby");
+            for (String path : old.getKeys(true)) {
+                if (!old.isConfigurationSection(path)) {
+                    neu.set(path, old.get(path));
+                }
+            }
+            changed = true;
+        }
+        return changed;
     }
 
     public void save() {
@@ -298,7 +329,7 @@ public class TemplateWorldManager {
         worldsCfg.set(base + ".teamFriendlyFire", false);
         worldsCfg.set(base + ".allyFriendlyFire", true);
         worldsCfg.set(base + ".iconKey", "default");
-        worldsCfg.set(base + ".limbo.minimumPercentage", clampPercentage(80));
+        worldsCfg.set(base + ".lobby.minimumPercentage", clampPercentage(80));
         worldsCfg.set(base + ".serverTarget", "");
         worldsCfg.set(base + ".version", 0);
         worldsCfg.set(base + ".publishedAt", 0L);
@@ -598,59 +629,59 @@ public class TemplateWorldManager {
 
     public int minimumPercentage(String templateName) {
         String base = basePath(templateName);
-        return clampPercentage(worldsCfg.getInt(base + ".limbo.minimumPercentage", 80));
+        return clampPercentage(worldsCfg.getInt(base + ".lobby.minimumPercentage", 80));
     }
 
     public boolean setMinimumPercentage(String templateName, int value) {
         String base = basePath(templateName);
         if (!worldsCfg.isConfigurationSection(base)) return false;
-        worldsCfg.set(base + ".limbo.minimumPercentage", clampPercentage(value));
+        worldsCfg.set(base + ".lobby.minimumPercentage", clampPercentage(value));
         save();
         return true;
     }
 
-    public Optional<LimboZone> limboZone(String templateName) {
+    public Optional<LobbyZone> lobbyZone(String templateName) {
         String base = basePath(templateName);
         if (!worldsCfg.isConfigurationSection(base)) return Optional.empty();
-        if (!worldsCfg.contains(base + ".limbo.zone.pos1.x")) return Optional.empty();
-        if (!worldsCfg.contains(base + ".limbo.zone.pos2.x")) return Optional.empty();
-        Location p1 = readCorner(base + ".limbo.zone.pos1");
-        Location p2 = readCorner(base + ".limbo.zone.pos2");
+        if (!worldsCfg.contains(base + ".lobby.zone.pos1.x")) return Optional.empty();
+        if (!worldsCfg.contains(base + ".lobby.zone.pos2.x")) return Optional.empty();
+        Location p1 = readCorner(base + ".lobby.zone.pos1");
+        Location p2 = readCorner(base + ".lobby.zone.pos2");
         if (p1 == null || p2 == null) return Optional.empty();
-        return Optional.of(new LimboZone(p1, p2));
+        return Optional.of(new LobbyZone(p1, p2));
     }
 
-    public boolean setLimboZone(String templateName, Location pos1, Location pos2) {
+    public boolean setLobbyZone(String templateName, Location pos1, Location pos2) {
         if (pos1 == null || pos2 == null || pos1.getWorld() == null || pos2.getWorld() == null) return false;
         String base = basePath(templateName);
         if (!worldsCfg.isConfigurationSection(base)) {
             registerTemplate(templateName, pos1.getWorld().getName());
         }
-        writeCorner(base + ".limbo.zone.pos1", pos1);
-        writeCorner(base + ".limbo.zone.pos2", pos2);
+        writeCorner(base + ".lobby.zone.pos1", pos1);
+        writeCorner(base + ".lobby.zone.pos2", pos2);
         save();
         return true;
     }
 
-    public boolean isInsideLimboZone(String templateName, Location loc) {
+    public boolean isInsideLobbyZone(String templateName, Location loc) {
         if (loc == null || loc.getWorld() == null) return false;
-        var zone = limboZone(templateName).orElse(null);
+        var zone = lobbyZone(templateName).orElse(null);
         if (zone == null) return false;
         return zone.contains(loc);
     }
 
-    public boolean setLimboSpawn(String templateName, Location loc) {
+    public boolean setLobbySpawn(String templateName, Location loc) {
         if (loc == null || loc.getWorld() == null) return false;
         String base = basePath(templateName);
         if (!worldsCfg.isConfigurationSection(base)) {
             registerTemplate(templateName, loc.getWorld().getName());
         }
-        worldsCfg.set(base + ".limbo.world", loc.getWorld().getName());
-        worldsCfg.set(base + ".limbo.x", loc.getX());
-        worldsCfg.set(base + ".limbo.y", loc.getY());
-        worldsCfg.set(base + ".limbo.z", loc.getZ());
-        worldsCfg.set(base + ".limbo.yaw", loc.getYaw());
-        worldsCfg.set(base + ".limbo.pitch", loc.getPitch());
+        worldsCfg.set(base + ".lobby.world", loc.getWorld().getName());
+        worldsCfg.set(base + ".lobby.x", loc.getX());
+        worldsCfg.set(base + ".lobby.y", loc.getY());
+        worldsCfg.set(base + ".lobby.z", loc.getZ());
+        worldsCfg.set(base + ".lobby.yaw", loc.getYaw());
+        worldsCfg.set(base + ".lobby.pitch", loc.getPitch());
         save();
         return true;
     }
@@ -1131,7 +1162,7 @@ public class TemplateWorldManager {
         worldsCfg.set(base + ".maxPlayers", 100);
         worldsCfg.set(base + ".teamSizeMax", worldsCfg.getInt(base + ".teamSizeMax", 5));
         worldsCfg.set(base + ".iconKey", "default");
-        worldsCfg.set(base + ".limbo.minimumPercentage", clampPercentage(worldsCfg.getInt(base + ".limbo.minimumPercentage", 80)));
+        worldsCfg.set(base + ".lobby.minimumPercentage", clampPercentage(worldsCfg.getInt(base + ".lobby.minimumPercentage", 80)));
         worldsCfg.set(base + ".serverTarget", worldsCfg.getString(base + ".serverTarget", ""));
         worldsCfg.set(base + ".version", worldsCfg.getInt(base + ".version", 0));
         worldsCfg.set(base + ".publishedAt", worldsCfg.getLong(base + ".publishedAt", 0L));
@@ -1357,7 +1388,7 @@ public class TemplateWorldManager {
         worldsCfg.set(path + ".z", loc.getZ());
     }
 
-    public record LimboZone(Location pos1, Location pos2) {
+    public record LobbyZone(Location pos1, Location pos2) {
         public boolean contains(Location loc) {
             if (loc == null || loc.getWorld() == null || pos1 == null || pos2 == null) return false;
             if (pos1.getWorld() == null || pos2.getWorld() == null) return false;

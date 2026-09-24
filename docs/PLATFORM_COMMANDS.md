@@ -42,7 +42,7 @@ Permission: hollowcrownhub.use
 
 /hub
   Teleport to hub #1. Party leader pulls online party (capacity routing).
-  Exits limbo first. Saves template editor inventory if leaving editor.
+  Exits lobby first. Saves template editor inventory if leaving editor.
 
 /hub join <hubNumber>
   Teleport to numbered hub spawn (/hch sethub <n>).
@@ -91,7 +91,7 @@ Permission: hollowcrownhub.team
   [admin] List registered minigame mechanic ids.
 
 /hch debug why <player>
-  [admin] Snapshot: world, limbo, party, team, queue state.
+  [admin] Snapshot: world, lobby, party, team, queue state.
 
 --- Player join ---
 
@@ -323,7 +323,7 @@ Permission: hcironlegacy.use (admin subcommands: op / hcironlegacy.admin)
   Open Hub party menu (requires Hub).
 
 /il teams
-  In limbo: Hub Match Team menu. Else OP: team admin GUI.
+  In lobby: Hub Match Team menu. Else OP: team admin GUI.
 
 /il gui
   [OP] Open MainMenu or TeamsMenu (config ui.openTeamsFirst).
@@ -343,19 +343,19 @@ Permission: hcironlegacy.use (admin subcommands: op / hcironlegacy.admin)
 /il reload
   [OP] Reload config, files, spawns, rules, templates, icons.
 
---- Match & limbo control  [OP; role: GAME or STANDALONE for start/stop] ---
+--- Match & lobby control  [OP; role: GAME or STANDALONE for start/stop] ---
 
-/il start [limbo_world|template]
-  [OP] Force limbo countdown (ignores min fill).
+/il start [lobby_world|template]
+  [OP] Force lobby countdown (ignores min fill).
 
 /il stop
-  Abort limbo queues + stop active match → hub.
+  Abort lobby queues + stop active match → hub.
 
 /il hostilemobspawn <true|false|t|f>
-  [OP, HUB/STANDALONE] Toggle hostile mob spawns in limbo.
+  [OP, HUB/STANDALONE] Toggle hostile mob spawns in lobby.
 
 /il passivemobspawn <true|false|t|f>
-  [OP, HUB/STANDALONE] Toggle passive mob spawns in limbo.
+  [OP, HUB/STANDALONE] Toggle passive mob spawns in lobby.
 
 --- Spawn pads  [OP]  (per template → worlds.yml worlds.<key>.spawnPads) ---
 
@@ -469,10 +469,10 @@ Compass (hub-world.yml slot, default 5)
 Nether star (slot 9, hub)
   Opens HubPartyMenu
 
-Match Team item (slot 3, limbo only)
+Match Team item (slot 3, lobby only)
   Opens Hub TeamMainMenu / TeamsMenu
 
-Barrier (slot 9, limbo only)
+Barrier (slot 9, lobby only)
   Leave lobby → hub
 
 ================================================================================
@@ -482,11 +482,11 @@ COMMAND OWNERSHIP QUICK MAP
 Hub spawn           /hch sethub, /hub
 Join game           /hch join, compass GUI
 Party               /hch party, /il party
-Match team          limbo slot 3 GUI; /ally; /rival
+Match team          lobby slot 3 GUI; /ally; /rival
 Lobby admin         /hch lobby, /hch gui lobby
 Template registry   /hch template set/list/…
 IL worlds admin     /hch template worlds …, /hch gui maps
-Limbo zone/spawn    /hch template lobby …
+Lobby zone/spawn    /hch template lobby …
 Template policy     GUIs only (admin shell → policies)
 Match queue         /hch queue
 Alliances           /ally, /enemy

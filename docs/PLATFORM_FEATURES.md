@@ -25,7 +25,7 @@ Provides (classpath types for Hub + minigames)
   MatchQueueService, MatchEnqueueResult
   TemplateRegistry, TemplateEntry
   HubWorldApi, HubPlayerMenus, HubAdminGui
-  PreMatchLimboService, IronLegacyLimboBridge, IronLegacyTemplateAdmin
+  PreMatchLobbyService, IronLegacyLobbyBridge, IronLegacyTemplateAdmin
   IronLegacyWorldsCatalog, IronLegacyMatchInstanceRuntime
   HubTemplatePublishLifecycle, HubPluginPolicyApi
   GameWorldScopeResolver, EnvironmentalHazardsLifecycle (SPI)
@@ -52,7 +52,7 @@ Hub capacity routing
 
 Protection radius
   Status: Implemented
-  /hch hubworld size <blocks>. Hub rules apply inside radius (square fallback).
+  /hch hubworld size <blocks>. Hub rules apply inside that square around hub spawn.
 
 Build mode
   Status: Implemented
@@ -127,20 +127,20 @@ Mechanic assignment
   /hch template worlds mechanic <key> <mechanicId> before publish.
 
 ================================================================================
-HOLLOWCROWNHUB — Pre-match limbo
+HOLLOWCROWNHUB — Pre-match lobby
 ================================================================================
 
 Session per lobby world
   Status: Implemented
-  Each *-L# world has own limbo session, countdown, player set.
+  Each *-L# world has own lobby session, countdown, player set.
 
-Limbo spawn & zone
+Lobby spawn & zone
   Status: Implemented
   /hch template lobby wand sets a circle (center, edge, height) in worlds.yml.
   /hch template lobby spawn sets spawn at your feet inside that circle.
   Older corner zones still load as boxes until redrawn with the circle wand.
 
-Limbo loadout
+Lobby loadout
   Status: Implemented
   Adventure, cleared inv. Hotbar: Match Team slot 3, Leave barrier slot 9.
 
@@ -158,19 +158,19 @@ Teleport countdown
 
 Match launch handoff
   Status: Implemented
-  Hub calls IronLegacyLimboBridge.startGameOnPreparedInstance.
+  Hub calls IronLegacyLobbyBridge.startGameOnPreparedInstance.
 
-Limbo zone clear
+Lobby zone clear
   Status: Implemented
-  After spawn-pad teleports, Hub clears blocks/entities in limbo volume.
+  After spawn-pad teleports, Hub clears blocks/entities in lobby volume.
 
-Leave limbo
+Leave lobby
   Status: Implemented
   Leave item, /hub, failed start, evacuate → hub (exits session first).
 
 Zone clamp
   Status: Implemented
-  Non-OP players cannot leave limbo zone.
+  Non-OP players cannot leave lobby zone.
 
 ================================================================================
 HOLLOWCROWNHUB — Parties (persistent social groups)
@@ -278,7 +278,7 @@ Queue overview GUI
   Status: Implemented
   Admin shell → Queues tab.
 
-Auto-dequeue to limbo
+Auto-dequeue to lobby
   Status: GAP
   Queue does NOT yet auto-teleport when lobby slot opens. Join via GUI.
 
@@ -288,7 +288,7 @@ HOLLOWCROWNHUB — Plugin policy
 
 Global scopes
   Status: Implemented
-  Hub / Limbo / Match whitelist or blacklist per plugin id.
+  Hub / Lobby / Match whitelist or blacklist per plugin id.
 
 Per-template overrides
   Status: Implemented
@@ -320,7 +320,7 @@ Admin shell GUI
 
 IL template admin GUI
   Status: Implemented
-  List → detail → publish/edit/snapshots/limbo tools.
+  List → detail → publish/edit/snapshots/lobby tools.
 
 Debug mechanics / why
   Status: Implemented
@@ -332,9 +332,9 @@ MySQL storage (optional)
 
 Bukkit services registered by Hub
   GamePlatform, HubWorldApi, TemplateRegistry, PartyService,
-  MatchQueueService, limbo/publish/policy APIs (teams via Hub TeamManager)
+  MatchQueueService, lobby/publish/policy APIs (teams via Hub TeamManager)
   MatchQueueService, HubPlayerMenus, HubAdminGui, IronLegacyWorldsCatalog,
-  IronLegacyMatchInstanceRuntime, PreMatchLimboService,
+  IronLegacyMatchInstanceRuntime, PreMatchLobbyService,
   HubTemplatePublishLifecycle, HubPluginPolicyApi
 
 ================================================================================
@@ -348,7 +348,7 @@ Join flow (compass)
 Party (nether star)
   HubPartyMenu + invite/members/pending submenus + HubPartyLobbyTrimMenu
 
-Match Team (limbo slot 3)
+Match Team (lobby slot 3)
   Hub TeamMainMenu / TeamsMenu flow (FakeTeamAPI)
 
 Admin
@@ -435,16 +435,16 @@ Hub match provisioning
   integrations.preferHubMatchInstanceProvisioning flag.
 
 ================================================================================
-HCIRONLEGACY — Limbo bridge (IL registers, Hub calls)
+HCIRONLEGACY — Lobby bridge (IL registers, Hub calls)
 ================================================================================
 
-IronLegacyLimboBridge
+IronLegacyLobbyBridge
   Status: Implemented
   Templates, instances, game start, hub return, team assign at launch,
-  Velocity routing, kill credit, limbo mob toggles.
+  Velocity routing, kill credit, lobby mob toggles.
 
-Actual limbo UX
-  Status: Implemented (owned by Hub PreMatchLimboService)
+Actual lobby UX
+  Status: Implemented (owned by Hub PreMatchLobbyService)
 
 ================================================================================
 HCIRONLEGACY — Envoys
@@ -500,7 +500,7 @@ Admin history audit log
   Status: Implemented
 
 Bukkit services registered by IL
-  IronLegacyLimboBridge, IronLegacyTemplateAdmin, IronLegacyHubBridge,
+  IronLegacyLobbyBridge, IronLegacyTemplateAdmin, IronLegacyHubBridge,
   GameWorldScopeResolver, TeamChatProvider, MinigameMechanic (iron-legacy)
 
 ================================================================================
@@ -510,15 +510,15 @@ CROSS-PLUGIN — Who owns what
 Hub owns
   Hub spawn, protection, hotbar, PvP zone, build mode
   Template registry, lobby instances (*-L#), join GUIs
-  Pre-match limbo queue, countdown, limbo loadout, zone clamp
+  Pre-match lobby queue, countdown, lobby loadout, zone clamp
   Parties, match teams, alliances, nametags/TAB/chat colors
-  Plugin policy, match queue (enqueue), worlds.yml limbo sections (via catalog)
+  Plugin policy, match queue (enqueue), worlds.yml lobby sections (via catalog)
 
 Iron Legacy owns
   worlds.yml template catalog, publish/snapshots, editor worlds (logic)
   Match engine: freeze, pads, border, elimination, win
   Envoys, replenish, build/dig rules, spawn pads
-  IronLegacyLimboBridge implementation (Hub drives limbo UX)
+  IronLegacyLobbyBridge implementation (Hub drives lobby UX)
 
 Foundation owns
   Shared API types only
@@ -527,7 +527,7 @@ Foundation owns
 KNOWN GAPS
 ================================================================================
 
-Queue → limbo auto-dequeue
+Queue → lobby auto-dequeue
   Expected: queue sends units when lobby slot opens
   Current: enqueue + status only; join via compass GUI
 

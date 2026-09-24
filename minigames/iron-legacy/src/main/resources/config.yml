@@ -156,7 +156,7 @@ spawns:
   pads: [ ]  # deprecated; per-template pads live in worlds.yml
 
 # =========================
-# Limbo / lobby team display names — migrated to HollowCrown Hub config.yml
+# Lobby / lobby team display names — migrated to HollowCrown Hub config.yml
 # =========================
 
 # =========================

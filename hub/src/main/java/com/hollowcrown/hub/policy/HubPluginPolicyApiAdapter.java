@@ -1,7 +1,7 @@
 package com.hollowcrown.hub.policy;
 
 import com.hollowcrown.api.integration.HubPluginPolicyApi;
-import com.hollowcrown.api.integration.PreMatchLimboService;
+import com.hollowcrown.api.integration.PreMatchLobbyService;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -34,12 +34,12 @@ public final class HubPluginPolicyApiAdapter implements HubPluginPolicyApi {
         if (player == null) {
             return Scope.MATCH;
         }
-        RegisteredServiceProvider<PreMatchLimboService> limboReg =
-                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
-        if (limboReg != null) {
+        RegisteredServiceProvider<PreMatchLobbyService> lobbyReg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLobbyService.class);
+        if (lobbyReg != null) {
             try {
-                if (limboReg.getProvider().isInLimbo(player)) {
-                    return Scope.LIMBO;
+                if (lobbyReg.getProvider().isInLobby(player)) {
+                    return Scope.LOBBY;
                 }
             } catch (Throwable ignored) {
             }
@@ -87,7 +87,7 @@ public final class HubPluginPolicyApiAdapter implements HubPluginPolicyApi {
     private static HubPluginPolicyService.Scope toInternal(Scope scope) {
         return switch (scope) {
             case HUB -> HubPluginPolicyService.Scope.HUB;
-            case LIMBO -> HubPluginPolicyService.Scope.LIMBO;
+            case LOBBY -> HubPluginPolicyService.Scope.LOBBY;
             case MATCH -> HubPluginPolicyService.Scope.MATCH;
         };
     }

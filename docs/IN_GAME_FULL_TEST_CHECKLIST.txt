@@ -8,7 +8,7 @@ JARs (order): foundation/target/HC-Foundation-*.jar
               minigames/iron-legacy/target/HCIronLegacy-*.jar
 Do NOT deploy hollowcrown-api.
 
-KNOWN GAP: /hch queue join enqueues only — no auto limbo/match.
+KNOWN GAP: /hch queue join enqueues only — no auto lobby/match.
 
 HOW TO USE WHEN SOMETHING FAILS
 1. Find the failing line below.
@@ -74,9 +74,9 @@ HOW TO USE WHEN SOMETHING FAILS
 
 ⬜  Phase: Phase 0 — Server setup (before joining)
     Subsection: 0.3 Fail-fast
-    Test #2: LimboBridge warning
+    Test #2: LobbyBridge warning
     Expected: Hub warns
-    Code path: HollowCrownHubPlugin.onEnable:204-210 — no IronLegacyLimboBridge service
+    Code path: HollowCrownHubPlugin.onEnable:204-210 — no IronLegacyLobbyBridge service
 
 ⬜  Phase: Phase 0 — Server setup (before joining)
     Subsection: 0.3 Fail-fast
@@ -262,7 +262,7 @@ HOW TO USE WHEN SOMETHING FAILS
     Subsection: 2.2 Join GUI & lobbies
     Test #9: Leave Lobby bed
     Expected: hub return
-    Code path: LobbyJoinMenuListener leave action → HubPreMatchLimboService.leaveLimbo → HubPlayerCommand spawn
+    Code path: LobbyJoinMenuListener leave action → HubPreMatchLobbyService.leaveLobby → HubPlayerCommand spawn
 
 ⬜  Phase: Phase 2 — Hub player flow (normal player)
     Subsection: 2.2 Join GUI & lobbies
@@ -532,7 +532,7 @@ HOW TO USE WHEN SOMETHING FAILS
     Subsection: 3.3 Destroy & BROKEN
     Test #11: /hch lobby destroy
     Expected: unload+delete
-    Code path: HubLobbyService.destroyLobby — evacuate, end limbo, unload world
+    Code path: HubLobbyService.destroyLobby — evacuate, end lobby, unload world
 
 ⬜  Phase: Phase 3 — Hub lobby admin (OP)
     Subsection: 3.3 Destroy & BROKEN
@@ -556,7 +556,7 @@ HOW TO USE WHEN SOMETHING FAILS
     Subsection: 3.4 Prefetch
     Test #15: Last lobby starts match
     Expected: next L# pre-created
-    Code path: HubLobbyService.onMatchStarted / HubPreMatchLimboService.launchSession → prefetch createLobby
+    Code path: HubLobbyService.onMatchStarted / HubPreMatchLobbyService.launchSession → prefetch createLobby
 
 ⬜  Phase: Phase 3 — Hub lobby admin (OP)
     Subsection: 3.4 Prefetch
@@ -588,277 +588,277 @@ HOW TO USE WHEN SOMETHING FAILS
     Expected: new OPEN
     Code path: HubLobbyService.createLobby after publish
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #1: /hch template worlds help
     Expected: docs
     Code path: hub/plugin.yml `/hch` → HollowCrownHubPlugin.onEnable:221-224 → HubCommandExecutor.onCommand template worlds → HubTemplateWorldsCommands.help
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #2: /hch template worlds list
     Expected: worlds.yml rows
     Code path: HubTemplateWorldsCommands.list → IronLegacyTemplateAdminImpl / TemplateWorldManager
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #3: importhub --dry-run
     Expected: preview
     Code path: IronLegacyTemplateAdminImpl.importFromHub dry-run
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #4: importhub
     Expected: import rows
     Code path: IronLegacyTemplateAdminImpl.importFromHub · PERSIST: plugins/HCIronLegacy/worlds.yml
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #5: worlds reload
     Expected: IL reload
     Code path: HubTemplateWorldsCommands.reload → ConfigFilesManager.reloadAll
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #6: /hch gui maps
     Expected: IL browser
     Code path: HubGuiCommands → HubIlTemplateListMenu (DefaultHubAdminGui)
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #7: Click template detail
     Expected: detail GUI
     Code path: HubIlTemplateDetailMenu
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #8: /hch template worlds tp
     Expected: creative editor
     Code path: IronLegacyTemplateAdminImpl.teleportToEditor → TemplateWorldManager
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #9: set display
     Expected: IL display
     Code path: HubTemplateCommands routeTemplateSet → HubIlWorldSetCommand.applyWorldFields
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #10: set maxplayers
     Expected: saved
     Code path: HubIlWorldSetCommand → WorldSettingsManager
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #11: set teamsize
     Expected: saved
     Code path: HubIlWorldSetCommand
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #12: set minimumpercentage
-    Expected: limbo fill %
-    Code path: HubIlWorldSetCommand → worlds.yml · read HubPreMatchLimboService fill gate
+    Expected: lobby fill %
+    Code path: HubIlWorldSetCommand → worlds.yml · read HubPreMatchLobbyService fill gate
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #13: set gamerule
     Expected: saved
     Code path: HubIlWorldSetCommand gamerule branch
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #14: set enabled true
     Expected: join GUI
     Code path: HubIlWorldSetCommand enabled field
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #15: worlds toggle
     Expected: flip enabled
     Code path: IronLegacyTemplateAdminImpl.toggle
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #16: worlds snapshots
     Expected: list IDs
     Code path: IronLegacyTemplateAdminImpl.listSnapshots → TemplateWorldManager
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #17: worlds rollback
     Expected: rollback
     Code path: TemplateWorldManager.rollback
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.1 IL worlds admin via Hub
     Test #18: iconpreview
     Expected: preview chest
     Code path: HubIlIconPreviewMenu + IconManager
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.2 Limbo zone setup
-    Test #19: /hch template limbo wand
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.2 Lobby zone setup
+    Test #19: /hch template lobby wand
     Expected: wand item
-    Code path: HubTemplateLimboCommands.wand → gives stick PDC limboWandTemplateKey
+    Code path: HubTemplateLobbyCommands.wand → gives stick PDC lobbyWandTemplateKey
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.2 Limbo zone setup
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.2 Lobby zone setup
     Test #20: Left-click corner 1
     Expected: saved
-    Code path: HubLimboWandListener left click → HubLimboLayout setCorner1
+    Code path: HubLobbyWandListener left click → HubLobbyLayout setCorner1
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.2 Limbo zone setup
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.2 Lobby zone setup
     Test #21: Right-click corner 2
     Expected: saved
-    Code path: HubLimboWandListener right click → setCorner2
+    Code path: HubLobbyWandListener right click → setCorner2
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.2 Limbo zone setup
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.2 Lobby zone setup
     Test #22: Shift-right confirm
     Expected: outline
-    Code path: HubLimboWandListener confirm → HubLimboWorldsYaml write IL worlds.yml limboZone
+    Code path: HubLobbyWandListener confirm → HubLobbyWorldsYaml write IL worlds.yml lobbyZone
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.2 Limbo zone setup
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.2 Lobby zone setup
     Test #23: Outline updates
     Expected: particles
-    Code path: HubLimboWandListener particle task while holding wand
+    Code path: HubLobbyWandListener particle task while holding wand
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.2 Limbo zone setup
-    Test #24: limbo spawn in zone
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.2 Lobby zone setup
+    Test #24: lobby spawn in zone
     Expected: spawn saved
-    Code path: HubTemplateLimboCommands.spawn → HubLimboWorldsYaml limbo spawn
+    Code path: HubTemplateLobbyCommands.spawn → HubLobbyWorldsYaml lobby spawn
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.2 Limbo zone setup
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.2 Lobby zone setup
     Test #25: spawn outside zone
     Expected: rejected
-    Code path: HubTemplateLimboCommands zone contains check
+    Code path: HubTemplateLobbyCommands zone contains check
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.2 Limbo zone setup
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.2 Lobby zone setup
     Test #26: wand in testmap-L#
     Expected: auto template key
-    Code path: HubLimboWandListener resolveTemplateFromWorld — HubIlTemplateDetailMenu logic
+    Code path: HubLobbyWandListener resolveTemplateFromWorld — HubIlTemplateDetailMenu logic
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.3 Pre-match limbo
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.3 Pre-match lobby
     Test #27: Join via compass
-    Expected: limbo loadout
-    Code path: HubLobbyService.join → HubPreMatchLimboService.registerHubLobbyJoin → HubWorldManager limbo loadout
+    Expected: lobby loadout
+    Code path: HubLobbyService.join → HubPreMatchLobbyService.registerHubLobbyJoin → HubWorldManager lobby loadout
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.3 Pre-match limbo
-    Test #28: Limbo hotbar items
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.3 Pre-match lobby
+    Test #28: Lobby hotbar items
     Expected: sword/compass/party/barrier
-    Code path: hub-world.yml items.limbo + items.hub — HubWorldManager.applyLimboLoadout
+    Code path: hub-world.yml items.lobby + items.hub — HubWorldManager.applyLobbyLoadout
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.3 Pre-match limbo
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.3 Pre-match lobby
     Test #29: Walk outside zone
     Expected: clamped
-    Code path: HubPreMatchLimboArenaListener.onMove / HubPreMatchLimboService.onMoveClamp:60-74
+    Code path: HubPreMatchLobbyArenaListener.onMove / HubPreMatchLobbyService.onMoveClamp:60-74
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.3 Pre-match limbo
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.3 Pre-match lobby
     Test #30: Action bar fill
     Expected: N/max Players
-    Code path: HubPreMatchLimboService tickFill actionbar
+    Code path: HubPreMatchLobbyService tickFill actionbar
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.3 Pre-match limbo
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.3 Pre-match lobby
     Test #31: Below minimumpercentage
     Expected: no auto start
-    Code path: HubPreMatchLimboService fill gate + IronLegacyLimboBridge minimumpercentage
+    Code path: HubPreMatchLobbyService fill gate + IronLegacyLobbyBridge minimumpercentage
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.3 Pre-match limbo
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.3 Pre-match lobby
     Test #32: Fill threshold
     Expected: 5min countdown
-    Code path: HubPreMatchLimboService queue countdown timer
+    Code path: HubPreMatchLobbyService queue countdown timer
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.3 Pre-match limbo
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.3 Pre-match lobby
     Test #33: 10s teleport countdown
     Expected: titles
-    Code path: HubPreMatchLimboService.tickTeleportCountdown
+    Code path: HubPreMatchLobbyService.tickTeleportCountdown
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.3 Pre-match limbo
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.3 Pre-match lobby
     Test #34: Barrier leave
     Expected: hub return
-    Code path: HubPreMatchLimboArenaListener barrier interact → leaveLimbo:451
+    Code path: HubPreMatchLobbyArenaListener barrier interact → leaveLobby:451
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.3 Pre-match limbo
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.3 Pre-match lobby
     Test #35: Picker red bed leave
     Expected: hub return
     Code path: LobbyJoinMenuListener leave lobby bed action
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.3 Pre-match limbo
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.3 Pre-match lobby
     Test #36: /il hostilemobspawn false
     Expected: no hostiles
-    Code path: HGCommand:326 → IronLegacyLimboBridgeImpl.setLimboHostileMobSpawns → HubPreMatchLimboArenaListener.onMobSpawn
+    Code path: HGCommand:326 → IronLegacyLobbyBridgeImpl.setLobbyHostileMobSpawns → HubPreMatchLobbyArenaListener.onMobSpawn
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
-    Subsection: 4.3 Pre-match limbo
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
+    Subsection: 4.3 Pre-match lobby
     Test #37: /il passivemobspawn false
     Expected: no passives
     Code path: HGCommand:351 → passive mob toggle
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.4 Match start & stop
-    Test #38: /il start in limbo
+    Test #38: /il start in lobby
     Expected: countdown→match
-    Code path: HGCommand:437 → PreMatchLimboService.forceBeginTeleportCountdown → HubPreMatchLimboService → IronLegacyLimboBridge.launchSession
+    Code path: HGCommand:437 → PreMatchLobbyService.forceBeginTeleportCountdown → HubPreMatchLobbyService → IronLegacyLobbyBridge.launchSession
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.4 Match start & stop
     Test #39: Match instance world
     Expected: testmap-M#
-    Code path: IronLegacyLimboBridgeImpl → HubIronLegacyMatchInstanceRuntime.createMatchInstance → DefaultGamePlatform.createMatchWorld
+    Code path: IronLegacyLobbyBridgeImpl → HubIronLegacyMatchInstanceRuntime.createMatchInstance → DefaultGamePlatform.createMatchWorld
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.4 Match start & stop
     Test #40: Lobby registry detach
     Expected: row released
     Code path: HubLobbyService.releaseForMatch → MinigameMechanic.onLobbyInstanceReleased
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.4 Match start & stop
     Test #41: /il stop
     Expected: abort to hub
-    Code path: HGCommand:458 → GameManager.stopGame + PreMatchLimboService.abort
+    Code path: HGCommand:458 → GameManager.stopGame + PreMatchLobbyService.abort
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.4 Match start & stop
     Test #42: /il joingame
     Expected: OP bypass
     Code path: HGCommand:376 joingame branch
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.5 Admin shell GUIs
     Test #43: /hch gui admin
     Expected: admin home
     Code path: HubGuiCommands → HubAdminShellMenu
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.5 Admin shell GUIs
     Test #44: Templates browser
     Expected: templates.yml read-only
     Code path: HubHubTemplateBrowserMenu
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.5 Admin shell GUIs
     Test #45: Queues overview
     Expected: live depth
     Code path: HubQueueOverviewMenu → HubMatchQueueService
 
-⬜  Phase: Phase 4 — Iron Legacy integration (limbo → match)
+⬜  Phase: Phase 4 — Iron Legacy integration (lobby → match)
     Subsection: 4.5 Admin shell GUIs
     Test #46: /il admin
     Expected: IL control center
@@ -938,7 +938,7 @@ HOW TO USE WHEN SOMETHING FAILS
 
 ⬜  Phase: Phase 5 — Hub world rules & PvP
     Subsection: 5.2 OP build mode
-    Test #13: /hub after limbo
+    Test #13: /hub after lobby
     Expected: build mode restored
     Code path: HubPlayerCommand teleport callback → applySurvivalHubLoadoutAfterTemplate checks buildMode
 
@@ -1093,22 +1093,22 @@ HOW TO USE WHEN SOMETHING FAILS
     Code path: onRespawn uses pvpRespawnPads
 
 ⬜  Phase: Phase 5 — Hub world rules & PvP
-    Subsection: 5.6 Limbo PvP
-    Test #39: Sword activation limbo
+    Subsection: 5.6 Lobby PvP
+    Test #39: Sword activation lobby
     Expected: same countdown
-    Code path: HubPreMatchLimboArenaListener — delegates HubWorldManager PvP state or parallel limbo PvP handlers
+    Code path: HubPreMatchLobbyArenaListener — delegates HubWorldManager PvP state or parallel lobby PvP handlers
 
 ⬜  Phase: Phase 5 — Hub world rules & PvP
-    Subsection: 5.6 Limbo PvP
-    Test #40: PvP off limbo no TP
+    Subsection: 5.6 Lobby PvP
+    Test #40: PvP off lobby no TP
     Expected: stays put
-    Code path: HubPreMatchLimboArenaListener deactivate — no hub teleport
+    Code path: HubPreMatchLobbyArenaListener deactivate — no hub teleport
 
 ⬜  Phase: Phase 5 — Hub world rules & PvP
-    Subsection: 5.6 Limbo PvP
+    Subsection: 5.6 Lobby PvP
     Test #41: PvP off keeps slot
     Expected: no forced swap
-    Code path: limbo arena listener slot policy
+    Code path: lobby arena listener slot policy
 
 ⬜  Phase: Phase 6 — Iron Legacy admin & template editing
     Subsection: 6.1 Template editor
@@ -1282,7 +1282,7 @@ HOW TO USE WHEN SOMETHING FAILS
     Subsection: 6.4 IL admin GUIs
     Test #29: Worlds Hub Settings
     Expected: hub integration
-    Code path: WorldsHubSettingsMenu → IronLegacyLimboBridgeImpl mob toggles
+    Code path: WorldsHubSettingsMenu → IronLegacyLobbyBridgeImpl mob toggles
 
 ⬜  Phase: Phase 6 — Iron Legacy admin & template editing
     Subsection: 6.4 IL admin GUIs
@@ -1442,9 +1442,9 @@ HOW TO USE WHEN SOMETHING FAILS
 
 ⬜  Phase: Phase 8 — Full match gameplay
     Subsection: 8.1 Match start sequence
-    Test #1: /il start from limbo
+    Test #1: /il start from lobby
     Expected: staged countdown
-    Code path: HGCommand:437 → HubPreMatchLimboService.forceBeginTeleportCountdown → launchSession · API: PreMatchLimboService IronLegacyLimboBridge
+    Code path: HGCommand:437 → HubPreMatchLobbyService.forceBeginTeleportCountdown → launchSession · API: PreMatchLobbyService IronLegacyLobbyBridge
 
 ⬜  Phase: Phase 8 — Full match gameplay
     Subsection: 8.1 Match start sequence
@@ -1456,7 +1456,7 @@ HOW TO USE WHEN SOMETHING FAILS
     Subsection: 8.1 Match start sequence
     Test #3: Teleport timing
     Expected: correct moment
-    Code path: HubPreMatchLimboService.tickTeleportCountdown → launchSession → GameManager.doTeleportPhase
+    Code path: HubPreMatchLobbyService.tickTeleportCountdown → launchSession → GameManager.doTeleportPhase
 
 ⬜  Phase: Phase 8 — Full match gameplay
     Subsection: 8.1 Match start sequence
@@ -1588,7 +1588,7 @@ HOW TO USE WHEN SOMETHING FAILS
     Subsection: 8.4 Death & audio
     Test #25: Kill leaderboard
     Expected: increments
-    Code path: Hub PvP: IronLegacyHubBridge.recordKill · limbo: HubPreMatchLimboArenaListener → KillLeaderboardManager
+    Code path: Hub PvP: IronLegacyHubBridge.recordKill · lobby: HubPreMatchLobbyArenaListener → KillLeaderboardManager
 
 ⬜  Phase: Phase 8 — Full match gameplay
     Subsection: 8.4 Death & audio
@@ -1640,9 +1640,9 @@ HOW TO USE WHEN SOMETHING FAILS
 
 ⬜  Phase: Phase 8 — Full match gameplay
     Subsection: 8.5 Border & endgame
-    Test #34: Limbo reset
+    Test #34: Lobby reset
     Expected: next run
-    Code path: HubPreMatchLimboService.cleanupLimboSession
+    Code path: HubPreMatchLobbyService.cleanupLobbySession
 
 ⬜  Phase: Phase 8 — Full match gameplay
     Subsection: 8.5 Border & endgame
@@ -1652,13 +1652,13 @@ HOW TO USE WHEN SOMETHING FAILS
 
 ⬜  Phase: Phase 8 — Full match gameplay
     Subsection: 8.6 Teams
-    Test #36: /il teams in limbo
+    Test #36: /il teams in lobby
     Expected: Hub party menu
-    Code path: HGCommand:273 isInLimbo → HubPlayerMenus.openPartyMenu
+    Code path: HGCommand:273 isInLobby → HubPlayerMenus.openPartyMenu
 
 ⬜  Phase: Phase 8 — Full match gameplay
     Subsection: 8.6 Teams
-    Test #37: Create team limbo
+    Test #37: Create team lobby
     Expected: works
     Code path: TeamsMenu → TeamManager.createTeam → HubTeamService
 
@@ -1725,7 +1725,7 @@ HOW TO USE WHEN SOMETHING FAILS
 ⬜  Phase: Phase 9 — Persistence & restart
     Subsection: 9.1 Cold restart YAML
     Test #7: IL worlds.yml
-    Expected: limbo zone
+    Expected: lobby zone
     Code path: TemplateWorldManager.reload worlds.yml
 
 ⬜  Phase: Phase 9 — Persistence & restart
@@ -1848,7 +1848,7 @@ HOW TO USE WHEN SOMETHING FAILS
 ⬜ Phase 0 console checks
 ⬜ /hch sethub → /hub → /hch join → join lobby
 ⬜ /hch party create + invite + accept
-⬜ Compass → Game Lobby → limbo → /il start
+⬜ Compass → Game Lobby → lobby → /il start
 ⬜ /il stop → /hub
 
 BUG REPORT TEMPLATE

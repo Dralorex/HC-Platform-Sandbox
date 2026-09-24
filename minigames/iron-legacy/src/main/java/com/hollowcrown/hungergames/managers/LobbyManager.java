@@ -55,7 +55,7 @@ public final class LobbyManager {
             plugin.templates().restoreLobbyAfterLeavingTemplate(p);
             return;
         }
-        plugin.limbo().leaveLimbo(p);
+        plugin.preMatchLobby().leaveLobby(p);
         Location center = getLobbySpawn();
         if (center == null) {
             p.sendMessage(Component.text("Hub spawn is not set. Ask an admin to run /hch sethub.", NamedTextColor.RED));
@@ -96,12 +96,12 @@ public final class LobbyManager {
         });
     }
 
-    public void prepareForLimboJoin(Player p) {
-        plugin.limbo().prepareForLimboJoin(p);
+    public void prepareForLobbyJoin(Player p) {
+        plugin.preMatchLobby().prepareForLobbyJoin(p);
     }
 
-    public void applyLimboLoadout(Player p) {
-        plugin.limbo().applyLimboLoadout(p);
+    public void applyLobbyLoadout(Player p) {
+        plugin.preMatchLobby().applyLobbyLoadout(p);
     }
 
     public void applyLobbyAfterTemplateExitWithoutPriorBuildMode(Player p) {
@@ -128,22 +128,22 @@ public final class LobbyManager {
         return hubWorld().map(HubWorldApi::protectionRadiusBlocks).orElse(64.0);
     }
 
-    /** Limbo worlds only (pre-match service registered by HollowCrownHub). */
+    /** Lobby worlds only (pre-match service registered by HollowCrownHub). */
     public boolean allowHostileMobSpawns() {
-        return plugin.limbo().allowHostileMobSpawns();
+        return plugin.preMatchLobby().allowHostileMobSpawns();
     }
 
-    /** Limbo worlds only (pre-match service registered by HollowCrownHub). */
+    /** Lobby worlds only (pre-match service registered by HollowCrownHub). */
     public boolean allowPassiveMobSpawns() {
-        return plugin.limbo().allowPassiveMobSpawns();
+        return plugin.preMatchLobby().allowPassiveMobSpawns();
     }
 
     public void setAllowHostileMobSpawns(boolean value) {
-        plugin.limbo().setAllowHostileMobSpawns(value);
+        plugin.preMatchLobby().setAllowHostileMobSpawns(value);
     }
 
     public void setAllowPassiveMobSpawns(boolean value) {
-        plugin.limbo().setAllowPassiveMobSpawns(value);
+        plugin.preMatchLobby().setAllowPassiveMobSpawns(value);
     }
 
     public void givePvpPadItem(Player p) {

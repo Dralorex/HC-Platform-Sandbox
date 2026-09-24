@@ -54,14 +54,14 @@ public class WorldsHubSettingsMenu extends MenuView {
                 "§eRight-click: -8"
         )));
         inv.setItem(13, button(Material.ZOMBIE_HEAD, "§cLobby Hostile Mob Spawns", List.of(
-                "§7Hub lobby + limbo worlds.",
+                "§7Hub lobby + lobby worlds.",
                 "",
                 "§7Current: " + onOff(plugin.lobby().allowHostileMobSpawns()),
                 "",
                 "§eLeft/Right-click: Toggle"
         )));
         inv.setItem(15, button(Material.LEATHER, "§aLobby Passive Mob Spawns", List.of(
-                "§7Hub lobby + limbo worlds.",
+                "§7Hub lobby + lobby worlds.",
                 "",
                 "§7Current: " + onOff(plugin.lobby().allowPassiveMobSpawns()),
                 "",

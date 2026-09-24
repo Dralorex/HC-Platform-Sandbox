@@ -11,9 +11,9 @@ import java.util.Locale;
 /**
  * {@code /hch template lobby …} — circle zone wand + spawn (writes HCIronLegacy {@code worlds.yml}).
  */
-public final class HubTemplateLimboCommands {
+public final class HubTemplateLobbyCommands {
 
-    private HubTemplateLimboCommands() {
+    private HubTemplateLobbyCommands() {
     }
 
     /** {@code args[0]} {@code template}, {@code args[1]} {@code lobby}. */
@@ -33,7 +33,7 @@ public final class HubTemplateLimboCommands {
                 yield true;
             }
             case "wand" -> giveWand(plugin, sender);
-            case "spawn" -> HubIlWorldSetCommand.applyLimboSpawn(sender, plugin);
+            case "spawn" -> HubIlWorldSetCommand.applyLobbySpawn(sender, plugin);
             default -> {
                 sender.sendMessage(Component.text("Unknown lobby subcommand. Try /hch template lobby help", NamedTextColor.RED));
                 yield true;
@@ -46,7 +46,7 @@ public final class HubTemplateLimboCommands {
             sender.sendMessage(Component.text("Players only (wand goes into inventory).", NamedTextColor.RED));
             return true;
         }
-        if (plugin.limboLayout().giveLimboWand(p)) {
+        if (plugin.lobbyLayout().giveLobbyWand(p)) {
             p.sendMessage(Component.text(
                     "Lobby circle wand given. Left=center, Right=edge, Shift+scroll cycles tip, Shift-right saves. Spawn: /hch template lobby spawn",
                     NamedTextColor.GREEN));

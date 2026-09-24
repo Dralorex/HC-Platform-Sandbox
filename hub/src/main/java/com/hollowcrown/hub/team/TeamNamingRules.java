@@ -11,7 +11,7 @@ import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Limbo / lobby team display names: length, character set, profanity (config list), uniqueness.
+ * Lobby / lobby team display names: length, character set, profanity (config list), uniqueness.
  */
 public final class TeamNamingRules {
     public static final int MAX_NAME_LENGTH = 20;
@@ -84,7 +84,7 @@ public final class TeamNamingRules {
         if (TeamManager.getOrCreateWorldInstance(player.getWorld()).teams.containsKey(stripped.toLowerCase(Locale.ROOT))) {
             return Optional.of("That name is already in use.");
         }
-        //if (player != null && teams.nameTakenByOtherTeamInSameLimbo(player, stripped)) {
+        //if (player != null && teams.nameTakenByOtherTeamInSameLobby(player, stripped)) {
         if(player != null && TeamManager.getOrCreateWorldInstance(player.getWorld()).findPlayerTeam(player) != TeamManager.getOrCreateWorldInstance(player.getWorld()).teams.get(stripped.toLowerCase(Locale.ROOT))) {
             return Optional.of("You are already on a team!");
         }
@@ -109,7 +109,7 @@ public final class TeamNamingRules {
         if (TeamManager.getOrCreateWorldInstance(player.getWorld()).teams.containsKey(stripped.toLowerCase(Locale.ROOT))) {
             return Optional.of("That name is already in use.");
         }
-        //if (player != null && teams.nameTakenByOtherTeamInSameLimbo(player, stripped)) {
+        //if (player != null && teams.nameTakenByOtherTeamInSameLobby(player, stripped)) {
         if(TeamManager.getOrCreateWorldInstance(player.getWorld()).findPlayerTeam(player) == null) {
             return Optional.of("You do not have a team!");
         }
@@ -201,7 +201,7 @@ public final class TeamNamingRules {
     }
 
     private static boolean containsProfanity(String strippedDisplay, HollowCrownHubPlugin plugin) {
-        List<String> words = plugin.getConfig().getStringList("limboTeamNaming.blockedWords");
+        List<String> words = plugin.getConfig().getStringList("lobbyTeamNaming.blockedWords");
         if (words == null || words.isEmpty()) {
             return false;
         }

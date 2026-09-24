@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Admin GUI for Hub/Limbo/Match plugin policy lists.
+ * Admin GUI for Hub/Lobby/Match plugin policy lists.
  *
  * <p>Click the wool to toggle WHITELIST/BLACKLIST mode.
  * Click a plugin book to add/remove it from the list.</p>
@@ -27,7 +27,7 @@ import java.util.Set;
 public final class HubPluginPolicyAdminMenu extends HubMenuView {
 
     private static final int SLOT_SCOPE_HUB = 0;
-    private static final int SLOT_SCOPE_LIMBO = 1;
+    private static final int SLOT_SCOPE_LOBBY = 1;
     private static final int SLOT_SCOPE_MATCH = 2;
     private static final int SLOT_TOGGLE_MODE = 4;
     private static final int SLOT_PAGE_PREV = 6;
@@ -89,8 +89,8 @@ public final class HubPluginPolicyAdminMenu extends HubMenuView {
                 rebuild();
                 return;
             }
-            if (slot == SLOT_SCOPE_LIMBO) {
-                scope = HubPluginPolicyService.Scope.LIMBO;
+            if (slot == SLOT_SCOPE_LOBBY) {
+                scope = HubPluginPolicyService.Scope.LOBBY;
                 page = 0;
                 rebuild();
                 return;
@@ -153,7 +153,7 @@ public final class HubPluginPolicyAdminMenu extends HubMenuView {
 
         if (!lockedScope) {
             inv.setItem(SLOT_SCOPE_HUB, scopeBtn("Hub", scope == HubPluginPolicyService.Scope.HUB));
-            inv.setItem(SLOT_SCOPE_LIMBO, scopeBtn("Limbo", scope == HubPluginPolicyService.Scope.LIMBO));
+            inv.setItem(SLOT_SCOPE_LOBBY, scopeBtn("Lobby", scope == HubPluginPolicyService.Scope.LOBBY));
             inv.setItem(SLOT_SCOPE_MATCH, scopeBtn("Match", scope == HubPluginPolicyService.Scope.MATCH));
         }
 

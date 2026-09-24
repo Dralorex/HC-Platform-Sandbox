@@ -9,15 +9,15 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Hunger Games engine hooks for Hub-owned pre-match limbo (registered by HCIronLegacy).
+ * Hunger Games engine hooks for Hub-owned pre-match lobby (registered by HCIronLegacy).
  */
-public interface IronLegacyLimboBridge {
+public interface IronLegacyLobbyBridge {
 
     record TemplateRow(String key, String worldName, int maxPlayers, int teamSizeMax) {}
 
     record MatchInstanceRow(String worldName) {}
 
-    record LimboZoneCorners(double x1, double y1, double z1, double x2, double y2, double z2) {}
+    record LobbyZoneCorners(double x1, double y1, double z1, double x2, double y2, double z2) {}
 
     Optional<TemplateRow> findTemplate(String keyOrWorld);
 
@@ -27,11 +27,11 @@ public interface IronLegacyLimboBridge {
 
     int minimumFillPercent(String templateKey);
 
-    Optional<LimboZoneCorners> limboZoneCorners(String templateKey);
+    Optional<LobbyZoneCorners> lobbyZoneCorners(String templateKey);
 
-    Location resolveLimboSpawn(TemplateRow info, String instanceWorldName);
+    Location resolveLobbySpawn(TemplateRow info, String instanceWorldName);
 
-    boolean startGameOnPreparedInstance(World instanceWorld, Set<UUID> players, boolean fromLimbo);
+    boolean startGameOnPreparedInstance(World instanceWorld, Set<UUID> players, boolean fromLobby);
 
     String lastGameStartError();
 
@@ -39,7 +39,7 @@ public interface IronLegacyLimboBridge {
 
     void clearJoinIntent(Player player);
 
-    void assignTeamsForLimboLaunch(String templateKey, int teamSizeMax, Set<UUID> onlinePlayerIds);
+    void assignTeamsForLobbyLaunch(String templateKey, int teamSizeMax, Set<UUID> onlinePlayerIds);
 
     void returnToHubOrLobby(Player player, boolean wipeInv, boolean selectCompass);
 
@@ -51,19 +51,19 @@ public interface IronLegacyLimboBridge {
 
     void sendToLobbyExact(Player player, boolean wipeInv, boolean selectCompass);
 
-    boolean limboHostileMobSpawns();
+    boolean lobbyHostileMobSpawns();
 
-    boolean limboPassiveMobSpawns();
+    boolean lobbyPassiveMobSpawns();
 
-    void setLimboHostileMobSpawns(boolean value);
+    void setLobbyHostileMobSpawns(boolean value);
 
-    void setLimboPassiveMobSpawns(boolean value);
+    void setLobbyPassiveMobSpawns(boolean value);
 
-    String limboPvpSwordMaterialName();
+    String lobbyPvpSwordMaterialName();
 
-    void migrateLimboLobbyYamlDefaultsIfNeeded();
+    void migrateLobbyYamlDefaultsIfNeeded();
 
-    /** True when this backend should run hub-style limbo listeners (matches IL {@code ServerRoleManager#isHubLike}). */
+    /** True when this backend should run hub-style lobby listeners (matches IL {@code ServerRoleManager#isHubLike}). */
     boolean isHubLikeServerRole();
 
     /** True while the player is in an active Iron Legacy match (from launch until eliminated or match end). */

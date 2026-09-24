@@ -71,12 +71,12 @@ public class HGCommand implements CommandExecutor, TabCompleter {
         return false;
     }
 
-    /** Resolve template key for spawn-pad commands; player must stand in a template/limbo/match world. */
+    /** Resolve template key for spawn-pad commands; player must stand in a template/lobby/match world. */
     private Optional<String> requireSpawnTemplateKey(Player p) {
         var tk = HungerGamesPlugin.get().templates().resolveTemplateKeyForWorld(p.getWorld().getName());
         if (tk.isEmpty()) {
             p.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                    "\u00A7cStand in a template editor, limbo lobby, or match world to edit spawn pads."));
+                    "\u00A7cStand in a template editor, lobby, or match world to edit spawn pads."));
         }
         return tk;
     }
@@ -89,7 +89,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " help§7 - show this help menu"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " party§7 - open Hollow Crown Hub party menu"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/hub§7 (or /lobby) — teleport to Hollow Crown hub + utility hotbar"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " teams§7 - in limbo: Hub party menu; otherwise OP teams/main GUI"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " teams§7 - in lobby: Hub party menu; otherwise OP teams/main GUI"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " leaderboard|lb§7 - show top kills"));
 
         if (!op) return;
@@ -103,11 +103,11 @@ public class HGCommand implements CommandExecutor, TabCompleter {
 
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§bAdmin - Hub world (HollowCrownHub)"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§7Use §e/hch sethub§r, §e/hub§r, §e/hch hubworld …§7 for spawn, radius, build mode, pads."));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§bAdmin - Limbo / Match"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " hostilemobspawn <true|false|t|f>§7 - hostile spawns in §elimbo§7 worlds"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " passivemobspawn <true|false|t|f>§7 - passive spawns in §elimbo§7 worlds"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " start [limbo_world|template]§7 - force limbo match countdown (like lobby full)"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " stop§7 - stop match + cancel limbo queues, send players to hub"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§bAdmin - Lobby / Match"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " hostilemobspawn <true|false|t|f>§7 - hostile spawns in §elobby§7 worlds"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " passivemobspawn <true|false|t|f>§7 - passive spawns in §elobby§7 worlds"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " start [lobby_world|template]§7 - force lobby match countdown (like lobby full)"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " stop§7 - stop match + cancel lobby queues, send players to hub"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " reload§7 - reload config/rules/templates/icons"));
 
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7bAdmin - Spawns/Teams/Rules"));
@@ -472,7 +472,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("Players only."));
                     return true;
                 }
-                if (HungerGamesPlugin.get().limbo().isInLimbo(p)) {
+                if (HungerGamesPlugin.get().preMatchLobby().isInLobby(p)) {
                     HungerGamesPlugin.get().hubPlayerMenus().ifPresentOrElse(
                             m -> m.openPartyMenu(p),
                             () -> p.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
@@ -547,7 +547,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 }
                 HungerGamesPlugin.get().lobby().setAllowHostileMobSpawns(onH);
                 HungerGamesPlugin.get().history().log(p.getName(), "set_hostile_mob_spawn", onH.toString());
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aLimbo hostile mob spawns: " + onH));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aLobby hostile mob spawns: " + onH));
                 return true;
             }
             case "passivemobspawn", "passivemobspawns" -> {
@@ -572,7 +572,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 }
                 HungerGamesPlugin.get().lobby().setAllowPassiveMobSpawns(onP);
                 HungerGamesPlugin.get().history().log(p.getName(), "set_passive_mob_spawn", onP.toString());
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aLimbo passive mob spawns: " + onP));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aLobby passive mob spawns: " + onP));
                 return true;
             }
             case "joingame" -> {
@@ -648,24 +648,24 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 }
                 if (key == null || key.isBlank()) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                            "§cUsage: /" + label + " start <limbo_instance_world|template_key>§7 (or stand in the limbo instance)"));
+                            "§cUsage: /" + label + " start <lobby_instance_world|template_key>§7 (or stand in the lobby instance)"));
                     return true;
                 }
-                boolean ok = HungerGamesPlugin.get().limbo().forceBeginTeleportCountdown(key);
+                boolean ok = HungerGamesPlugin.get().preMatchLobby().forceBeginTeleportCountdown(key);
                 if (ok) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                            "§aLimbo match countdown started (same as lobby full)."));
+                            "§aLobby match countdown started (same as lobby full)."));
                 } else {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                            "§cNo active limbo queue for §f" + key + "§c. Players must join limbo first."));
+                            "§cNo active lobby queue for §f" + key + "§c. Players must join lobby first."));
                 }
                 return true;
             }
             case "stop" -> {
                 if (!requireRole(sender, "stop", ServerRoleManager.Role.GAME, ServerRoleManager.Role.STANDALONE)) return true;
-                HungerGamesPlugin.get().limbo().abortAllQueuesAndKickToHub();
+                HungerGamesPlugin.get().preMatchLobby().abortAllQueuesAndKickToHub();
                 game.stopGame(true);
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eStopped limbo queues and match (if any); players sent to hub."));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eStopped lobby queues and match (if any); players sent to hub."));
                 return true;
             }
             case "addspawn" -> {

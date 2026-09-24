@@ -1,4 +1,4 @@
-package com.hollowcrown.hub.limbo;
+package com.hollowcrown.hub.lobby;
 
 import com.hollowcrown.api.integration.IronLegacyWorldsCatalog;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
@@ -19,10 +19,10 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * Writes Iron Legacy {@code worlds.yml} limbo sections only (zone corners + spawn).
+ * Writes Iron Legacy {@code worlds.yml} lobby sections only (zone corners + spawn).
  * Runtime gameplay still reads these paths via HCIronLegacy {@link com.hollowcrown.api.integration.IronLegacyTemplateAdmin#reloadWorldsYamlFromDisk()}.
  */
-public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
+public final class HubLobbyWorldsYaml implements IronLegacyWorldsCatalog {
 
     static final Pattern SAFE_TEMPLATE_KEY = Pattern.compile("^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$");
 
@@ -31,7 +31,7 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
     private final HollowCrownHubPlugin plugin;
     private final Object fileLock = new Object();
 
-    public HubLimboWorldsYaml(HollowCrownHubPlugin plugin) {
+    public HubLobbyWorldsYaml(HollowCrownHubPlugin plugin) {
         this.plugin = plugin;
     }
 
@@ -64,7 +64,42 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
             yaml = YamlConfiguration.loadConfiguration(f);
         }
         ensureRoots(yaml);
+        if (promoteLegacyZoneSections(yaml) && f.exists()) {
+            try {
+                yaml.save(f);
+            } catch (IOException ex) {
+                plugin.getLogger().warning("Could not rewrite worlds.yml zone sections: " + ex.getMessage());
+            }
+        }
         return yaml;
+    }
+
+    /** Copies the previous zone section name onto {@code lobby} so existing templates keep their circle and spawn. */
+    private static boolean promoteLegacyZoneSections(YamlConfiguration yaml) {
+        ConfigurationSection worlds = yaml.getConfigurationSection("worlds");
+        if (worlds == null) {
+            return false;
+        }
+        String legacy = "lim" + "bo";
+        boolean changed = false;
+        for (String key : List.copyOf(worlds.getKeys(false))) {
+            ConfigurationSection template = worlds.getConfigurationSection(key);
+            if (template == null || template.isConfigurationSection("lobby")) {
+                continue;
+            }
+            ConfigurationSection old = template.getConfigurationSection(legacy);
+            if (old == null) {
+                continue;
+            }
+            ConfigurationSection neu = template.createSection("lobby");
+            for (String path : old.getKeys(true)) {
+                if (!old.isConfigurationSection(path)) {
+                    neu.set(path, old.get(path));
+                }
+            }
+            changed = true;
+        }
+        return changed;
     }
 
     private void save(YamlConfiguration yaml) throws IOException {
@@ -124,7 +159,7 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
                 Bukkit.getScheduler().runTask(plugin, admin::reloadWorldsYamlFromDisk));
     }
 
-    /** Minimal {@code worlds.<key>} row when saving limbo before any other tooling created it. */
+    /** Minimal {@code worlds.<key>} row when saving lobby before any other tooling created it. */
     private static void ensureMinimalWorldSection(YamlConfiguration yaml, String templateKey, String worldFolderName) {
         String b = base(templateKey);
         if (!yaml.isConfigurationSection(b)) {
@@ -144,8 +179,8 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
         yaml.set(b + ".allyFriendlyFire", yaml.getBoolean(b + ".allyFriendlyFire", true));
         yaml.set(b + ".iconKey", yaml.getString(b + ".iconKey", "default"));
         yaml.set(b + ".version", yaml.getInt(b + ".version", 0));
-        int pct = yaml.getInt(b + ".limbo.minimumPercentage", 80);
-        yaml.set(b + ".limbo.minimumPercentage", Math.max(1, Math.min(100, pct)));
+        int pct = yaml.getInt(b + ".lobby.minimumPercentage", 80);
+        yaml.set(b + ".lobby.minimumPercentage", Math.max(1, Math.min(100, pct)));
     }
 
     private static void writeCorner(YamlConfiguration yaml, String path, Location loc) {
@@ -223,7 +258,7 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
         return plugin.templates().get(templateLeaf).map(e -> e.templateKey().toLowerCase(Locale.ROOT));
     }
 
-    public Optional<LimboZone> limboZone(String templateKey) {
+    public Optional<LobbyZone> lobbyZone(String templateKey) {
         if (templateKey == null || templateKey.isBlank()) {
             return Optional.empty();
         }
@@ -234,8 +269,8 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
         synchronized (fileLock) {
             YamlConfiguration yaml = loadFresh();
             String b = base(canon);
-            String p1 = b + ".limbo.zone.pos1";
-            String p2 = b + ".limbo.zone.pos2";
+            String p1 = b + ".lobby.zone.pos1";
+            String p2 = b + ".lobby.zone.pos2";
             if (!yaml.contains(p1 + ".x") || !yaml.contains(p2 + ".x")) {
                 return Optional.empty();
             }
@@ -244,17 +279,17 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
             if (a == null || c == null) {
                 return Optional.empty();
             }
-            if (yaml.contains(b + ".limbo.zone.radius") && yaml.contains(b + ".limbo.zone.centerX")) {
-                double radius = yaml.getDouble(b + ".limbo.zone.radius", -1);
+            if (yaml.contains(b + ".lobby.zone.radius") && yaml.contains(b + ".lobby.zone.centerX")) {
+                double radius = yaml.getDouble(b + ".lobby.zone.radius", -1);
                 if (radius > 0) {
-                    return Optional.of(new LimboZone(
+                    return Optional.of(new LobbyZone(
                             a, c,
-                            yaml.getDouble(b + ".limbo.zone.centerX"),
-                            yaml.getDouble(b + ".limbo.zone.centerZ"),
+                            yaml.getDouble(b + ".lobby.zone.centerX"),
+                            yaml.getDouble(b + ".lobby.zone.centerZ"),
                             radius));
                 }
             }
-            return Optional.of(new LimboZone(a, c));
+            return Optional.of(new LobbyZone(a, c));
         }
     }
 
@@ -323,34 +358,34 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
         if (canon == null || canon.isBlank()) return 80;
         synchronized (fileLock) {
             YamlConfiguration yaml = loadFresh();
-            int pct = yaml.getInt(base(canon) + ".limbo.minimumPercentage", 80);
+            int pct = yaml.getInt(base(canon) + ".lobby.minimumPercentage", 80);
             return Math.max(1, Math.min(100, pct));
         }
     }
 
     @Override
-    public Optional<IronLegacyWorldsCatalog.LimboZoneCorners> limboZoneCorners(String templateKey) {
-        return limboZone(templateKey).map(z -> new IronLegacyWorldsCatalog.LimboZoneCorners(
+    public Optional<IronLegacyWorldsCatalog.LobbyZoneCorners> lobbyZoneCorners(String templateKey) {
+        return lobbyZone(templateKey).map(z -> new IronLegacyWorldsCatalog.LobbyZoneCorners(
                 z.pos1().getX(), z.pos1().getY(), z.pos1().getZ(), z.pos2().getX(), z.pos2().getY(), z.pos2().getZ()));
     }
 
     @Override
-    public Optional<IronLegacyWorldsCatalog.LimboSpawn> limboSpawn(String templateKey) {
+    public Optional<IronLegacyWorldsCatalog.LobbySpawn> lobbySpawn(String templateKey) {
         if (templateKey == null || templateKey.isBlank()) return Optional.empty();
         String canon = canonicalTemplateKey(templateKey);
         if (canon == null || canon.isBlank()) return Optional.empty();
         synchronized (fileLock) {
             YamlConfiguration yaml = loadFresh();
             String b = base(canon);
-            if (!yaml.contains(b + ".limbo.x")) return Optional.empty();
-            String world = yaml.getString(b + ".limbo.world", "");
-            return Optional.of(new IronLegacyWorldsCatalog.LimboSpawn(
+            if (!yaml.contains(b + ".lobby.x")) return Optional.empty();
+            String world = yaml.getString(b + ".lobby.world", "");
+            return Optional.of(new IronLegacyWorldsCatalog.LobbySpawn(
                     world,
-                    yaml.getDouble(b + ".limbo.x"),
-                    yaml.getDouble(b + ".limbo.y"),
-                    yaml.getDouble(b + ".limbo.z"),
-                    (float) yaml.getDouble(b + ".limbo.yaw", 0.0),
-                    (float) yaml.getDouble(b + ".limbo.pitch", 0.0)
+                    yaml.getDouble(b + ".lobby.x"),
+                    yaml.getDouble(b + ".lobby.y"),
+                    yaml.getDouble(b + ".lobby.z"),
+                    (float) yaml.getDouble(b + ".lobby.yaw", 0.0),
+                    (float) yaml.getDouble(b + ".lobby.pitch", 0.0)
             ));
         }
     }
@@ -419,7 +454,7 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
     }
     @Override public boolean setMinimumPercentage(String templateKey, int percentage) {
         int pct = Math.max(1, Math.min(100, percentage));
-        return editTemplate(templateKey, (yaml, b) -> { yaml.set(b + ".limbo.minimumPercentage", pct); return true; });
+        return editTemplate(templateKey, (yaml, b) -> { yaml.set(b + ".lobby.minimumPercentage", pct); return true; });
     }
     @Override public boolean setPublishGameRule(String templateKey, String ruleName, boolean value) {
         if (ruleName == null || ruleName.isBlank()) return false;
@@ -437,14 +472,14 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
      * Saves a cylindrical lobby zone. {@code pos1}/{@code pos2} stay as the axis-aligned bounds
      * so older corner readers still see a region; {@code contains} uses the circle when radius is set.
      */
-    public boolean writeLimboCircle(String templateKey, Location center, Location edge) {
+    public boolean writeLobbyCircle(String templateKey, Location center, Location edge) {
         if (templateKey == null || templateKey.isBlank()
                 || center == null || edge == null
                 || center.getWorld() == null || edge.getWorld() == null
                 || !center.getWorld().equals(edge.getWorld())) {
             return false;
         }
-        double radius = HubLimboWandListener.horizontalRadius(center, edge);
+        double radius = HubLobbyWandListener.horizontalRadius(center, edge);
         int minY = Math.min(center.getBlockY(), edge.getBlockY());
         int maxY = Math.max(center.getBlockY(), edge.getBlockY());
         if (minY == maxY) {
@@ -462,22 +497,22 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
                 if (!yaml.isConfigurationSection(b)) {
                     ensureMinimalWorldSection(yaml, templateKey, center.getWorld().getName());
                 }
-                writeCorner(yaml, b + ".limbo.zone.pos1", pos1);
-                writeCorner(yaml, b + ".limbo.zone.pos2", pos2);
-                yaml.set(b + ".limbo.zone.centerX", cx);
-                yaml.set(b + ".limbo.zone.centerZ", cz);
-                yaml.set(b + ".limbo.zone.radius", radius);
+                writeCorner(yaml, b + ".lobby.zone.pos1", pos1);
+                writeCorner(yaml, b + ".lobby.zone.pos2", pos2);
+                yaml.set(b + ".lobby.zone.centerX", cx);
+                yaml.set(b + ".lobby.zone.centerZ", cz);
+                yaml.set(b + ".lobby.zone.radius", radius);
                 save(yaml);
                 notifyIronLegacyReload();
                 return true;
             } catch (IOException ex) {
-                plugin.getLogger().warning("Could not save limbo circle to worlds.yml: " + ex.getMessage());
+                plugin.getLogger().warning("Could not save lobby circle to worlds.yml: " + ex.getMessage());
                 return false;
             }
         }
     }
 
-    public boolean writeLimboZone(String templateKey, Location pos1, Location pos2) {
+    public boolean writeLobbyZone(String templateKey, Location pos1, Location pos2) {
         if (templateKey == null || templateKey.isBlank()
                 || pos1 == null || pos2 == null || pos1.getWorld() == null || pos2.getWorld() == null) {
             return false;
@@ -489,19 +524,19 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
                 if (!yaml.isConfigurationSection(b)) {
                     ensureMinimalWorldSection(yaml, templateKey, pos1.getWorld().getName());
                 }
-                writeCorner(yaml, b + ".limbo.zone.pos1", pos1);
-                writeCorner(yaml, b + ".limbo.zone.pos2", pos2);
+                writeCorner(yaml, b + ".lobby.zone.pos1", pos1);
+                writeCorner(yaml, b + ".lobby.zone.pos2", pos2);
                 save(yaml);
                 notifyIronLegacyReload();
                 return true;
             } catch (IOException ex) {
-                plugin.getLogger().warning("Could not save limbo zone to worlds.yml: " + ex.getMessage());
+                plugin.getLogger().warning("Could not save lobby zone to worlds.yml: " + ex.getMessage());
                 return false;
             }
         }
     }
 
-    public boolean writeLimboSpawn(String templateKey, Location loc) {
+    public boolean writeLobbySpawn(String templateKey, Location loc) {
         if (templateKey == null || templateKey.isBlank() || loc == null || loc.getWorld() == null) {
             return false;
         }
@@ -512,30 +547,30 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
                 if (!yaml.isConfigurationSection(b)) {
                     ensureMinimalWorldSection(yaml, templateKey, loc.getWorld().getName());
                 }
-                yaml.set(b + ".limbo.world", loc.getWorld().getName());
-                yaml.set(b + ".limbo.x", loc.getX());
-                yaml.set(b + ".limbo.y", loc.getY());
-                yaml.set(b + ".limbo.z", loc.getZ());
-                yaml.set(b + ".limbo.yaw", loc.getYaw());
-                yaml.set(b + ".limbo.pitch", loc.getPitch());
+                yaml.set(b + ".lobby.world", loc.getWorld().getName());
+                yaml.set(b + ".lobby.x", loc.getX());
+                yaml.set(b + ".lobby.y", loc.getY());
+                yaml.set(b + ".lobby.z", loc.getZ());
+                yaml.set(b + ".lobby.yaw", loc.getYaw());
+                yaml.set(b + ".lobby.pitch", loc.getPitch());
                 save(yaml);
                 notifyIronLegacyReload();
                 return true;
             } catch (IOException ex) {
-                plugin.getLogger().warning("Could not save limbo spawn to worlds.yml: " + ex.getMessage());
+                plugin.getLogger().warning("Could not save lobby spawn to worlds.yml: " + ex.getMessage());
                 return false;
             }
         }
     }
 
-    public record LimboZone(
+    public record LobbyZone(
             Location pos1,
             Location pos2,
             Double circleCenterX,
             Double circleCenterZ,
             Double circleRadius
     ) {
-        public LimboZone(Location pos1, Location pos2) {
+        public LobbyZone(Location pos1, Location pos2) {
             this(pos1, pos2, null, null, null);
         }
 

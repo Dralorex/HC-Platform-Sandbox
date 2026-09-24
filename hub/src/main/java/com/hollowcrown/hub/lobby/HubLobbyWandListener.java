@@ -1,4 +1,4 @@
-package com.hollowcrown.hub.limbo;
+package com.hollowcrown.hub.lobby;
 
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import net.kyori.adventure.text.Component;
@@ -32,11 +32,11 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
- * Template lobby circle wand. Writes HCIronLegacy {@code worlds.yml} limbo zone.
+ * Template lobby circle wand. Writes HCIronLegacy {@code worlds.yml} lobby zone.
  * Left-click center, right-click edge (radius + height). Shift+scroll cycles the tip
  * and locks the hotbar slot. Shift-right-click saves. Spawn is {@code /hch template lobby spawn}.
  */
-public final class HubLimboWandListener implements Listener {
+public final class HubLobbyWandListener implements Listener {
 
     private static final String WAND_MARKER = "lobby_circle";
     private static final Pattern LOBBY_SUFFIX = Pattern.compile("-L\\d+$");
@@ -48,10 +48,10 @@ public final class HubLimboWandListener implements Listener {
     }
 
     private final HollowCrownHubPlugin plugin;
-    private final HubLimboWorldsYaml worldsYaml;
+    private final HubLobbyWorldsYaml worldsYaml;
     private final Map<UUID, EditorState> editors = new HashMap<>();
 
-    public HubLimboWandListener(HollowCrownHubPlugin plugin, HubLimboWorldsYaml worldsYaml) {
+    public HubLobbyWandListener(HollowCrownHubPlugin plugin, HubLobbyWorldsYaml worldsYaml) {
         this.plugin = plugin;
         this.worldsYaml = worldsYaml;
         startHudTask();
@@ -72,7 +72,7 @@ public final class HubLimboWandListener implements Listener {
                     Component.text("Border + HUD only while holding this wand", NamedTextColor.DARK_GRAY)
             ));
             meta.getPersistentDataContainer().set(
-                    plugin.limboWandTemplateKey(), PersistentDataType.STRING, WAND_MARKER);
+                    plugin.lobbyWandTemplateKey(), PersistentDataType.STRING, WAND_MARKER);
             wand.setItemMeta(meta);
         }
         return wand;
@@ -147,7 +147,7 @@ public final class HubLimboWandListener implements Listener {
                 p.sendMessage(Component.text("Set center (left-click) and edge (right-click) first.", NamedTextColor.RED));
                 return;
             }
-            if (!worldsYaml.writeLimboCircle(templateKey, state.center, state.edge)) {
+            if (!worldsYaml.writeLobbyCircle(templateKey, state.center, state.edge)) {
                 p.sendMessage(Component.text("Failed to save lobby circle.", NamedTextColor.RED));
                 return;
             }
@@ -231,7 +231,7 @@ public final class HubLimboWandListener implements Listener {
                 Location c = state.center;
                 Location e = state.edge;
                 if (c == null && state.templateKey != null) {
-                    worldsYaml.limboZone(state.templateKey).ifPresent(zone -> {
+                    worldsYaml.lobbyZone(state.templateKey).ifPresent(zone -> {
                         if (zone.circle()) {
                             Location center = new Location(viewer.getWorld(), zone.circleCenterX(),
                                     Math.min(zone.pos1().getY(), zone.pos2().getY()), zone.circleCenterZ());
@@ -301,7 +301,7 @@ public final class HubLimboWandListener implements Listener {
         if (normalized.toLowerCase(Locale.ROOT).startsWith(MANAGED_PREFIX.toLowerCase(Locale.ROOT))) {
             String tail = normalized.substring(MANAGED_PREFIX.length());
             String key = tail.toLowerCase(Locale.ROOT);
-            if (HubLimboWorldsYaml.SAFE_TEMPLATE_KEY.matcher(key).matches()) {
+            if (HubLobbyWorldsYaml.SAFE_TEMPLATE_KEY.matcher(key).matches()) {
                 return key;
             }
         }
@@ -312,7 +312,7 @@ public final class HubLimboWandListener implements Listener {
                 return fromStripped.get();
             }
             String lower = stripped.toLowerCase(Locale.ROOT);
-            if (HubLimboWorldsYaml.SAFE_TEMPLATE_KEY.matcher(lower).matches()) {
+            if (HubLobbyWorldsYaml.SAFE_TEMPLATE_KEY.matcher(lower).matches()) {
                 return lower;
             }
         }
@@ -322,7 +322,7 @@ public final class HubLimboWandListener implements Listener {
             }
         }
         String lower = worldName.toLowerCase(Locale.ROOT);
-        if (HubLimboWorldsYaml.SAFE_TEMPLATE_KEY.matcher(lower).matches()) {
+        if (HubLobbyWorldsYaml.SAFE_TEMPLATE_KEY.matcher(lower).matches()) {
             return lower;
         }
         return null;
@@ -338,7 +338,7 @@ public final class HubLimboWandListener implements Listener {
             return false;
         }
         String tag = item.getItemMeta().getPersistentDataContainer()
-                .get(plugin.limboWandTemplateKey(), PersistentDataType.STRING);
+                .get(plugin.lobbyWandTemplateKey(), PersistentDataType.STRING);
         return WAND_MARKER.equals(tag);
     }
 

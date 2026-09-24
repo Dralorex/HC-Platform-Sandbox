@@ -224,93 +224,12 @@ public final class HubWorldManager implements HubWorldApi, Listener {
     @Override
     public boolean isLocationInHubProtection(Location loc) {
         if (loc == null || loc.getWorld() == null) return false;
-        Optional<LobbyCircleZone> circle = lobbyCircleZone();
-        if (circle.isPresent()) {
-            LobbyCircleZone z = circle.get();
-            if (!Objects.equals(z.center().getWorld(), loc.getWorld())) {
-                return false;
-            }
-            if (loc.getBlockY() < z.minY() || loc.getBlockY() > z.maxY()) {
-                return false;
-            }
-            double dx = loc.getX() - (z.center().getBlockX() + 0.5);
-            double dz = loc.getZ() - (z.center().getBlockZ() + 0.5);
-            return (dx * dx + dz * dz) <= (z.radius() * z.radius());
-        }
         Optional<Location> centerOpt = hubCenterLocation();
         if (centerOpt.isEmpty()) return false;
         Location center = centerOpt.get();
         if (!Objects.equals(center.getWorld(), loc.getWorld())) return false;
         double size = protectionRadiusBlocks();
         return Math.abs(loc.getX() - center.getX()) <= size && Math.abs(loc.getZ() - center.getZ()) <= size;
-    }
-
-    /** Saved cylindrical lobby protection, if configured via the circle wand. */
-    public Optional<LobbyCircleZone> lobbyCircleZone() {
-        var c = hw();
-        if (!c.getBoolean("protection.circle.enabled", false)) {
-            return Optional.empty();
-        }
-        String uuidStr = c.getString("protection.circle.worldUuid", "");
-        if (uuidStr == null || uuidStr.isBlank() || !c.isSet("protection.circle.centerX")) {
-            return Optional.empty();
-        }
-        try {
-            World w = Bukkit.getWorld(UUID.fromString(uuidStr.trim()));
-            if (w == null) {
-                return Optional.empty();
-            }
-            double cx = c.getDouble("protection.circle.centerX");
-            double cy = c.getDouble("protection.circle.centerY");
-            double cz = c.getDouble("protection.circle.centerZ");
-            double radius = Math.max(1.0, c.getDouble("protection.circle.radius", 64.0));
-            int minY = c.getInt("protection.circle.minY", w.getMinHeight());
-            int maxY = c.getInt("protection.circle.maxY", w.getMaxHeight() - 1);
-            Location center = new Location(w, cx, cy, cz);
-            return Optional.of(new LobbyCircleZone(center, radius, minY, maxY));
-        } catch (IllegalArgumentException ex) {
-            return Optional.empty();
-        }
-    }
-
-    /**
-     * Persists a cylindrical lobby zone from center + edge (XZ = radius, Y delta = height).
-     */
-    public boolean saveLobbyCircleZone(Location center, Location edge) {
-        if (center == null || edge == null || center.getWorld() == null || edge.getWorld() == null) {
-            return false;
-        }
-        if (!center.getWorld().equals(edge.getWorld())) {
-            return false;
-        }
-        double radius = HubLobbyCircleWandListener.horizontalRadius(center, edge);
-        int minY = Math.min(center.getBlockY(), edge.getBlockY());
-        int maxY = Math.max(center.getBlockY(), edge.getBlockY());
-        if (minY == maxY) {
-            minY = Math.max(center.getWorld().getMinHeight(), minY - 8);
-            maxY = Math.min(center.getWorld().getMaxHeight() - 1, maxY + 24);
-        }
-        var c = hw();
-        c.set("protection.circle.enabled", true);
-        c.set("protection.circle.worldUuid", center.getWorld().getUID().toString());
-        c.set("protection.circle.centerX", center.getBlockX() + 0.5);
-        c.set("protection.circle.centerY", center.getBlockY());
-        c.set("protection.circle.centerZ", center.getBlockZ() + 0.5);
-        c.set("protection.circle.radius", radius);
-        c.set("protection.circle.minY", minY);
-        c.set("protection.circle.maxY", maxY);
-        // Keep square radius in sync for APIs that still read radiusBlocks as a size hint.
-        setProtectionRadiusBlocks(radius);
-        hubWorldYaml.save();
-        HubLog.info(plugin, "action=lobby_circle_save",
-                "world=" + center.getWorld().getName(),
-                "radius=" + radius,
-                "minY=" + minY,
-                "maxY=" + maxY);
-        return true;
-    }
-
-    public record LobbyCircleZone(Location center, double radius, int minY, int maxY) {
     }
 
     @Override
@@ -429,7 +348,7 @@ public final class HubWorldManager implements HubWorldApi, Listener {
     }
 
     @Override
-    public void applyLimboUtilityLoadout(Player player, int hotbarSlotAfterApply) {
+    public void applyLobbyUtilityLoadout(Player player, int hotbarSlotAfterApply) {
         if (player == null) {
             return;
         }
@@ -437,7 +356,7 @@ public final class HubWorldManager implements HubWorldApi, Listener {
             return;
         }
         var partySpec = readHubPartySpec();
-        var teamSpec = readLimboTeamSpec();
+        var teamSpec = readLobbyTeamSpec();
         Map<Integer, ItemStack> expected = new HashMap<>();
         expected.put(0, lobbySword());
         if (isCompassEnabled()) {
@@ -445,7 +364,7 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         }
         expected.put(teamSpec.slotIndex(), utilityItem(teamSpec));
         expected.put(partySpec.slotIndex(), utilityItem(partySpec));
-        var leaveSpec = readLimboLeaveSpec();
+        var leaveSpec = readLobbyLeaveSpec();
         expected.put(leaveSpec.slotIndex(), utilityItem(leaveSpec));
         normalizeExpectedLockedHotbar(player, expected);
         int held = Math.max(0, Math.min(8, hotbarSlotAfterApply));
@@ -453,24 +372,24 @@ public final class HubWorldManager implements HubWorldApi, Listener {
     }
 
     @Override
-    public boolean isLimboTeamUtilityItem(Player player, ItemStack stack) {
+    public boolean isLobbyTeamUtilityItem(Player player, ItemStack stack) {
         if (player == null || stack == null || stack.getType() == Material.AIR) {
             return false;
         }
         if (!isLockedHubItem(stack)) {
             return false;
         }
-        var spec = readLimboTeamSpec();
+        var spec = readLobbyTeamSpec();
         return player.getInventory().getHeldItemSlot() == spec.slotIndex()
                 && stack.getType() == spec.material();
     }
 
     @Override
-    public boolean isLimboLeaveUtilityItem(ItemStack stack) {
+    public boolean isLobbyLeaveUtilityItem(ItemStack stack) {
         if (stack == null || stack.getType() == Material.AIR) {
             return false;
         }
-        ItemStack ref = utilityItem(readLimboLeaveSpec());
+        ItemStack ref = utilityItem(readLobbyLeaveSpec());
         return stack.getType() == ref.getType() && isLockedHubItem(stack) && sameDisplayName(stack, ref);
     }
 
@@ -562,11 +481,11 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         return new UtilityItemSpec(slot - 1, material, name);
     }
 
-    private UtilityItemSpec readLimboTeamSpec() {
+    private UtilityItemSpec readLobbyTeamSpec() {
         FileConfiguration c = hw();
-        int slot = Math.max(1, Math.min(9, c.getInt("items.limbo.team.slot", 3)));
-        String materialRaw = c.getString("items.limbo.team.material", "NETHER_STAR");
-        String name = c.getString("items.limbo.team.name", "Match Team");
+        int slot = Math.max(1, Math.min(9, c.getInt("items.lobby.team.slot", 3)));
+        String materialRaw = c.getString("items.lobby.team.material", "NETHER_STAR");
+        String name = c.getString("items.lobby.team.name", "Match Team");
         Material material;
         try {
             material = Material.valueOf(materialRaw.toUpperCase());
@@ -576,11 +495,11 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         return new UtilityItemSpec(slot - 1, material, name);
     }
 
-    private UtilityItemSpec readLimboLeaveSpec() {
+    private UtilityItemSpec readLobbyLeaveSpec() {
         FileConfiguration c = hw();
-        int slot = Math.max(1, Math.min(9, c.getInt("items.limbo.leave.slot", 9)));
-        String materialRaw = c.getString("items.limbo.leave.material", "BARRIER");
-        String name = c.getString("items.limbo.leave.name", "Leave Lobby");
+        int slot = Math.max(1, Math.min(9, c.getInt("items.lobby.leave.slot", 9)));
+        String materialRaw = c.getString("items.lobby.leave.material", "BARRIER");
+        String name = c.getString("items.lobby.leave.name", "Leave Lobby");
         Material material;
         try {
             material = Material.valueOf(materialRaw.toUpperCase());
@@ -936,7 +855,7 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         }.runTaskTimer(plugin, 20L, 20L);
     }
 
-    /** Clears hub PvP opt-in / respawn invulnerability (e.g. when leaving limbo for a match). */
+    /** Clears hub PvP opt-in / respawn invulnerability (e.g. when leaving lobby for a match). */
     public void clearPvpOptInState(Player player) {
         if (player == null) {
             return;
@@ -1252,32 +1171,12 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         if (!Objects.equals(center.getWorld(), to.getWorld())) return;
 
         if (isLocationInHubProtection(to)) return;
-        Optional<LobbyCircleZone> circle = lobbyCircleZone();
+        double size = protectionRadiusBlocks();
         Location safe = to.clone();
-        if (circle.isPresent() && Objects.equals(circle.get().center().getWorld(), to.getWorld())) {
-            LobbyCircleZone z = circle.get();
-            double cx = z.center().getBlockX() + 0.5;
-            double cz = z.center().getBlockZ() + 0.5;
-            double dx = to.getX() - cx;
-            double dz = to.getZ() - cz;
-            double dist = Math.sqrt(dx * dx + dz * dz);
-            if (dist > z.radius() && dist > 0.001) {
-                double scale = z.radius() / dist;
-                safe.setX(cx + dx * scale);
-                safe.setZ(cz + dz * scale);
-            }
-            if (safe.getY() < z.minY()) {
-                safe.setY(z.minY());
-            } else if (safe.getY() > z.maxY()) {
-                safe.setY(z.maxY());
-            }
-        } else {
-            double size = protectionRadiusBlocks();
-            double clampedX = Math.max(center.getX() - size, Math.min(center.getX() + size, to.getX()));
-            double clampedZ = Math.max(center.getZ() - size, Math.min(center.getZ() + size, to.getZ()));
-            safe.setX(clampedX);
-            safe.setZ(clampedZ);
-        }
+        double clampedX = Math.max(center.getX() - size, Math.min(center.getX() + size, to.getX()));
+        double clampedZ = Math.max(center.getZ() - size, Math.min(center.getZ() + size, to.getZ()));
+        safe.setX(clampedX);
+        safe.setZ(clampedZ);
         e.setTo(safe);
     }
 

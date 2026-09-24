@@ -65,7 +65,7 @@ public final class HubTemplateCommands {
             case "set" -> routeTemplateSet(sender, reg, args, plugin.platform());
             case "setsource" -> setSource(sender, reg, args);
             case "setqueue" -> setQueue(sender, reg, args);
-            case "lobby" -> HubTemplateLimboCommands.handle(plugin, sender, args);
+            case "lobby" -> HubTemplateLobbyCommands.handle(plugin, sender, args);
             case "worlds" -> HubTemplateWorldsCommands.handle(plugin, sender, args);
             case "remove" -> remove(sender, reg, args);
             default -> {

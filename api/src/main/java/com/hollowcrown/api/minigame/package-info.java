@@ -15,7 +15,7 @@
  *   <li><b>Optional</b>: register extra services (e.g. {@link com.hollowcrown.api.integration.IronLegacyHubBridge}
  *       for Hub→minigame callbacks); resolve {@link com.hollowcrown.api.integration.HubWorldApi} and
  *       {@link com.hollowcrown.api.integration.HubPlayerMenus} from {@code ServicesManager} for shared hub-world keys,
- *       limbo hotbars, and Hub GUIs.</li>
+ *       lobby hotbars, and Hub GUIs.</li>
  * </ol>
  */
 package com.hollowcrown.api.minigame;

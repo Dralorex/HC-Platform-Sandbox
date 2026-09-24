@@ -14,7 +14,7 @@ import java.util.Optional;
 public interface HubWorldApi {
 
     /**
-     * PDC key for hub + limbo locked utility items (sword, compass, party, etc.).
+     * PDC key for hub + lobby locked utility items (sword, compass, party, etc.).
      * Always namespaced to HollowCrownHub so minigames share one tag.
      */
     NamespacedKey lockedLobbyUtilityItemKey();
@@ -32,16 +32,16 @@ public interface HubWorldApi {
     void applyHubUtilityLoadout(Player player, boolean wipeInventory, boolean selectCompassHotbar);
 
     /**
-     * Locked hotbar for Iron Legacy limbo: hub sword + compass + party item + leave item (see {@code hub-world.yml}
-     * {@code items.limbo.leave}). Uses the same {@link #lockedLobbyUtilityItemKey()} as the hub disk.
+     * Locked hotbar for Iron Legacy lobby: hub sword + compass + party item + leave item (see {@code hub-world.yml}
+     * {@code items.lobby.leave}). Uses the same {@link #lockedLobbyUtilityItemKey()} as the hub disk.
      */
-    void applyLimboUtilityLoadout(Player player, int hotbarSlotAfterApply);
+    void applyLobbyUtilityLoadout(Player player, int hotbarSlotAfterApply);
 
-    /** True if the stack matches the configured limbo “leave queue” utility item. */
-    boolean isLimboLeaveUtilityItem(ItemStack stack);
+    /** True if the stack matches the configured lobby “leave queue” utility item. */
+    boolean isLobbyLeaveUtilityItem(ItemStack stack);
 
-    /** True if the stack is the limbo “match team” utility item (hotbar slot 3 by default). */
-    boolean isLimboTeamUtilityItem(Player player, ItemStack stack);
+    /** True if the stack is the lobby “match team” utility item (hotbar slot 3 by default). */
+    boolean isLobbyTeamUtilityItem(Player player, ItemStack stack);
 
     /** Survival + hub hotbar after leaving template edit when player was not in hub creative build mode. */
     void applySurvivalHubLoadoutAfterTemplate(Player player);
@@ -65,13 +65,13 @@ public interface HubWorldApi {
 
     void givePvpPadItem(Player player);
 
-    /** After leaving limbo queue, avoid opening the game lobby GUI from a hotbar refresh. */
+    /** After leaving lobby queue, avoid opening the game lobby GUI from a hotbar refresh. */
     void suppressGameLobbyGuiBriefly(Player player, long durationMs);
 
     boolean isGameLobbyGuiSuppressed(Player player);
 
     /**
-     * Leave pre-match limbo if needed and teleport to configured hub spawn ({@code /hch sethub}).
+     * Leave pre-match lobby if needed and teleport to configured hub spawn ({@code /hch sethub}).
      * When the player is in a party, routes the whole online party together and splits across numbered
      * hub instances when one hub would exceed {@code hub.instanceCapacity}.
      * @return false when hub spawn is missing or the world is not loaded

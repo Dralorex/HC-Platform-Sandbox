@@ -17,17 +17,17 @@ import java.util.List;
 
 /**
  * 4-row landing for plugin/match allocation:
- *  · row 2 tabs: Hub, Limbo, Match
+ *  · row 2 tabs: Hub, Lobby, Match
  *  · row 4 nav: Info (28), Back (31), Close (34)
  *
- * Hub/Limbo open the existing scope-locked {@link HubPluginPolicyAdminMenu}; Match opens the
+ * Hub/Lobby open the existing scope-locked {@link HubPluginPolicyAdminMenu}; Match opens the
  * template list, then drills into per-template configuration.
  */
 public final class HubPluginAllocationLandingMenu extends HubMenuView {
 
     private static final int SIZE = 36;
     private static final int SLOT_TAB_HUB = 11;
-    private static final int SLOT_TAB_LIMBO = 13;
+    private static final int SLOT_TAB_LOBBY = 13;
     private static final int SLOT_TAB_MATCH = 15;
     private static final int SLOT_INFO = 28;
     private static final int SLOT_BACK = 31;
@@ -52,8 +52,8 @@ public final class HubPluginAllocationLandingMenu extends HubMenuView {
                         Component.text("Plugin allowlist / blocklist", NamedTextColor.GRAY),
                         Component.text("for the hub world.", NamedTextColor.GRAY))));
 
-        inv.setItem(SLOT_TAB_LIMBO, btn(Material.END_PORTAL_FRAME,
-                Component.text("Limbo", NamedTextColor.YELLOW),
+        inv.setItem(SLOT_TAB_LOBBY, btn(Material.END_PORTAL_FRAME,
+                Component.text("Lobby", NamedTextColor.YELLOW),
                 List.of(
                         Component.text("Plugin allowlist / blocklist", NamedTextColor.GRAY),
                         Component.text("while waiting for matches.", NamedTextColor.GRAY))));
@@ -90,8 +90,8 @@ public final class HubPluginAllocationLandingMenu extends HubMenuView {
         switch (slot) {
             case SLOT_TAB_HUB ->
                     p.openInventory(new HubPluginPolicyAdminMenu(plugin, HubPluginPolicyService.Scope.HUB).getInventory());
-            case SLOT_TAB_LIMBO ->
-                    p.openInventory(new HubPluginPolicyAdminMenu(plugin, HubPluginPolicyService.Scope.LIMBO).getInventory());
+            case SLOT_TAB_LOBBY ->
+                    p.openInventory(new HubPluginPolicyAdminMenu(plugin, HubPluginPolicyService.Scope.LOBBY).getInventory());
             case SLOT_TAB_MATCH ->
                     p.openInventory(new HubMatchTemplateListMenu(plugin, 0).getInventory());
             case SLOT_BACK -> plugin.adminGui().openShell(p);

@@ -27,7 +27,7 @@ import java.util.UUID;
 
 /**
  * PvP zone selection wand (BLAZE_ROD). Only works inside hub protection.
- * Same selection system as the limbo wand — cyan outline preview, shift-right-click to confirm.
+ * Same selection system as the lobby wand — cyan outline preview, shift-right-click to confirm.
  */
 public final class HubPvpZoneWandListener implements Listener {
 

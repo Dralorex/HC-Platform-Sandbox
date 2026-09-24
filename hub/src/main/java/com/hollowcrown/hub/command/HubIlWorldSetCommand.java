@@ -30,13 +30,13 @@ public final class HubIlWorldSetCommand {
     }
 
     /** {@code /hch template lobby spawn} — player must stand inside the saved lobby circle. */
-    public static boolean applyLimboSpawn(CommandSender sender, HollowCrownHubPlugin plugin) {
+    public static boolean applyLobbySpawn(CommandSender sender, HollowCrownHubPlugin plugin) {
         if (!(sender instanceof Player p)) {
             sender.sendMessage(Component.text("Players only.", NamedTextColor.RED));
             return true;
         }
-        if (plugin.limboLayout().setLimboSpawnHere(p)) {
-            p.sendMessage(Component.text("Limbo spawn set.", NamedTextColor.GREEN));
+        if (plugin.lobbyLayout().setLobbySpawnHere(p)) {
+            p.sendMessage(Component.text("Lobby spawn set.", NamedTextColor.GREEN));
         } else {
             p.sendMessage(Component.text(
                     "Failed — stand in the template world inside the saved lobby circle (/hch template lobby wand first).",

@@ -20,7 +20,7 @@ public class TeamColorMenu extends HubMenuView {
     private final Inventory inv;
     private final String teamName;
     private final UUID owner;
-    private final boolean returnToLimbo;
+    private final boolean returnToLobby;
 
     //private static final int SLOT_CUSTOM_HEX = 49;
 
@@ -28,10 +28,10 @@ public class TeamColorMenu extends HubMenuView {
         this(name, owner, false);
     }
 
-    public TeamColorMenu(String name, UUID owner, boolean returnToLimbo) {
+    public TeamColorMenu(String name, UUID owner, boolean returnToLobby) {
         this.teamName = name;
         this.owner = owner;
-        this.returnToLimbo = returnToLimbo;
+        this.returnToLobby = returnToLobby;
         this.inv = Bukkit.createInventory(this, 54, Component.text("Choose Team Color", NamedTextColor.YELLOW));
         build();
     }
@@ -106,7 +106,7 @@ public class TeamColorMenu extends HubMenuView {
                     "Enter team color as #RRGGBB (or #RGB):",
                     line -> Bukkit.getScheduler().runTask(plug, () -> finishWithHex(p, line)),
                     () -> Bukkit.getScheduler().runTask(plug, () ->
-                            p.openInventory(new TeamColorMenu(teamName, owner, returnToLimbo).getInventory())));
+                            p.openInventory(new TeamColorMenu(teamName, owner, returnToLobby).getInventory())));
             return;
         }*/
         ItemStack it = e.getCurrentItem();
@@ -146,13 +146,13 @@ public class TeamColorMenu extends HubMenuView {
         HungerGamesPlugin plug = HungerGamesPlugin.get();
         if (!owner.equals(p.getUniqueId())) {
             p.sendMessage(Component.text("Only the team owner can create this team.", NamedTextColor.RED));
-            p.openInventory(new TeamColorMenu(teamName, owner, returnToLimbo).getInventory());
+            p.openInventory(new TeamColorMenu(teamName, owner, returnToLobby).getInventory());
             return;
         }
         OptionalInt rgbOpt = TeamColorRgb.parseHexRgb(line == null ? "" : line);
         if (rgbOpt.isEmpty()) {
             p.sendMessage(Component.text("Invalid hex. Use #RRGGBB or #RGB.", NamedTextColor.RED));
-            p.openInventory(new TeamColorMenu(teamName, owner, returnToLimbo).getInventory());
+            p.openInventory(new TeamColorMenu(teamName, owner, returnToLobby).getInventory());
             return;
         }
         int rgb = rgbOpt.getAsInt();

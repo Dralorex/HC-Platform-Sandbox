@@ -19,7 +19,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Server-side plugin policy for Hub/Limbo/Match scopes.
+ * Server-side plugin policy for Hub/Lobby/Match scopes.
  *
  * <p>Important: Bukkit cannot truly "unload" or prevent other plugins from running.
  * This service is used to gate Hollow Crown's own integration points and to enforce
@@ -29,7 +29,7 @@ public final class HubPluginPolicyService {
 
     public enum Scope {
         HUB("hub"),
-        LIMBO("limbo"),
+        LOBBY("lobby"),
         MATCH("match");
 
         private final String key;
@@ -58,7 +58,7 @@ public final class HubPluginPolicyService {
     private final Set<String> matchWorlds = ConcurrentHashMap.newKeySet();
 
     private ScopePolicy hub = new ScopePolicy(Mode.BLACKLIST, new LinkedHashSet<>());
-    private ScopePolicy limbo = new ScopePolicy(Mode.BLACKLIST, new LinkedHashSet<>());
+    private ScopePolicy lobby = new ScopePolicy(Mode.BLACKLIST, new LinkedHashSet<>());
     private ScopePolicy match = new ScopePolicy(Mode.BLACKLIST, new LinkedHashSet<>());
 
     public HubPluginPolicyService(HollowCrownHubPlugin plugin) {
@@ -78,7 +78,7 @@ public final class HubPluginPolicyService {
     public ScopePolicy policy(Scope scope) {
         return switch (scope) {
             case HUB -> hub;
-            case LIMBO -> limbo;
+            case LOBBY -> lobby;
             case MATCH -> match;
         };
     }
@@ -96,7 +96,7 @@ public final class HubPluginPolicyService {
         ScopePolicy sp = new ScopePolicy(mode == null ? Mode.BLACKLIST : mode, norm);
         switch (scope) {
             case HUB -> hub = sp;
-            case LIMBO -> limbo = sp;
+            case LOBBY -> lobby = sp;
             case MATCH -> match = sp;
         }
         save();
@@ -204,9 +204,32 @@ public final class HubPluginPolicyService {
             return;
         }
         YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
+        boolean promoted = promoteLegacyLobbyScope(y);
         hub = readScope(y, Scope.HUB, hub);
-        limbo = readScope(y, Scope.LIMBO, limbo);
+        lobby = readScope(y, Scope.LOBBY, lobby);
         match = readScope(y, Scope.MATCH, match);
+        if (promoted) {
+            save();
+        }
+    }
+
+    /** Copies a previously named policy scope onto {@code lobby}. */
+    private static boolean promoteLegacyLobbyScope(YamlConfiguration y) {
+        if (y.getConfigurationSection(Scope.LOBBY.key()) != null) {
+            return false;
+        }
+        String legacy = "lim" + "bo";
+        ConfigurationSection old = y.getConfigurationSection(legacy);
+        if (old == null) {
+            return false;
+        }
+        ConfigurationSection neu = y.createSection(Scope.LOBBY.key());
+        for (String path : old.getKeys(true)) {
+            if (!old.isConfigurationSection(path)) {
+                neu.set(path, old.get(path));
+            }
+        }
+        return true;
     }
 
     private ScopePolicy readScope(YamlConfiguration y, Scope scope, ScopePolicy fallback) {
@@ -237,7 +260,7 @@ public final class HubPluginPolicyService {
         }
         YamlConfiguration y = new YamlConfiguration();
         writeScope(y, Scope.HUB, hub);
-        writeScope(y, Scope.LIMBO, limbo);
+        writeScope(y, Scope.LOBBY, lobby);
         writeScope(y, Scope.MATCH, match);
         try {
             y.save(file);

@@ -1,7 +1,7 @@
 package com.hollowcrown.hungergames.managers;
 
 import com.google.common.collect.Lists;
-import com.hollowcrown.api.integration.PreMatchLimboService;
+import com.hollowcrown.api.integration.PreMatchLobbyService;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
 import com.hollowcrown.hungergames.integration.HubIntegrationRouting;
 import net.kyori.adventure.text.format.TextColor;
@@ -92,13 +92,13 @@ public class GameManager implements Listener {
      * True when {@code player} is inside the active match world (freeze or running). Used by Hub
      * for scope resolution (e.g. plugin policy MATCH scope) and post-game routing.
      */
-    private static void scheduleLimboZoneClearAfterSpawnPads(String instanceWorldName, String templateKey) {
-        RegisteredServiceProvider<PreMatchLimboService> reg =
-                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
+    private static void scheduleLobbyZoneClearAfterSpawnPads(String instanceWorldName, String templateKey) {
+        RegisteredServiceProvider<PreMatchLobbyService> reg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLobbyService.class);
         if (reg == null) {
             return;
         }
-        reg.getProvider().clearLimboZoneAfterSpawnPads(instanceWorldName, templateKey);
+        reg.getProvider().clearLobbyZoneAfterSpawnPads(instanceWorldName, templateKey);
     }
 
     public boolean isPlayerInActiveMatchWorld(Player player) {
@@ -141,7 +141,7 @@ public class GameManager implements Listener {
         return startGameFromTemplate(templateKey, explicitParticipants, false);
     }
 
-    public boolean startGameFromTemplate(String templateKey, Set<UUID> explicitParticipants, boolean immediateTeleportFromLimbo) {
+    public boolean startGameFromTemplate(String templateKey, Set<UUID> explicitParticipants, boolean immediateTeleportFromLobby) {
         if (state != State.LOBBY && state != State.ENDED) {
             lastError = "Game already running or freezing.";
             plugin.getLogger().warning(lastError);
@@ -160,20 +160,20 @@ public class GameManager implements Listener {
             return false;
         }
         activeInstanceWorldName = iw.getName();
-        return startGame(iw, explicitParticipants, true, immediateTeleportFromLimbo);
+        return startGame(iw, explicitParticipants, true, immediateTeleportFromLobby);
     }
 
     /** Starts a match on a pre-created runtime instance world. */
-    public boolean startGameOnPreparedInstance(World instanceWorld, Set<UUID> explicitParticipants, boolean immediateTeleportFromLimbo) {
+    public boolean startGameOnPreparedInstance(World instanceWorld, Set<UUID> explicitParticipants, boolean immediateTeleportFromLobby) {
         if (instanceWorld == null) {
             lastError = "Prepared instance world is null.";
             return false;
         }
         activeInstanceWorldName = instanceWorld.getName();
-        return startGame(instanceWorld, explicitParticipants, true, immediateTeleportFromLimbo);
+        return startGame(instanceWorld, explicitParticipants, true, immediateTeleportFromLobby);
     }
 
-    private boolean startGame(World world, Set<UUID> explicitParticipants, boolean skipTemplateClone, boolean immediateTeleportFromLimbo) {
+    private boolean startGame(World world, Set<UUID> explicitParticipants, boolean skipTemplateClone, boolean immediateTeleportFromLobby) {
         if (state != State.LOBBY && state != State.ENDED) {
             lastError = "Game already running or freezing.";
             plugin.getLogger().warning(lastError);
@@ -302,8 +302,8 @@ public class GameManager implements Listener {
         final World launchWorld = world;
         final WorldGameSettings ws = activeMatchSettings;
 
-        final boolean fromLimboLaunch = immediateTeleportFromLimbo;
-        final String limboClearTemplateKey = activeMatchTemplateKey;
+        final boolean fromLobbyLaunch = immediateTeleportFromLobby;
+        final String lobbyClearTemplateKey = activeMatchTemplateKey;
         Runnable doTeleportPhase = () -> {
             new BukkitRunnable() {
             @Override public void run() {
@@ -329,8 +329,8 @@ public class GameManager implements Listener {
                     p.setHealth(Math.min(20.0, p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue()));
                 }
 
-                if (fromLimboLaunch && limboClearTemplateKey != null) {
-                    scheduleLimboZoneClearAfterSpawnPads(launchWorld.getName(), limboClearTemplateKey);
+                if (fromLobbyLaunch && lobbyClearTemplateKey != null) {
+                    scheduleLobbyZoneClearAfterSpawnPads(launchWorld.getName(), lobbyClearTemplateKey);
                 }
 
                 try {
@@ -368,7 +368,7 @@ public class GameManager implements Listener {
             }.runTask(plugin);
         };
 
-        boolean skipPreTeleportCountdown = immediateTeleportFromLimbo || !ws.movementCountdownEnabled();
+        boolean skipPreTeleportCountdown = immediateTeleportFromLobby || !ws.movementCountdownEnabled();
         if (skipPreTeleportCountdown) {
             doTeleportPhase.run();
         } else {

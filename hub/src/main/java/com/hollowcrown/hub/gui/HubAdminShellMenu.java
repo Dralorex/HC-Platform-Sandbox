@@ -93,7 +93,7 @@ public final class HubAdminShellMenu extends HubMenuView {
                 Component.text("Plugin policies", NamedTextColor.LIGHT_PURPLE),
                 List.of(
                         Component.text("Whitelist/blacklist server plugins", NamedTextColor.GRAY),
-                        Component.text("in hub, limbo, and active matches.", NamedTextColor.GRAY),
+                        Component.text("in hub, lobby, and active matches.", NamedTextColor.GRAY),
                         Component.empty(),
                         Component.text("Click to configure", NamedTextColor.GREEN))));
 

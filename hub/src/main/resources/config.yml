@@ -23,12 +23,12 @@ party:
   allOfflineDisbandSeconds: 180
   leaderAbandonedPromoteSeconds: 180
 
-# Limbo layout wand writes limbo.zone + limbo spawn under this plugin's data folder:
+# Lobby layout wand writes lobby.zone + lobby spawn under this plugin's data folder:
 #   plugins/<ironLegacy.pluginName>/worlds.yml
 ironLegacy:
   pluginName: HCIronLegacy
 
-# Match teams (limbo-only; reset each lobby/match). Cap in limbo uses template teamSizeMax.
+# Match teams (lobby-only; reset each lobby/match). Cap in lobby uses template teamSizeMax.
 teams:
   memberCap: 4
 
@@ -53,7 +53,7 @@ hub:
   #     pitch: 0.0
 
 # =========================
-# Limbo / lobby team display names — substring block list (case-insensitive).
+# Lobby / lobby team display names — substring block list (case-insensitive).
 # =========================
-limboTeamNaming:
+lobbyTeamNaming:
   blockedWords: [ ]

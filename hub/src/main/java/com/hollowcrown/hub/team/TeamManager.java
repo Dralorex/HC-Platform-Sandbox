@@ -19,7 +19,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
-//to do removed because I think IronLegacyLimboBridgeImpl handles that already
+//to do removed because I think IronLegacyLobbyBridgeImpl handles that already
 //TO/DO: change team verification to allow for non-full teams and auto filling
 
 /**
