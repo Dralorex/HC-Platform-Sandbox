@@ -9,6 +9,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Freeze countdown move penalty: play hurt sound, cancel move instead of teleporting (no camera snap); soft-leash snaps keep look direction.
+- Pre-match lobby: locked utility items (sword/compass/party/leave) cannot be dropped or moved out of the hotbar.
+- Match end / win return: clear participants and related match state in `stopGame` so hub/lobby PvP deaths no longer show "Your Legacy is Over".
+
 ### Changed
 
 - Template lobby commands are `/hch template lobby wand`, `spawn`, and `help`. Internal and saved names that said limbo now say lobby. Hosting lobby worlds stays `/hch lobby`. Existing `worlds.yml` zone sections and plugin-policy scopes are copied onto the lobby keys on load.
