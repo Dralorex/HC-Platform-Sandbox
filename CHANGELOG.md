@@ -9,9 +9,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [HC-Plugins-a0.1.22] - 2026-09-23
+
+Tagged plugins: **API a0.1.14**, **Foundation a0.1.5**, **Hub a0.1.18**, **Iron Legacy a0.3.21**.
+
+### Added
+
+- Circle lobby zone wand (`/hch hubworld lobby wand`): left-click center, right-click edge (radius + height), F cycles Center/Edge tip while holding the wand, particle border + action-bar status only while holding the wand, shift-right-click saves cylindrical hub protection to `hub-world.yml`.
+
+### Changed
+
+- Team invite GUI lists only online players in the same lobby who are not already on a team (Hydraulic).
+- `/ally` and `/rival` aliases expanded (Hydraulic).
+
 ### Fixed
 
-- Limbo leave barrier uses Hub spawn #1 (`/hch sethub`) instead of IL lobby shard / `pickHubForSolo` routing that could land players in water; hub teleports also nudge out of liquid to a standable block. Solo hub routing always uses hub #1.
+- Limbo leave barrier / solo hub routing use hub spawn #1 with liquid-safe stand locations.
 
 ## [HC-Plugins-a0.1.21] - 2026-09-21
 

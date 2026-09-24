@@ -6,7 +6,7 @@ Copy-paste reference for **HC-Foundation**, **HollowCrownHub**, and **HCIronLega
 
 **Detail (GUIs, integration flows):** `docs/PLATFORM_REFERENCE.md`
 
-**Bundle baseline:** HC-Plugins a0.1.21
+**Bundle baseline:** HC-Plugins a0.1.22
 
 **Load order:** HC-Foundation (STARTUP) → HollowCrownHub → HCIronLegacy
 
@@ -52,7 +52,13 @@ Hub capacity routing
 
 Protection radius
   Status: Implemented
-  /hch hubworld size <blocks>. Hub rules apply inside radius.
+  /hch hubworld size <blocks>. Hub rules apply inside radius (square fallback).
+
+Circle lobby zone
+  Status: Implemented
+  /hch hubworld lobby wand — left-click center, right-click edge (radius + height),
+  F cycles Center/Edge tip while holding wand, particle border + action-bar only while
+  holding wand, shift-right saves cylinder to hub-world.yml (overrides square check).
 
 Build mode
   Status: Implemented

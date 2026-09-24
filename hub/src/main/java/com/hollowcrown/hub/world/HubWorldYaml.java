@@ -52,6 +52,9 @@ public final class HubWorldYaml {
         if (!cfg.contains("protection.radiusBlocks")) {
             cfg.set("protection.radiusBlocks", 64.0);
         }
+        if (!cfg.contains("protection.circle.enabled")) {
+            cfg.set("protection.circle.enabled", false);
+        }
         if (!cfg.isList("pvpPads")) {
             cfg.set("pvpPads", new java.util.ArrayList<String>());
         }

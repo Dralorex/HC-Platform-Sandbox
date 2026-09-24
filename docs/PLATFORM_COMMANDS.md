@@ -7,7 +7,7 @@ Copy-paste reference for all player and admin commands.
 **Feature descriptions:** `docs/PLATFORM_FEATURES.md`  
 **GUIs & integration:** `docs/PLATFORM_REFERENCE.md`
 
-**Bundle baseline:** HC-Plugins a0.1.21
+**Bundle baseline:** HC-Plugins a0.1.22
 
 ================================================================================
 PERMISSIONS
@@ -147,7 +147,11 @@ Permission: hollowcrownhub.team
 --- Hub world  [admin] ---
 
 /hch hubworld size <blocks>
-  Protection radius from hub spawn.
+  Protection radius from hub spawn (square fallback when no circle saved).
+
+/hch hubworld lobby wand
+  Give Lobby Circle Wand (center LMB, edge RMB, F cycle tip, shift-RMB save).
+  Alias: /hch hubworld circle wand
 
 /hch hubworld buildmode <true|false>
   Toggle creative build mode. Alias: bm

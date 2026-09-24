@@ -1,6 +1,7 @@
 package com.hollowcrown.hub.command;
 
 import com.hollowcrown.api.integration.HubWorldApi;
+import com.hollowcrown.hub.world.HubLobbyCircleWandListener;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.HubLog;
 import net.kyori.adventure.text.Component;
@@ -80,6 +81,24 @@ public final class HubWorldAdminCommands {
                     return true;
                 }
                 return handlePvpSub(plugin, sender, args[2].toLowerCase());
+            }
+            case "lobby", "circle" -> {
+                if (args.length < 3 || !args[2].equalsIgnoreCase("wand")) {
+                    sender.sendMessage(Component.text(
+                            "Usage: /hch hubworld lobby wand",
+                            NamedTextColor.YELLOW));
+                    return true;
+                }
+                if (!(sender instanceof Player p) || !p.isOp()) {
+                    sender.sendMessage(Component.text("OP players only (in-game).", NamedTextColor.RED));
+                    return true;
+                }
+                p.getInventory().addItem(HubLobbyCircleWandListener.createWand(plugin));
+                HubLog.info(plugin, "action=hch_hubworld_lobby_wand", "sender=" + p.getName());
+                sender.sendMessage(Component.text(
+                        "Given Lobby Circle Wand. Left=center, Right=edge, F=cycle tip, Shift-right=save.",
+                        NamedTextColor.GREEN));
+                return true;
             }
             case "hostilemobs", "hostilemobspawn", "hostilemobspawns" -> {
                 return mobToggle(sender, args, api, plugin, true);
@@ -162,6 +181,7 @@ public final class HubWorldAdminCommands {
         sender.sendMessage(Component.text("Hub world (protection / hotbar PvP area):", NamedTextColor.GOLD));
         sender.sendMessage(Component.text("  /hch hubworld size <blocks>", NamedTextColor.GRAY));
         sender.sendMessage(Component.text("  /hch hubworld buildmode <true|false>", NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("  /hch hubworld lobby wand — circle lobby zone wand", NamedTextColor.GRAY));
         sender.sendMessage(Component.text("  /hch hubworld pvp wand|setspawn|pad", NamedTextColor.GRAY));
         sender.sendMessage(Component.text("  /hch hubworld hostilemobs|passivemobs <true|false>", NamedTextColor.GRAY));
     }
@@ -176,8 +196,12 @@ public final class HubWorldAdminCommands {
     public static List<String> tabComplete(String[] args) {
         if (args.length == 2) {
             String p = args[1].toLowerCase();
-            List<String> opts = List.of("size", "buildmode", "pvp", "hostilemobs", "passivemobs");
+            List<String> opts = List.of("size", "buildmode", "lobby", "circle", "pvp", "hostilemobs", "passivemobs");
             return opts.stream().filter(o -> o.startsWith(p)).toList();
+        }
+        if (args.length == 3 && (args[1].equalsIgnoreCase("lobby") || args[1].equalsIgnoreCase("circle"))) {
+            String p = args[2].toLowerCase();
+            return List.of("wand").stream().filter(o -> o.startsWith(p)).toList();
         }
         if (args.length == 3 && args[1].equalsIgnoreCase("pvp")) {
             String p = args[2].toLowerCase();

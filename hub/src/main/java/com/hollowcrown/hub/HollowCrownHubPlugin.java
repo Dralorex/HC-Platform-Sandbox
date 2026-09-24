@@ -91,6 +91,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
     private NamespacedKey partyInviteKey;
     private NamespacedKey limboWandTemplateKey;
     private NamespacedKey pvpZoneWandKey;
+    private NamespacedKey lobbyCircleWandKey;
     private HubLimboLayout hubLimboLayout;
     private HubLimboArenaState hubLimboArenaState;
     private HubPreMatchLimboService hubPreMatchLimboService;
@@ -149,6 +150,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         this.partyInviteKey = new NamespacedKey(this, "party_invite_id");
         this.limboWandTemplateKey = new NamespacedKey(this, "limbo_wand_template");
         this.pvpZoneWandKey = new NamespacedKey(this, "pvp_zone_wand");
+        this.lobbyCircleWandKey = new NamespacedKey(this, "lobby_circle_wand");
         this.hubLimboLayout = new HubLimboLayout(this);
         this.hubLimboArenaState = new HubLimboArenaState();
         this.hubPreMatchLimboService = new HubPreMatchLimboService(this, hubLimboArenaState);
@@ -174,6 +176,8 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
                 new com.hollowcrown.hub.nametag.HubNametagChatListener(nametagService), this);
         Bukkit.getPluginManager().registerEvents(
                 new com.hollowcrown.hub.world.HubPvpZoneWandListener(this, hubWorldManager), this);
+        Bukkit.getPluginManager().registerEvents(
+                new com.hollowcrown.hub.world.HubLobbyCircleWandListener(this, hubWorldManager), this);
         Bukkit.getPluginManager().registerEvents(
                 new com.hollowcrown.hub.policy.HubTemplatePolicyCloseListener(this), this);
         Bukkit.getPluginManager().registerEvents(
@@ -465,6 +469,10 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
     /** PDC marker on PvP zone selection wand items. */
     public NamespacedKey pvpZoneWandKey() {
         return pvpZoneWandKey;
+    }
+
+    public NamespacedKey lobbyCircleWandKey() {
+        return lobbyCircleWandKey;
     }
 
     /** Limbo zone/spawn editing + wand listener (writes HCIronLegacy {@code worlds.yml}). */
