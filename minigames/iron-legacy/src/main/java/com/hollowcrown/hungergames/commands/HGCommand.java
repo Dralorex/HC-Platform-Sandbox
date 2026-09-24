@@ -111,7 +111,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " reload§7 - reload config/rules/templates/icons"));
 
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7bAdmin - Spawns/Teams/Rules"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " addspawn|clearspawns|removespawn|listspawns"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " addspawn|clearspawn [closest|all]|listspawns"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " addspawnring <count> <radius> [here|spawn]"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " showpads [seconds]"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " randomteams <size> [forceop]"));
@@ -679,22 +679,39 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                                 + l.getBlockX() + "," + l.getBlockY() + "," + l.getBlockZ()));
                 return true;
             }
-            case "clearspawns" -> {
+            case "clearspawn", "clearspawns", "removespawn" -> {
                 if (!(sender instanceof Player p)) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("Players only.")); return true; }
                 var tk = requireSpawnTemplateKey(p);
                 if (tk.isEmpty()) return true;
-                spawns.clear(tk.get());
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                        "\u00A7eCleared spawn pads for \u00A7f" + tk.get() + "\u00A7e."));
-                return true;
-            }
-            case "removespawn" -> {
-                if (!(sender instanceof Player p)) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("Players only.")); return true; }
-                var tk = requireSpawnTemplateKey(p);
-                if (tk.isEmpty()) return true;
-                var removed = spawns.removeNearest(tk.get(), p.getLocation());
-                if (removed == null) sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cNo spawn pads to remove."));
-                else sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eRemoved pad at " + removed.getBlockX() + "," + removed.getBlockY() + "," + removed.getBlockZ()));
+                String clearCmd = args[0].toLowerCase(java.util.Locale.ROOT);
+                String mode = args.length >= 2 ? args[1].trim().toLowerCase(java.util.Locale.ROOT) : "";
+                // Legacy aliases: clearspawns => all; removespawn => closest
+                if (clearCmd.equals("clearspawns")) {
+                    mode = "all";
+                } else if (clearCmd.equals("removespawn")) {
+                    mode = mode.isEmpty() ? "closest" : mode;
+                } else if (mode.isEmpty() || mode.equals("closest") || mode.equals("near") || mode.equals("nearest")) {
+                    mode = "closest";
+                } else if (!mode.equals("all")) {
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                            "\u00A7cUsage: /" + label + " clearspawn [closest|all]"));
+                    return true;
+                }
+                if (mode.equals("all")) {
+                    int before = spawns.count(tk.get());
+                    spawns.clear(tk.get());
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                            "\u00A7eCleared \u00A7f" + before + "\u00A7e spawn pad(s) for \u00A7f" + tk.get() + "\u00A7e."));
+                } else {
+                    var removed = spawns.removeNearest(tk.get(), p.getLocation());
+                    if (removed == null) {
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cNo spawn pads to remove."));
+                    } else {
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                                "\u00A7eRemoved closest pad at " + removed.getBlockX() + ","
+                                        + removed.getBlockY() + "," + removed.getBlockZ()));
+                    }
+                }
                 return true;
             }
             case "listspawns" -> {
@@ -1094,7 +1111,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         if (args.length == 1) return partial(args[0], List.of(
-                "help","gui","teams","party","leaderboard","lb","admin","hostilemobspawn","hostilemobspawns","passivemobspawn","passivemobspawns","joingame","start","stop","addspawn","clearspawns","removespawn",
+                "help","gui","teams","party","leaderboard","lb","admin","hostilemobspawn","hostilemobspawns","passivemobspawn","passivemobspawns","joingame","start","stop","addspawn","clearspawn","clearspawns","removespawn",
                 "listspawns","addspawnring","showpads","randomteams",
                 "set","border","toggle","reload","envoy","giftdrop","addchests","massaddchests","addmanychests","replenish",
                 "rules","crafting","dispenser","build","dig"
@@ -1176,6 +1193,10 @@ public class HGCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2 && args[0].equalsIgnoreCase("start")) return Bukkit.getWorlds().stream().map(World::getName).collect(Collectors.toList());
         if (args.length == 2 && args[0].equalsIgnoreCase("border")) return partial(args[1], List.of("set"));
         if (args.length == 2 && args[0].equalsIgnoreCase("addspawnring")) return partial(args[1], List.of("<count>"));
+        if (args.length == 2 && (args[0].equalsIgnoreCase("clearspawn") || args[0].equalsIgnoreCase("clearspawns")
+                || args[0].equalsIgnoreCase("removespawn"))) {
+            return partial(args[1], List.of("closest", "all"));
+        }
         if (args.length == 3 && args[0].equalsIgnoreCase("addspawnring")) return partial(args[2], List.of("<radius>"));
         if (args.length == 4 && args[0].equalsIgnoreCase("addspawnring")) return partial(args[3], List.of("here","spawn"));
         if (args.length == 2 && args[0].equalsIgnoreCase("showpads")) return partial(args[1], List.of("5","10","15","30","60"));

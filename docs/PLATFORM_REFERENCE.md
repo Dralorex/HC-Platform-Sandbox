@@ -711,8 +711,8 @@ Permission: `hcironlegacy.use` (default true); admin subcommands require OP / `h
 ├── passivemobspawn <true|false>  [OP, HUB/STANDALONE] Toggle passive mob spawns in lobby
 │
 ├── addspawn                      [OP] Add spawn pad at feet
-├── clearspawns                   [OP] Clear all spawn pads
-├── removespawn                   [OP] Remove nearest spawn pad
+├── clearspawn [closest|all]      [OP] Remove closest pad (default) or clear all
+├── clearspawns / removespawn     [OP] Legacy aliases (all / closest)
 ├── listspawns                    [OP] List spawn pad count
 ├── addspawnring <count> <radius> [here|spawn]  [OP] Ring of pads
 ├── showpads [seconds]            [OP] Show pad particles temporarily
