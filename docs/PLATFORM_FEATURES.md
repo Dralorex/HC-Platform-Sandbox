@@ -54,13 +54,6 @@ Protection radius
   Status: Implemented
   /hch hubworld size <blocks>. Hub rules apply inside radius (square fallback).
 
-Circle lobby zone
-  Status: Implemented
-  /hch hubworld lobby wand — left-click center, right-click edge (radius + height),
-  Shift+scroll cycles Center/Edge tip and locks that hotbar slot while holding the wand
-  (Left Alt is not sent by vanilla), particle border + action-bar only while holding wand,
-  shift-right saves cylinder to hub-world.yml (overrides square check).
-
 Build mode
   Status: Implemented
   Creative + inventory snapshot. /hch hubworld buildmode.
@@ -143,7 +136,9 @@ Session per lobby world
 
 Limbo spawn & zone
   Status: Implemented
-  worlds.yml per template. Wand sets corners. /hch template limbo spawn.
+  /hch template lobby wand sets a circle (center, edge, height) in worlds.yml.
+  /hch template limbo spawn sets spawn at your feet inside that circle.
+  Older corner zones still load as boxes until redrawn with the circle wand.
 
 Limbo loadout
   Status: Implemented

@@ -244,6 +244,16 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
             if (a == null || c == null) {
                 return Optional.empty();
             }
+            if (yaml.contains(b + ".limbo.zone.radius") && yaml.contains(b + ".limbo.zone.centerX")) {
+                double radius = yaml.getDouble(b + ".limbo.zone.radius", -1);
+                if (radius > 0) {
+                    return Optional.of(new LimboZone(
+                            a, c,
+                            yaml.getDouble(b + ".limbo.zone.centerX"),
+                            yaml.getDouble(b + ".limbo.zone.centerZ"),
+                            radius));
+                }
+            }
             return Optional.of(new LimboZone(a, c));
         }
     }
@@ -423,6 +433,50 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
                 .orElse(false);
     }
 
+    /**
+     * Saves a cylindrical lobby zone. {@code pos1}/{@code pos2} stay as the axis-aligned bounds
+     * so older corner readers still see a region; {@code contains} uses the circle when radius is set.
+     */
+    public boolean writeLimboCircle(String templateKey, Location center, Location edge) {
+        if (templateKey == null || templateKey.isBlank()
+                || center == null || edge == null
+                || center.getWorld() == null || edge.getWorld() == null
+                || !center.getWorld().equals(edge.getWorld())) {
+            return false;
+        }
+        double radius = HubLimboWandListener.horizontalRadius(center, edge);
+        int minY = Math.min(center.getBlockY(), edge.getBlockY());
+        int maxY = Math.max(center.getBlockY(), edge.getBlockY());
+        if (minY == maxY) {
+            minY = Math.max(center.getWorld().getMinHeight(), minY - 8);
+            maxY = Math.min(center.getWorld().getMaxHeight() - 1, maxY + 24);
+        }
+        double cx = center.getBlockX() + 0.5;
+        double cz = center.getBlockZ() + 0.5;
+        Location pos1 = new Location(center.getWorld(), cx - radius, minY, cz - radius);
+        Location pos2 = new Location(center.getWorld(), cx + radius, maxY, cz + radius);
+        synchronized (fileLock) {
+            try {
+                YamlConfiguration yaml = loadFresh();
+                String b = base(templateKey);
+                if (!yaml.isConfigurationSection(b)) {
+                    ensureMinimalWorldSection(yaml, templateKey, center.getWorld().getName());
+                }
+                writeCorner(yaml, b + ".limbo.zone.pos1", pos1);
+                writeCorner(yaml, b + ".limbo.zone.pos2", pos2);
+                yaml.set(b + ".limbo.zone.centerX", cx);
+                yaml.set(b + ".limbo.zone.centerZ", cz);
+                yaml.set(b + ".limbo.zone.radius", radius);
+                save(yaml);
+                notifyIronLegacyReload();
+                return true;
+            } catch (IOException ex) {
+                plugin.getLogger().warning("Could not save limbo circle to worlds.yml: " + ex.getMessage());
+                return false;
+            }
+        }
+    }
+
     public boolean writeLimboZone(String templateKey, Location pos1, Location pos2) {
         if (templateKey == null || templateKey.isBlank()
                 || pos1 == null || pos2 == null || pos1.getWorld() == null || pos2.getWorld() == null) {
@@ -474,7 +528,22 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
         }
     }
 
-    public record LimboZone(Location pos1, Location pos2) {
+    public record LimboZone(
+            Location pos1,
+            Location pos2,
+            Double circleCenterX,
+            Double circleCenterZ,
+            Double circleRadius
+    ) {
+        public LimboZone(Location pos1, Location pos2) {
+            this(pos1, pos2, null, null, null);
+        }
+
+        public boolean circle() {
+            return circleRadius != null && circleRadius > 0
+                    && circleCenterX != null && circleCenterZ != null;
+        }
+
         public boolean contains(Location loc) {
             if (loc == null || loc.getWorld() == null || pos1 == null || pos2 == null) {
                 return false;
@@ -488,14 +557,21 @@ public final class HubLimboWorldsYaml implements IronLegacyWorldsCatalog {
             if (!pos2.getWorld().getName().equalsIgnoreCase(loc.getWorld().getName())) {
                 return false;
             }
-            double minX = Math.min(pos1.getX(), pos2.getX());
-            double maxX = Math.max(pos1.getX(), pos2.getX());
             double minY = Math.min(pos1.getY(), pos2.getY());
             double maxY = Math.max(pos1.getY(), pos2.getY());
+            if (loc.getY() < minY || loc.getY() > maxY) {
+                return false;
+            }
+            if (circle()) {
+                double dx = loc.getX() - circleCenterX;
+                double dz = loc.getZ() - circleCenterZ;
+                return dx * dx + dz * dz <= circleRadius * circleRadius;
+            }
+            double minX = Math.min(pos1.getX(), pos2.getX());
+            double maxX = Math.max(pos1.getX(), pos2.getX());
             double minZ = Math.min(pos1.getZ(), pos2.getZ());
             double maxZ = Math.max(pos1.getZ(), pos2.getZ());
             return loc.getX() >= minX && loc.getX() <= maxX
-                    && loc.getY() >= minY && loc.getY() <= maxY
                     && loc.getZ() >= minZ && loc.getZ() <= maxZ;
         }
     }

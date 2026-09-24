@@ -3,16 +3,21 @@ package com.hollowcrown.hub.limbo;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Color;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -20,38 +25,100 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
-/** Hollow Crown Hub limbo corner wand (writes HCIronLegacy {@code worlds.yml}). */
+/**
+ * Template lobby circle wand. Writes HCIronLegacy {@code worlds.yml} limbo zone.
+ * Left-click center, right-click edge (radius + height). Shift+scroll cycles the tip
+ * and locks the hotbar slot. Shift-right-click saves. Spawn stays {@code /hch template limbo spawn}.
+ */
 public final class HubLimboWandListener implements Listener {
 
-    private static final String WAND_NAME = "§dLimbo Wand";
-    private static final String WAND_MARKER = "*";
+    private static final String WAND_MARKER = "lobby_circle";
+    private static final Pattern LOBBY_SUFFIX = Pattern.compile("-L\\d+$");
+    private static final String MANAGED_PREFIX = "hch-worlds/templates/";
+
+    public enum SelectMode {
+        CENTER,
+        EDGE
+    }
 
     private final HollowCrownHubPlugin plugin;
     private final HubLimboWorldsYaml worldsYaml;
-    private final Map<UUID, CornerState> selections = new HashMap<>();
+    private final Map<UUID, EditorState> editors = new HashMap<>();
 
     public HubLimboWandListener(HollowCrownHubPlugin plugin, HubLimboWorldsYaml worldsYaml) {
         this.plugin = plugin;
         this.worldsYaml = worldsYaml;
+        startHudTask();
+    }
+
+    static ItemStack createWand(HollowCrownHubPlugin plugin) {
+        ItemStack wand = new ItemStack(Material.GOLDEN_HOE);
+        ItemMeta meta = wand.getItemMeta();
+        if (meta != null) {
+            meta.displayName(Component.text("Lobby Circle Wand", NamedTextColor.GOLD)
+                    .decoration(TextDecoration.ITALIC, false));
+            meta.lore(List.of(
+                    Component.text("Left-click: set center", NamedTextColor.GRAY),
+                    Component.text("Right-click: set edge (radius + height)", NamedTextColor.GRAY),
+                    Component.text("Hold Shift + scroll: cycle Center / Edge tip", NamedTextColor.AQUA),
+                    Component.text("Shift-right-click: save lobby circle", NamedTextColor.YELLOW),
+                    Component.text("Spawn: /hch template limbo spawn (stand inside)", NamedTextColor.GRAY),
+                    Component.text("Border + HUD only while holding this wand", NamedTextColor.DARK_GRAY)
+            ));
+            meta.getPersistentDataContainer().set(
+                    plugin.limboWandTemplateKey(), PersistentDataType.STRING, WAND_MARKER);
+            wand.setItemMeta(meta);
+        }
+        return wand;
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onHotbarScroll(PlayerItemHeldEvent event) {
+        Player p = event.getPlayer();
+        if (!p.isSneaking()) {
+            return;
+        }
+        int prev = event.getPreviousSlot();
+        if (!isCircleWand(p.getInventory().getItem(prev))) {
+            return;
+        }
+        int delta = Math.floorMod(event.getNewSlot() - prev, 9);
+        if (delta != 1 && delta != 8) {
+            return;
+        }
+        event.setCancelled(true);
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            if (p.isOnline() && p.getInventory().getHeldItemSlot() != prev) {
+                p.getInventory().setHeldItemSlot(prev);
+            }
+        });
+        EditorState state = editors.computeIfAbsent(p.getUniqueId(), k -> new EditorState());
+        state.mode = state.mode == SelectMode.CENTER ? SelectMode.EDGE : SelectMode.CENTER;
+        sendHud(p, state, resolveTemplateKey(p));
+        p.sendMessage(Component.text(
+                "Selection tip: " + state.mode.name().charAt(0)
+                        + state.mode.name().substring(1).toLowerCase(Locale.ROOT),
+                NamedTextColor.AQUA));
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onWandUse(PlayerInteractEvent event) {
         Player p = event.getPlayer();
         ItemStack item = event.getItem();
-        if (item == null || !item.hasItemMeta()) {
+        if (item == null || !isCircleWand(item)) {
             return;
         }
-        ItemMeta meta = item.getItemMeta();
-        String wandTag = meta.getPersistentDataContainer().get(plugin.limboWandTemplateKey(), PersistentDataType.STRING);
-        if (wandTag == null || wandTag.isBlank()) {
-            return;
-        }
-
         event.setCancelled(true);
+        if (!p.isOp() && !p.hasPermission("hollowcrownhub.admin")) {
+            p.sendMessage(Component.text("Admins only.", NamedTextColor.RED));
+            return;
+        }
 
         String templateKey = resolveTemplateKey(p);
         if (templateKey == null) {
@@ -62,205 +129,269 @@ public final class HubLimboWandListener implements Listener {
             return;
         }
 
-        CornerState state = selections.get(p.getUniqueId());
-        if (state == null || !state.templateKey.equals(templateKey)) {
-            state = new CornerState(templateKey);
-            selections.put(p.getUniqueId(), state);
+        EditorState state = editors.computeIfAbsent(p.getUniqueId(), k -> new EditorState());
+        if (state.templateKey == null || !state.templateKey.equals(templateKey)) {
+            state.templateKey = templateKey;
         }
 
-        Location clicked = event.getClickedBlock() != null
-                ? event.getClickedBlock().getLocation()
+        Block clicked = event.getClickedBlock();
+        Location blockLoc = clicked != null
+                ? clicked.getLocation()
                 : p.getLocation().getBlock().getLocation();
+        Action action = event.getAction();
+        boolean right = action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK;
+        boolean left = action == Action.LEFT_CLICK_AIR || action == Action.LEFT_CLICK_BLOCK;
 
-        if (p.isSneaking() && (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)) {
-            if (state.pos1 == null || state.pos2 == null) {
-                p.sendMessage(Component.text("Set both corners first.", NamedTextColor.RED));
+        if (p.isSneaking() && right) {
+            if (state.center == null || state.edge == null) {
+                p.sendMessage(Component.text("Set center (left-click) and edge (right-click) first.", NamedTextColor.RED));
                 return;
             }
-            boolean ok = worldsYaml.writeLimboZone(templateKey, state.pos1, state.pos2);
-            if (!ok) {
-                p.sendMessage(Component.text("Failed to save limbo zone.", NamedTextColor.RED));
+            if (!worldsYaml.writeLimboCircle(templateKey, state.center, state.edge)) {
+                p.sendMessage(Component.text("Failed to save lobby circle.", NamedTextColor.RED));
                 return;
             }
-            p.sendMessage(Component.text("Limbo zone confirmed for template: " + templateKey, NamedTextColor.GREEN));
+            p.sendMessage(Component.text(
+                    "Lobby circle saved for " + templateKey
+                            + " (radius "
+                            + String.format(Locale.ROOT, "%.1f", horizontalRadius(state.center, state.edge))
+                            + "). Stand inside it and run /hch template limbo spawn.",
+                    NamedTextColor.GREEN));
             return;
         }
 
-        if (event.getAction() == Action.LEFT_CLICK_AIR || event.getAction() == Action.LEFT_CLICK_BLOCK) {
-            state.pos1 = clicked;
-            p.sendMessage(Component.text("First corner set.", NamedTextColor.YELLOW));
-            if (state.pos2 != null) {
-                startOutlinePreview(p, state);
-            }
+        if (left) {
+            state.center = blockLoc.clone();
+            p.sendMessage(Component.text("Center set at " + fmt(blockLoc) + ".", NamedTextColor.YELLOW));
+            sendHud(p, state, templateKey);
             return;
         }
-        if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-            state.pos2 = clicked;
-            p.sendMessage(Component.text("Second corner set.", NamedTextColor.YELLOW));
-            if (state.pos1 != null) {
-                startOutlinePreview(p, state);
+        if (right) {
+            state.edge = blockLoc.clone();
+            if (state.center != null && state.center.getWorld() != null && state.edge.getWorld() != null
+                    && !state.edge.getWorld().equals(state.center.getWorld())) {
+                p.sendMessage(Component.text("Edge must be in the same world as the center.", NamedTextColor.RED));
+                state.edge = null;
+                return;
             }
+            p.sendMessage(Component.text(
+                    "Edge set at " + fmt(blockLoc) + " (radius "
+                            + String.format(Locale.ROOT, "%.1f",
+                            state.center == null ? 0.0 : horizontalRadius(state.center, state.edge))
+                            + ").",
+                    NamedTextColor.YELLOW));
+            sendHud(p, state, templateKey);
         }
     }
 
-    static ItemStack createWand(HollowCrownHubPlugin plugin) {
-        ItemStack wand = new ItemStack(org.bukkit.Material.STICK);
-        ItemMeta meta = wand.getItemMeta();
-        if (meta != null) {
-            meta.displayName(Component.text(WAND_NAME));
-            meta.lore(java.util.List.of(
-                    Component.text("Left-click block: first corner", NamedTextColor.GRAY),
-                    Component.text("Right-click block: second corner", NamedTextColor.GRAY),
-                    Component.text("Shift-right-click: save zone (HCIronLegacy worlds.yml)", NamedTextColor.GRAY),
-                    Component.text("Works in any template world", NamedTextColor.DARK_GRAY)
-            ));
-            meta.getPersistentDataContainer().set(plugin.limboWandTemplateKey(), PersistentDataType.STRING, WAND_MARKER);
-            wand.setItemMeta(meta);
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        EditorState state = editors.remove(event.getPlayer().getUniqueId());
+        if (state != null) {
+            stopOutline(state);
         }
-        return wand;
     }
 
-    private static final java.util.regex.Pattern LOBBY_SUFFIX = java.util.regex.Pattern.compile("-L\\d+$");
-    private static final String MANAGED_PREFIX = "hch-worlds/templates/";
+    private void startHudTask() {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                for (Player p : plugin.getServer().getOnlinePlayers()) {
+                    if (!isHoldingCircleWand(p)) {
+                        EditorState state = editors.get(p.getUniqueId());
+                        if (state != null) {
+                            stopOutline(state);
+                        }
+                        continue;
+                    }
+                    EditorState state = editors.computeIfAbsent(p.getUniqueId(), k -> new EditorState());
+                    String key = resolveTemplateKey(p);
+                    if (key != null) {
+                        state.templateKey = key;
+                    }
+                    sendHud(p, state, key);
+                    ensureOutline(p, state);
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 5L);
+    }
+
+    private void ensureOutline(Player viewer, EditorState state) {
+        if (state.outlineTask != null) {
+            return;
+        }
+        state.outlineTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!viewer.isOnline() || !isHoldingCircleWand(viewer)) {
+                    stopOutline(state);
+                    cancel();
+                    return;
+                }
+                Location c = state.center;
+                Location e = state.edge;
+                if (c == null && state.templateKey != null) {
+                    worldsYaml.limboZone(state.templateKey).ifPresent(zone -> {
+                        if (zone.circle()) {
+                            Location center = new Location(viewer.getWorld(), zone.circleCenterX(),
+                                    Math.min(zone.pos1().getY(), zone.pos2().getY()), zone.circleCenterZ());
+                            drawCylinder(viewer, center, zone.circleRadius(),
+                                    (int) Math.min(zone.pos1().getY(), zone.pos2().getY()),
+                                    (int) Math.max(zone.pos1().getY(), zone.pos2().getY()));
+                        }
+                    });
+                    return;
+                }
+                if (c == null) {
+                    return;
+                }
+                if (e == null) {
+                    drawMarker(viewer, c, Color.fromRGB(80, 255, 120));
+                    return;
+                }
+                int minY = Math.min(c.getBlockY(), e.getBlockY());
+                int maxY = Math.max(c.getBlockY(), e.getBlockY());
+                if (minY == maxY) {
+                    minY -= 8;
+                    maxY += 24;
+                }
+                drawCylinder(viewer, c, horizontalRadius(c, e), minY, maxY);
+                drawMarker(viewer, c, Color.fromRGB(80, 255, 120));
+                drawMarker(viewer, e, Color.fromRGB(255, 200, 80));
+            }
+        }.runTaskTimer(plugin, 0L, 8L);
+    }
+
+    private void stopOutline(EditorState state) {
+        if (state == null || state.outlineTask == null) {
+            return;
+        }
+        try {
+            state.outlineTask.cancel();
+        } catch (Exception ignored) {
+        }
+        state.outlineTask = null;
+    }
+
+    private void sendHud(Player p, EditorState state, String templateKey) {
+        String mode = state.mode == SelectMode.CENTER ? "Center" : "Edge";
+        String center = state.center == null ? "—" : fmt(state.center);
+        String edge = state.edge == null ? "—" : fmt(state.edge);
+        String radius = (state.center != null && state.edge != null)
+                ? String.format(Locale.ROOT, "%.1f", horizontalRadius(state.center, state.edge))
+                : "—";
+        String key = templateKey == null ? "—" : templateKey;
+        p.sendActionBar(Component.text()
+                .append(Component.text("Lobby " + key + "  ", NamedTextColor.GOLD))
+                .append(Component.text("[" + mode + "] ", NamedTextColor.AQUA))
+                .append(Component.text("C:" + center + " ", NamedTextColor.GREEN))
+                .append(Component.text("E:" + edge + " ", NamedTextColor.YELLOW))
+                .append(Component.text("R:" + radius, NamedTextColor.WHITE))
+                .append(Component.text("  | Shift+scroll", NamedTextColor.DARK_GRAY))
+                .build());
+    }
 
     private String resolveTemplateKey(Player p) {
         String worldName = p.getWorld().getName();
-
-        // 1. Direct worlds.yml lookup by world folder name
         var direct = worldsYaml.findTemplateKeyForWorldFolder(worldName);
-        if (direct.isPresent()) return direct.get();
-
-        // 2. Managed template path (hch-worlds/templates/<key>)
+        if (direct.isPresent()) {
+            return direct.get();
+        }
         String normalized = worldName.replace('\\', '/');
-        if (normalized.toLowerCase(java.util.Locale.ROOT).startsWith(MANAGED_PREFIX.toLowerCase(java.util.Locale.ROOT))) {
+        if (normalized.toLowerCase(Locale.ROOT).startsWith(MANAGED_PREFIX.toLowerCase(Locale.ROOT))) {
             String tail = normalized.substring(MANAGED_PREFIX.length());
-            String key = tail.toLowerCase(java.util.Locale.ROOT);
+            String key = tail.toLowerCase(Locale.ROOT);
             if (HubLimboWorldsYaml.SAFE_TEMPLATE_KEY.matcher(key).matches()) {
                 return key;
             }
         }
-
-        // 3. Lobby instance world (<key>-L#) — strip suffix and retry
         String stripped = LOBBY_SUFFIX.matcher(worldName).replaceFirst("");
         if (!stripped.equals(worldName)) {
             var fromStripped = worldsYaml.findTemplateKeyForWorldFolder(stripped);
-            if (fromStripped.isPresent()) return fromStripped.get();
-            String lower = stripped.toLowerCase(java.util.Locale.ROOT);
+            if (fromStripped.isPresent()) {
+                return fromStripped.get();
+            }
+            String lower = stripped.toLowerCase(Locale.ROOT);
             if (HubLimboWorldsYaml.SAFE_TEMPLATE_KEY.matcher(lower).matches()) {
                 return lower;
             }
         }
-
-        // 4. Template registry lookup by source world
         for (var entry : plugin.templates().list()) {
             if (worldName.equalsIgnoreCase(entry.sourceWorldName())) {
                 return entry.templateKey();
             }
         }
-
-        // 5. Fallback: use world name if it's a safe key
-        String lower = worldName.toLowerCase(java.util.Locale.ROOT);
+        String lower = worldName.toLowerCase(Locale.ROOT);
         if (HubLimboWorldsYaml.SAFE_TEMPLATE_KEY.matcher(lower).matches()) {
             return lower;
         }
         return null;
     }
 
-    private void startOutlinePreview(Player viewer, CornerState selection) {
-        stopOutlinePreview(selection);
-        selection.outlineTask = new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (!viewer.isOnline()) {
-                    stopOutlinePreview(selection);
-                    cancel();
-                    return;
-                }
-                if (!isHoldingLimboWand(viewer)) return;
-
-                Location p1 = selection.pos1;
-                Location p2 = selection.pos2;
-                if (p1 == null || p2 == null) {
-                    var saved = worldsYaml.limboZone(selection.templateKey);
-                    if (saved.isEmpty()) return;
-                    p1 = saved.get().pos1();
-                    p2 = saved.get().pos2();
-                    if (p1 == null || p2 == null) return;
-                }
-                drawOutline(viewer, p1, p2);
-            }
-        }.runTaskTimer(plugin, 0L, 10L);
+    private boolean isHoldingCircleWand(Player p) {
+        return isCircleWand(p.getInventory().getItemInMainHand())
+                || isCircleWand(p.getInventory().getItemInOffHand());
     }
 
-    private boolean isHoldingLimboWand(Player p) {
-        ItemStack item = p.getInventory().getItemInMainHand();
-        if (item.getType().isAir() || !item.hasItemMeta()) return false;
+    private boolean isCircleWand(ItemStack item) {
+        if (item == null || item.getType().isAir() || !item.hasItemMeta()) {
+            return false;
+        }
         String tag = item.getItemMeta().getPersistentDataContainer()
                 .get(plugin.limboWandTemplateKey(), PersistentDataType.STRING);
-        return tag != null && !tag.isBlank();
+        return WAND_MARKER.equals(tag);
     }
 
-    private void stopOutlinePreview(CornerState selection) {
-        if (selection == null || selection.outlineTask == null) {
+    static double horizontalRadius(Location center, Location edge) {
+        double dx = (edge.getBlockX() + 0.5) - (center.getBlockX() + 0.5);
+        double dz = (edge.getBlockZ() + 0.5) - (center.getBlockZ() + 0.5);
+        return Math.max(1.0, Math.sqrt(dx * dx + dz * dz));
+    }
+
+    private static void drawMarker(Player viewer, Location loc, Color color) {
+        if (loc == null || loc.getWorld() == null || !viewer.getWorld().equals(loc.getWorld())) {
             return;
         }
-        try {
-            selection.outlineTask.cancel();
-        } catch (Exception ignored) {
-        }
-        selection.outlineTask = null;
+        Particle.DustOptions dust = new Particle.DustOptions(color, 1.4f);
+        viewer.spawnParticle(Particle.DUST,
+                loc.getBlockX() + 0.5, loc.getBlockY() + 1.05, loc.getBlockZ() + 0.5,
+                1, 0, 0, 0, 0, dust);
     }
 
-    private void drawOutline(Player viewer, Location pos1, Location pos2) {
-        if (viewer == null || !viewer.isOnline() || pos1 == null || pos2 == null) {
+    private static void drawCylinder(Player viewer, Location center, double radius, int minY, int maxY) {
+        if (viewer == null || center == null || radius <= 0) {
             return;
         }
         World w = viewer.getWorld();
-        if (w == null || pos1.getWorld() == null || pos2.getWorld() == null) {
+        if (w == null) {
             return;
         }
-        if (!w.getName().equalsIgnoreCase(pos1.getWorld().getName()) || !w.getName().equalsIgnoreCase(pos2.getWorld().getName())) {
-            return;
+        Particle.DustOptions dust = new Particle.DustOptions(Color.fromRGB(255, 170, 40), 1.15f);
+        double cx = center.getBlockX() + 0.5;
+        double cz = center.getBlockZ() + 0.5;
+        if (center.getWorld() != null && center.getWorld().equals(w)) {
+            cx = center.getX();
+            cz = center.getZ();
         }
-
-        double minX = Math.min(pos1.getBlockX(), pos2.getBlockX()) - 0.02;
-        double maxX = Math.max(pos1.getBlockX(), pos2.getBlockX()) + 1.02;
-        double minY = Math.min(pos1.getBlockY(), pos2.getBlockY()) - 0.02;
-        double maxY = Math.max(pos1.getBlockY(), pos2.getBlockY()) + 1.02;
-        double minZ = Math.min(pos1.getBlockZ(), pos2.getBlockZ()) - 0.02;
-        double maxZ = Math.max(pos1.getBlockZ(), pos2.getBlockZ()) + 1.02;
-
-        Particle.DustOptions dust = new Particle.DustOptions(Color.fromRGB(80, 220, 255), 1.2f);
-        double step = 0.5;
-
-        for (double x = minX; x <= maxX; x += step) {
-            viewer.spawnParticle(Particle.DUST, x, minY, minZ, 1, 0, 0, 0, 0, dust);
-            viewer.spawnParticle(Particle.DUST, x, minY, maxZ, 1, 0, 0, 0, 0, dust);
-            viewer.spawnParticle(Particle.DUST, x, maxY, minZ, 1, 0, 0, 0, 0, dust);
-            viewer.spawnParticle(Particle.DUST, x, maxY, maxZ, 1, 0, 0, 0, 0, dust);
-        }
-        for (double y = minY; y <= maxY; y += step) {
-            viewer.spawnParticle(Particle.DUST, minX, y, minZ, 1, 0, 0, 0, 0, dust);
-            viewer.spawnParticle(Particle.DUST, minX, y, maxZ, 1, 0, 0, 0, 0, dust);
-            viewer.spawnParticle(Particle.DUST, maxX, y, minZ, 1, 0, 0, 0, 0, dust);
-            viewer.spawnParticle(Particle.DUST, maxX, y, maxZ, 1, 0, 0, 0, 0, dust);
-        }
-        for (double z = minZ; z <= maxZ; z += step) {
-            viewer.spawnParticle(Particle.DUST, minX, minY, z, 1, 0, 0, 0, 0, dust);
-            viewer.spawnParticle(Particle.DUST, minX, maxY, z, 1, 0, 0, 0, 0, dust);
-            viewer.spawnParticle(Particle.DUST, maxX, minY, z, 1, 0, 0, 0, 0, dust);
-            viewer.spawnParticle(Particle.DUST, maxX, maxY, z, 1, 0, 0, 0, 0, dust);
+        int steps = Math.max(24, (int) (radius * 6));
+        for (int i = 0; i < steps; i++) {
+            double a = (Math.PI * 2 * i) / steps;
+            double x = cx + Math.cos(a) * radius;
+            double z = cz + Math.sin(a) * radius;
+            viewer.spawnParticle(Particle.DUST, x, minY + 0.05, z, 1, 0, 0, 0, 0, dust);
+            viewer.spawnParticle(Particle.DUST, x, maxY + 0.95, z, 1, 0, 0, 0, 0, dust);
         }
     }
 
-    private static final class CornerState {
-        final String templateKey;
-        Location pos1;
-        Location pos2;
-        BukkitTask outlineTask;
+    private static String fmt(Location loc) {
+        return loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ();
+    }
 
-        CornerState(String templateKey) {
-            this.templateKey = templateKey;
-        }
+    private static final class EditorState {
+        SelectMode mode = SelectMode.CENTER;
+        String templateKey;
+        Location center;
+        Location edge;
+        BukkitTask outlineTask;
     }
 }

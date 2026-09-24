@@ -280,7 +280,7 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
         if (args.length == 2) {
             String p = args[1].toLowerCase();
             List<String> out = new ArrayList<>();
-            for (String c : List.of("list", "create", "get", "set", "limbo", "worlds", "setsource", "setqueue", "remove")) {
+            for (String c : List.of("list", "create", "get", "set", "lobby", "limbo", "worlds", "setsource", "setqueue", "remove")) {
                 if (c.startsWith(p)) {
                     out.add(c);
                 }
@@ -290,18 +290,16 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
         if (args.length == 3 && args[1].equalsIgnoreCase("limbo")) {
             String p = args[2].toLowerCase(Locale.ROOT);
             List<String> out = new ArrayList<>();
-            for (String c : List.of("wand", "spawn", "help")) {
+            for (String c : List.of("spawn", "help")) {
                 if (c.startsWith(p)) {
                     out.add(c);
                 }
             }
             return out;
         }
-        if (args.length == 4 && args[1].equalsIgnoreCase("limbo") && args[2].equalsIgnoreCase("wand")) {
-            String p = args[3].toLowerCase(Locale.ROOT);
-            LinkedHashSet<String> keys = new LinkedHashSet<>();
-            HubIronLegacySupport.ilAdmin().ifPresent(a -> HubIlWorldInput.addCompletionTokens(a, p, keys));
-            return new ArrayList<>(keys);
+        if (args.length == 3 && args[1].equalsIgnoreCase("lobby")) {
+            String p = args[2].toLowerCase(Locale.ROOT);
+            return List.of("wand").stream().filter(c -> c.startsWith(p)).toList();
         }
         if (args.length == 3 && args[1].equalsIgnoreCase("worlds")) {
             String p = args[2].toLowerCase(Locale.ROOT);

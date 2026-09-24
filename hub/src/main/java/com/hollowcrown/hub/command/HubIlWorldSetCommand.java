@@ -39,7 +39,7 @@ public final class HubIlWorldSetCommand {
             p.sendMessage(Component.text("Limbo spawn set.", NamedTextColor.GREEN));
         } else {
             p.sendMessage(Component.text(
-                    "Failed — stand in the template world inside the saved limbo zone (/hch template limbo wand first).",
+                    "Failed — stand in the template world inside the saved lobby circle (/hch template lobby wand first).",
                     NamedTextColor.RED));
         }
         return true;

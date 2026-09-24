@@ -660,6 +660,13 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
         for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
+                    if (zone.circle()) {
+                        double dx = (x + 0.5) - zone.circleCenterX();
+                        double dz = (z + 0.5) - zone.circleCenterZ();
+                        if (dx * dx + dz * dz > zone.circleRadius() * zone.circleRadius()) {
+                            continue;
+                        }
+                    }
                     w.getBlockAt(x, y, z).setType(Material.AIR, false);
                 }
             }
@@ -667,22 +674,11 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
     }
 
     private static void clearLimboZoneEntities(World w, LimboZone zone) {
-        Location p1 = zone.pos1();
-        Location p2 = zone.pos2();
-        double minX = Math.min(p1.getX(), p2.getX());
-        double maxX = Math.max(p1.getX(), p2.getX()) + 1.0;
-        double minY = Math.min(p1.getY(), p2.getY());
-        double maxY = Math.max(p1.getY(), p2.getY()) + 1.0;
-        double minZ = Math.min(p1.getZ(), p2.getZ());
-        double maxZ = Math.max(p1.getZ(), p2.getZ()) + 1.0;
         for (Entity ent : w.getEntities()) {
             if (ent instanceof Player) {
                 continue;
             }
-            Location loc = ent.getLocation();
-            if (loc.getX() < minX || loc.getX() >= maxX
-                    || loc.getY() < minY || loc.getY() >= maxY
-                    || loc.getZ() < minZ || loc.getZ() >= maxZ) {
+            if (!zone.contains(ent.getLocation())) {
                 continue;
             }
             ent.remove();
@@ -714,14 +710,27 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
     private Location clampToZone(Location loc, LimboZone zone) {
         Location p1 = zone.pos1();
         Location p2 = zone.pos2();
-        double minX = Math.min(p1.getX(), p2.getX());
-        double maxX = Math.max(p1.getX(), p2.getX());
         double minY = Math.min(p1.getY(), p2.getY());
         double maxY = Math.max(p1.getY(), p2.getY());
+        double y = Math.max(minY + 0.1, Math.min(maxY - 0.1, loc.getY()));
+        if (zone.circle()) {
+            double dx = loc.getX() - zone.circleCenterX();
+            double dz = loc.getZ() - zone.circleCenterZ();
+            double dist = Math.sqrt(dx * dx + dz * dz);
+            double limit = Math.max(0.5, zone.circleRadius() - 0.3);
+            double x = loc.getX();
+            double z = loc.getZ();
+            if (dist > limit && dist > 0.0001) {
+                x = zone.circleCenterX() + dx / dist * limit;
+                z = zone.circleCenterZ() + dz / dist * limit;
+            }
+            return new Location(loc.getWorld(), x, y, z, loc.getYaw(), loc.getPitch());
+        }
+        double minX = Math.min(p1.getX(), p2.getX());
+        double maxX = Math.max(p1.getX(), p2.getX());
         double minZ = Math.min(p1.getZ(), p2.getZ());
         double maxZ = Math.max(p1.getZ(), p2.getZ());
         double x = Math.max(minX + 0.2, Math.min(maxX - 0.2, loc.getX()));
-        double y = Math.max(minY + 0.1, Math.min(maxY - 0.1, loc.getY()));
         double z = Math.max(minZ + 0.2, Math.min(maxZ - 0.2, loc.getZ()));
         return new Location(loc.getWorld(), x, y, z, loc.getYaw(), loc.getPitch());
     }
@@ -737,7 +746,7 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
             Location s2 = z.pos2().clone();
             s1.setWorld(sessionWorld);
             s2.setWorld(sessionWorld);
-            return new LimboZone(s1, s2);
+            return new LimboZone(s1, s2, z.circleCenterX(), z.circleCenterZ(), z.circleRadius());
         }
         if (b == null) {
             return null;
@@ -755,18 +764,38 @@ public final class HubPreMatchLimboService implements PreMatchLimboService, List
         return new LimboZone(s1, s2);
     }
 
-    private record LimboZone(Location pos1, Location pos2) {
+    private record LimboZone(
+            Location pos1,
+            Location pos2,
+            Double circleCenterX,
+            Double circleCenterZ,
+            Double circleRadius
+    ) {
+        LimboZone(Location pos1, Location pos2) {
+            this(pos1, pos2, null, null, null);
+        }
+
+        boolean circle() {
+            return circleRadius != null && circleRadius > 0
+                    && circleCenterX != null && circleCenterZ != null;
+        }
+
         boolean contains(Location loc) {
             if (loc == null || loc.getWorld() == null || pos1 == null || pos2 == null) return false;
             if (!loc.getWorld().equals(pos1.getWorld()) || !loc.getWorld().equals(pos2.getWorld())) return false;
-            double minX = Math.min(pos1.getX(), pos2.getX());
-            double maxX = Math.max(pos1.getX(), pos2.getX());
             double minY = Math.min(pos1.getY(), pos2.getY());
             double maxY = Math.max(pos1.getY(), pos2.getY());
+            if (loc.getY() < minY || loc.getY() > maxY) return false;
+            if (circle()) {
+                double dx = loc.getX() - circleCenterX;
+                double dz = loc.getZ() - circleCenterZ;
+                return dx * dx + dz * dz <= circleRadius * circleRadius;
+            }
+            double minX = Math.min(pos1.getX(), pos2.getX());
+            double maxX = Math.max(pos1.getX(), pos2.getX());
             double minZ = Math.min(pos1.getZ(), pos2.getZ());
             double maxZ = Math.max(pos1.getZ(), pos2.getZ());
             return loc.getX() >= minX && loc.getX() <= maxX
-                    && loc.getY() >= minY && loc.getY() <= maxY
                     && loc.getZ() >= minZ && loc.getZ() <= maxZ;
         }
     }

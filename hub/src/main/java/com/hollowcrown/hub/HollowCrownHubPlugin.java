@@ -177,8 +177,6 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(
                 new com.hollowcrown.hub.world.HubPvpZoneWandListener(this, hubWorldManager), this);
         Bukkit.getPluginManager().registerEvents(
-                new com.hollowcrown.hub.world.HubLobbyCircleWandListener(this, hubWorldManager), this);
-        Bukkit.getPluginManager().registerEvents(
                 new com.hollowcrown.hub.policy.HubTemplatePolicyCloseListener(this), this);
         Bukkit.getPluginManager().registerEvents(
                 new com.hollowcrown.hub.template.HubTemplatePublishChatListener(this), this);

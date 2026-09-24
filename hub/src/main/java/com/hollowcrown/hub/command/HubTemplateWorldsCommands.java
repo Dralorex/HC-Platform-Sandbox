@@ -443,7 +443,7 @@ public final class HubTemplateWorldsCommands {
                 " snapshots <world|key> · toggle <world|key> · iconpreview [iconKey]",
                 NamedTextColor.GRAY));
         sender.sendMessage(Component.text(
-                "Limbo: /hch template limbo wand <world|key> · limbo spawn",
+                "Lobby circle: /hch template lobby wand · spawn: /hch template limbo spawn",
                 NamedTextColor.GRAY));
         sender.sendMessage(Component.text(
                 "World fields: /hch template set <world|key> display|enabled|…",

@@ -9,6 +9,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Template lobby zone is a circle: `/hch template lobby wand` (center, edge, Shift+scroll, shift-right save). `/hch template limbo wand` no longer gives the corner wand.
+- Lobby spawn is still `/hch template limbo spawn` while standing inside the saved circle.
+
+### Removed
+
+- `/hch hubworld lobby wand` (circle selection now belongs on the template lobby wand).
+
 ## [HC-Plugins-a0.1.22] - 2026-09-23
 
 Tagged plugins: **API a0.1.14**, **Foundation a0.1.5**, **Hub a0.1.18**, **Iron Legacy a0.3.21**.

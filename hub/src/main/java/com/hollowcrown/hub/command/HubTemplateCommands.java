@@ -34,7 +34,7 @@ public final class HubTemplateCommands {
         if (args.length < 2) {
             sender.sendMessage(Component.text("Template commands (/hch template)", NamedTextColor.GOLD));
             sender.sendMessage(Component.text(
-                    " list · create · get · remove · worlds … · limbo … · set … · setsource · setqueue",
+                    " list · create · get · remove · worlds … · lobby wand · limbo spawn · set … · setsource · setqueue",
                     NamedTextColor.GRAY));
             sender.sendMessage(Component.text(
                     " worlds list|reload|gui|importhub|edit|publish|delete|rollback|snapshots|toggle|iconpreview … — Iron Legacy worlds.yml",
@@ -46,7 +46,10 @@ public final class HubTemplateCommands {
                     " set <key> <display|enabled|maxplayers|teamsize|icon|minimumpercentage|gamerule> … — IL worlds.yml when key exists in /hch template worlds list",
                     NamedTextColor.GRAY));
             sender.sendMessage(Component.text(
-                    " limbo wand <key> · limbo spawn — Hub limbo zone + spawn (writes IL worlds.yml)",
+                    " lobby wand — circle lobby zone (writes IL worlds.yml)",
+                    NamedTextColor.GRAY));
+            sender.sendMessage(Component.text(
+                    " limbo spawn — stand inside the saved circle",
                     NamedTextColor.GRAY));
             sender.sendMessage(Component.text(
                     " set limbo spawn — alias for limbo spawn",
@@ -69,6 +72,7 @@ public final class HubTemplateCommands {
             case "setsource" -> setSource(sender, reg, args);
             case "setqueue" -> setQueue(sender, reg, args);
             case "limbo" -> HubTemplateLimboCommands.handle(plugin, sender, args);
+            case "lobby" -> HubTemplateLimboCommands.handleLobbyWand(plugin, sender, args);
             case "worlds" -> HubTemplateWorldsCommands.handle(plugin, sender, args);
             case "remove" -> remove(sender, reg, args);
             default -> {

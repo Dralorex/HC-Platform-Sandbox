@@ -147,11 +147,7 @@ Permission: hollowcrownhub.team
 --- Hub world  [admin] ---
 
 /hch hubworld size <blocks>
-  Protection radius from hub spawn (square fallback when no circle saved).
-
-/hch hubworld lobby wand
-  Give Lobby Circle Wand (center LMB, edge RMB, Shift+scroll cycle tip, shift-RMB save).
-  Alias: /hch hubworld circle wand
+  Protection radius from hub spawn.
 
 /hch hubworld buildmode <true|false>
   Toggle creative build mode. Alias: bm
@@ -220,16 +216,17 @@ Permission: hollowcrownhub.team
 /hch template setqueue <key> maxUnitSize|soloOnly|soloAutoMerge|joinQueueFirst <value>
   Queue policy for template.
 
---- Template — Limbo  [admin] ---
+--- Template — Lobby zone  [admin] ---
 
-/hch template limbo wand
-  Give limbo zone wand (left/right corner, shift-right save).
+/hch template lobby wand
+  Give the lobby circle wand. Stand in the template world.
+  Left-click center, right-click edge (radius + height), Shift+scroll cycles tip, shift-right saves.
 
 /hch template limbo spawn
-  Set limbo spawn at feet for template in current world.
+  Set lobby spawn at your feet. You must be standing inside the saved circle.
 
 /hch template limbo help
-  Limbo wand help.
+  Points at lobby wand + limbo spawn.
 
 --- Template — IL worlds  [admin, requires IL] ---
 

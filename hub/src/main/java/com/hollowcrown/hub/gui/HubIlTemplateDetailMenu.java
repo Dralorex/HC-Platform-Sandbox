@@ -92,11 +92,9 @@ public final class HubIlTemplateDetailMenu extends HubMenuView {
                 List.of("§7Flip worlds.yml enabled")));
         inv.setItem(42, btn(Material.PAINTING, "§bIcon preview",
                 List.of("§7Opens preview chest")));
-        inv.setItem(43, btn(Material.BLAZE_ROD, "§dLimbo wand",
-                List.of("§7Same as §f/hch template limbo wand "
-                                + inf.map(IronLegacyTemplateRow::worldName).filter(s -> s != null && !s.isBlank())
-                                        .orElse(templateKey),
-                        "§7Corners in §fthis§7 template world")));
+        inv.setItem(43, btn(Material.GOLDEN_HOE, "§6Lobby circle wand",
+                List.of("§7Same as §f/hch template lobby wand",
+                        "§7Center + edge in §fthis§7 template world")));
         inv.setItem(44, btn(Material.RECOVERY_COMPASS, "§bLimbo spawn here",
                 List.of("§7Same as §f/hch template limbo spawn",
                         "§7Stand §binside§7 saved zone")));
@@ -164,7 +162,7 @@ public final class HubIlTemplateDetailMenu extends HubMenuView {
         if (slot == 43) {
             if (plugin.limboLayout().giveLimboWand(p)) {
                 p.sendMessage(Component.text(
-                        "Limbo wand added — use corners in this template world; shift-right-click saves.",
+                        "Lobby circle wand added. Left=center, Right=edge, Shift+scroll cycles, Shift-right saves.",
                         NamedTextColor.GREEN));
             } else {
                 p.sendMessage(Component.text("Could not give wand (invalid key or inventory full?).", NamedTextColor.RED));
