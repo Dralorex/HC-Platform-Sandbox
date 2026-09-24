@@ -9,9 +9,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [HC-Plugins-a0.1.23] - 2026-09-24
+
+Tagged plugins: **API a0.1.15**, **Foundation a0.1.5**, **Hub a0.1.19**, **Iron Legacy a0.3.22**.
+
+### Added
+
+- In-game QA Excel workbook (`docs/IN_GAME_QA_GoogleSheets.xlsx`) and legend key (`docs/IN_GAME_QA_KEY.xlsx`).
+- `/il clearspawn [closest|all]` — remove nearest pad or clear all pads for the current template.
+
 ### Fixed
 
-- Startup / discover: prune template rows whose folders are gone from `hch-worlds/templates/` (Hub `templates.yml`, IL `worlds.yml`, lobbies, queues, policies) so false join entries disappear.
+- Startup / discover: prune template rows whose folders are gone from `hch-worlds/templates/` (Hub `templates.yml`, IL `worlds.yml`, lobbies, queues, policies).
 - Non-ops no longer see technical match/lobby failure paths; they get `OOPS... something messed up! Please inform a Team Member!` (ops still see detail).
 - Hub / pre-match lobby / Iron Legacy: no hunger–saturation healing while hub PvP is on or while a match is FREEZE/RUNNING; clear absorption on PvP activate and match countdown.
 - After PvP deactivates, hub/lobby death, or match countdown start: full health, food 20, saturation 6/20 (≡ 3/10), no absorption/regen effects.
@@ -21,12 +30,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- `/il clearspawn [closest|all]` — clear closest pad (default) or all pads for the current template. Replaces `/il clearspawns` and `/il removespawn`.
 - Template lobby commands are `/hch template lobby wand`, `spawn`, and `help`. Internal and saved names that said limbo now say lobby. Hosting lobby worlds stays `/hch lobby`. Existing `worlds.yml` zone sections and plugin-policy scopes are copied onto the lobby keys on load.
 - Hub protection is the square around hub spawn again (`/hch hubworld size`). A saved hub circle is turned off on load.
 
 ### Removed
 
+- `/il clearspawns` and `/il removespawn` (use `/il clearspawn`).
 - `/hch template set lobby spawn`.
 - `/hch hubworld lobby wand` (circle selection now belongs on the template lobby wand).
 
