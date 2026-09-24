@@ -19,7 +19,7 @@ Copy **three** stack JARs from `mvn package` plus **FakeTeamAPI**:
 3. `minigames/iron-legacy/target/HCIronLegacy-*.jar`
 4. `lib/FakeTeamAPI-1.21.4-1.0.0.jar` (teams)
 
-Or use the deploy zip at repo root: **`HC-Plugins-a0.1.22.zip`** (alias: `HC-Plugins.zip`). The zip tag (`a0.1.22`) is the bundle label, not each plugin’s tag.
+Or use the deploy zip at repo root: **`HC-Plugins-a0.1.23.zip`** (alias: `HC-Plugins.zip`). The zip tag (`a0.1.23`) is the bundle label, not each plugin’s tag.
 
 Load order: **HC-Foundation** → **FakeTeamAPI** → **HollowCrownHub** → **HCIronLegacy**.
 
