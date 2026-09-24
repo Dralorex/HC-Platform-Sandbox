@@ -11,6 +11,7 @@ import com.hollowcrown.api.queue.MatchEnqueueResult;
 import com.hollowcrown.api.integration.PreMatchLobbyService;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.HubLog;
+import com.hollowcrown.hub.HubPlayerFacingErrors;
 import com.hollowcrown.hub.command.MatchEnqueueMessages;
 import com.hollowcrown.hub.integration.HubIronLegacySupport;
 import com.hollowcrown.hub.template.HubTemplateEntry;
@@ -515,7 +516,7 @@ public final class HubLobbyService {
                     "unitSize=" + prep.unitSize());
             return teleportUnitToLobby(newId, prep.partyOpt(), player);
         } catch (IOException ex) {
-            player.sendMessage(Component.text("Could not open a lobby: " + ex.getMessage(), NamedTextColor.RED));
+            HubPlayerFacingErrors.sendFailure(player, "Could not open a lobby: " + ex.getMessage());
             HubLog.warn(plugin, "action=lobby_auto_create_failed", "templateKey=" + templateKey, "err=" + ex.getMessage());
             return false;
         }
