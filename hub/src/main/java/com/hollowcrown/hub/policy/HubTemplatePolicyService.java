@@ -140,6 +140,22 @@ public final class HubTemplatePolicyService {
     }
 
     /**
+     * @return true if a config row was removed
+     */
+    public boolean removeTemplate(String templateKey) {
+        String norm = normalize(templateKey);
+        if (norm == null) {
+            return false;
+        }
+        deferredDirty.remove(norm);
+        if (templates.remove(norm) == null) {
+            return false;
+        }
+        save();
+        return true;
+    }
+
+    /**
      * @return true if a config row was added (template was new), false if it already existed.
      */
     public boolean registerTemplateIfAbsent(String templateKey) {

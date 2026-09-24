@@ -11,6 +11,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Startup / discover: prune template rows whose folders are gone from `hch-worlds/templates/` (Hub `templates.yml`, IL `worlds.yml`, lobbies, queues, policies) so false join entries disappear.
+- Non-ops no longer see technical match/lobby failure paths; they get `OOPS... something messed up! Please inform a Team Member!` (ops still see detail).
+- Hub / pre-match lobby / Iron Legacy: no hunger–saturation healing while hub PvP is on or while a match is FREEZE/RUNNING; clear absorption on PvP activate and match countdown.
+- After PvP deactivates, hub/lobby death, or match countdown start: full health, food 20, saturation 6/20 (≡ 3/10), no absorption/regen effects.
 - Freeze countdown move penalty: play hurt sound, cancel move instead of teleporting (no camera snap); soft-leash snaps keep look direction.
 - Pre-match lobby: locked utility items (sword/compass/party/leave) cannot be dropped or moved out of the hotbar.
 - Match end / win return: clear participants and related match state in `stopGame` so hub/lobby PvP deaths no longer show "Your Legacy is Over".

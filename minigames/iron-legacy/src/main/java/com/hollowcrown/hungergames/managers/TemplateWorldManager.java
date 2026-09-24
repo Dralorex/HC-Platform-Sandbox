@@ -1074,6 +1074,49 @@ public class TemplateWorldManager {
         return true;
     }
 
+    /**
+     * Drops {@code worlds.yml} rows whose folders no longer exist under the server container.
+     * Does not require a snapshot (folder is already gone). Skips rows whose world is loaded with players.
+     *
+     * @return keys removed from {@code worlds.yml}
+     */
+    public List<String> pruneMissingWorldFolders() {
+        List<String> removed = new ArrayList<>();
+        for (String key : listTemplateNames()) {
+            String base = "worlds." + key;
+            String worldName = worldsCfg.getString(base + ".worldName", key);
+            boolean folderOk = resolveExistingWorldFolderPath(worldName).isPresent()
+                    || resolveExistingWorldFolderPath(key).isPresent();
+            if (folderOk) {
+                continue;
+            }
+            World w = Bukkit.getWorld(worldName);
+            if (w == null && worldName != null && !worldName.equalsIgnoreCase(key)) {
+                w = Bukkit.getWorld(key);
+            }
+            if (w != null) {
+                if (!w.getPlayers().isEmpty()) {
+                    plugin.getLogger().warning("Skipping prune of missing template '" + key
+                            + "': world still has players online.");
+                    continue;
+                }
+                Bukkit.unloadWorld(w, false);
+            }
+            try {
+                EnvironmentalHazardsBridge.onTemplateDeleted(key);
+            } catch (Throwable ignored) {
+            }
+            worldsCfg.set(base, null);
+            removed.add(key);
+            plugin.getLogger().info("Pruned missing template world from worlds.yml: " + key
+                    + " (folder gone: " + worldName + ")");
+        }
+        if (!removed.isEmpty()) {
+            save();
+        }
+        return removed;
+    }
+
     public String createSnapshot(String templateName, String reason) {
         if (templateName == null || templateName.isBlank()) return null;
         String key = templateName.toLowerCase(Locale.ROOT);

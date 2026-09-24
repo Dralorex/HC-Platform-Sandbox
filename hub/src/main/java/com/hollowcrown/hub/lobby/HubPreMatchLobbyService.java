@@ -7,6 +7,7 @@ import com.hollowcrown.api.party.PartyService;
 import com.hollowcrown.api.party.PartyView;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.HubLog;
+import com.hollowcrown.hub.HubPlayerFacingErrors;
 import com.hollowcrown.hub.team.HubLobbyTeamFormation;
 import com.hollowcrown.hub.lobby.HubLobbyService;
 import com.hollowcrown.hub.team.TeamManager;
@@ -521,6 +522,9 @@ public final class HubPreMatchLobbyService implements PreMatchLobbyService, List
         if (!ok) {
             String err = b.lastGameStartError();
             boolean spawnPads = err != null && err.toLowerCase(Locale.ROOT).contains("spawn pad");
+            HubLog.warn(hub, "action=lobby_match_start_failed",
+                    "templateKey=" + s.templateKey,
+                    "err=" + (err == null ? "unknown" : err));
             for (UUID id : onlinePlayers) {
                 Player p = Bukkit.getPlayer(id);
                 if (p == null) {
@@ -531,9 +535,8 @@ public final class HubPreMatchLobbyService implements PreMatchLobbyService, List
                             "Someone messed up! Go complain to someone that \"SpawnPads\" have NOT been set up correctly!",
                             NamedTextColor.RED));
                 } else {
-                    p.sendMessage(Component.text(
-                            "Failed to start match from lobby: " + (err == null ? "unknown error" : err),
-                            NamedTextColor.RED));
+                    HubPlayerFacingErrors.sendFailure(p,
+                            "Failed to start match from lobby: " + (err == null ? "unknown error" : err));
                 }
             }
             evacuatePlayersToHub(onlinePlayers);

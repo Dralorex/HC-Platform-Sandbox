@@ -316,6 +316,30 @@ public final class HubMatchQueueService implements MatchQueueService {
     }
 
     /**
+     * Drops the entire queue for a template (used when the world folder is pruned).
+     * Players are quietly untracked; no party-leave titles.
+     */
+    public synchronized void dropTemplate(String templateKey) {
+        String tk = normTemplate(templateKey);
+        if (tk.isEmpty()) {
+            return;
+        }
+        List<QueueUnit> list = queues.remove(tk);
+        if (list == null || list.isEmpty()) {
+            playerToTemplate.entrySet().removeIf(e -> tk.equals(e.getValue()));
+            jdbcPersist();
+            return;
+        }
+        for (QueueUnit u : list) {
+            for (UUID id : u.members) {
+                playerToTemplate.remove(id);
+            }
+        }
+        HubLog.info(plugin, "action=queue_drop_template", "templateKey=" + tk, "units=" + list.size());
+        jdbcPersist();
+    }
+
+    /**
      * When a whole party unit is removed from the queue, other members were "left behind" by whoever
      * triggered the leave (disconnect, {@code /hch queue leave}, etc.). Title + action bar only — no leader chat spam.
      */

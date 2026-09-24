@@ -51,6 +51,13 @@ public interface IronLegacyTemplateAdmin {
      */
     List<String> syncManagedTemplatesFromDisk();
 
+    /**
+     * Removes {@code worlds.yml} rows whose world folder is missing from disk (no snapshot required).
+     *
+     * @return template keys that were unregistered
+     */
+    List<String> pruneMissingWorldFolders();
+
     boolean publish(String templateKey);
 
     boolean delete(String templateKey);
