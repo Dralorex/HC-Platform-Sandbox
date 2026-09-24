@@ -34,7 +34,7 @@ public final class HubTemplateCommands {
         if (args.length < 2) {
             sender.sendMessage(Component.text("Template commands (/hch template)", NamedTextColor.GOLD));
             sender.sendMessage(Component.text(
-                    " list · create · get · remove · worlds … · lobby wand · limbo spawn · set … · setsource · setqueue",
+                    " list · create · get · remove · worlds … · lobby … · set … · setsource · setqueue",
                     NamedTextColor.GRAY));
             sender.sendMessage(Component.text(
                     " worlds list|reload|gui|importhub|edit|publish|delete|rollback|snapshots|toggle|iconpreview … — Iron Legacy worlds.yml",
@@ -46,14 +46,8 @@ public final class HubTemplateCommands {
                     " set <key> <display|enabled|maxplayers|teamsize|icon|minimumpercentage|gamerule> … — IL worlds.yml when key exists in /hch template worlds list",
                     NamedTextColor.GRAY));
             sender.sendMessage(Component.text(
-                    " lobby wand — circle lobby zone (writes IL worlds.yml)",
+                    " lobby wand|spawn|help — circle lobby zone + spawn (writes IL worlds.yml)",
                     NamedTextColor.GRAY));
-            sender.sendMessage(Component.text(
-                    " limbo spawn — stand inside the saved circle",
-                    NamedTextColor.GRAY));
-            sender.sendMessage(Component.text(
-                    " set limbo spawn — alias for limbo spawn",
-                    NamedTextColor.DARK_GRAY));
             sender.sendMessage(Component.text(
                     " setsource <key> <folder> · setqueue <key> …",
                     NamedTextColor.GRAY));
@@ -68,11 +62,10 @@ public final class HubTemplateCommands {
             case "list" -> list(sender, reg);
             case "create" -> createWorld(sender, plugin, reg, args);
             case "get" -> get(sender, reg, args);
-            case "set" -> routeTemplateSet(plugin, sender, reg, args, plugin.platform());
+            case "set" -> routeTemplateSet(sender, reg, args, plugin.platform());
             case "setsource" -> setSource(sender, reg, args);
             case "setqueue" -> setQueue(sender, reg, args);
-            case "limbo" -> HubTemplateLimboCommands.handle(plugin, sender, args);
-            case "lobby" -> HubTemplateLimboCommands.handleLobbyWand(plugin, sender, args);
+            case "lobby" -> HubTemplateLimboCommands.handle(plugin, sender, args);
             case "worlds" -> HubTemplateWorldsCommands.handle(plugin, sender, args);
             case "remove" -> remove(sender, reg, args);
             default -> {
@@ -155,11 +148,8 @@ public final class HubTemplateCommands {
         });
     }
 
-    private static boolean routeTemplateSet(HollowCrownHubPlugin plugin, CommandSender sender, HubTemplateRegistry reg, String[] args, GamePlatform platform) {
+    private static boolean routeTemplateSet(CommandSender sender, HubTemplateRegistry reg, String[] args, GamePlatform platform) {
         var il = HubIronLegacySupport.ilAdmin();
-        if (args.length >= 4 && "limbo".equalsIgnoreCase(args[2]) && "spawn".equalsIgnoreCase(args[3])) {
-            return HubIlWorldSetCommand.applyLimboSpawn(sender, plugin);
-        }
         if (args.length >= 4 && il.isPresent()) {
             String candKey = args[2];
             IronLegacyTemplateAdmin admin = il.get();

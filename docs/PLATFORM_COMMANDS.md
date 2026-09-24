@@ -207,9 +207,6 @@ Permission: hollowcrownhub.team
 /hch template set <key> display|enabled|maxplayers|teamsize|icon|minimumpercentage|gamerule …
   Set IL worlds.yml fields when IL loaded.
 
-/hch template set limbo spawn
-  Alias for limbo spawn setter.
-
 /hch template setsource <key> <worldFolder>
   Set source world folder for lobby copies.
 
@@ -222,11 +219,11 @@ Permission: hollowcrownhub.team
   Give the lobby circle wand. Stand in the template world.
   Left-click center, right-click edge (radius + height), Shift+scroll cycles tip, shift-right saves.
 
-/hch template limbo spawn
+/hch template lobby spawn
   Set lobby spawn at your feet. You must be standing inside the saved circle.
 
-/hch template limbo help
-  Points at lobby wand + limbo spawn.
+/hch template lobby help
+  Wand and spawn help.
 
 --- Template — IL worlds  [admin, requires IL] ---
 
@@ -489,7 +486,7 @@ Match team          limbo slot 3 GUI; /ally; /rival
 Lobby admin         /hch lobby, /hch gui lobby
 Template registry   /hch template set/list/…
 IL worlds admin     /hch template worlds …, /hch gui maps
-Limbo zone/spawn    /hch template limbo …
+Limbo zone/spawn    /hch template lobby …
 Template policy     GUIs only (admin shell → policies)
 Match queue         /hch queue
 Alliances           /ally, /enemy

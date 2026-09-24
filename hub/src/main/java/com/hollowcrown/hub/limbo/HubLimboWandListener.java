@@ -34,7 +34,7 @@ import java.util.regex.Pattern;
 /**
  * Template lobby circle wand. Writes HCIronLegacy {@code worlds.yml} limbo zone.
  * Left-click center, right-click edge (radius + height). Shift+scroll cycles the tip
- * and locks the hotbar slot. Shift-right-click saves. Spawn stays {@code /hch template limbo spawn}.
+ * and locks the hotbar slot. Shift-right-click saves. Spawn is {@code /hch template lobby spawn}.
  */
 public final class HubLimboWandListener implements Listener {
 
@@ -68,7 +68,7 @@ public final class HubLimboWandListener implements Listener {
                     Component.text("Right-click: set edge (radius + height)", NamedTextColor.GRAY),
                     Component.text("Hold Shift + scroll: cycle Center / Edge tip", NamedTextColor.AQUA),
                     Component.text("Shift-right-click: save lobby circle", NamedTextColor.YELLOW),
-                    Component.text("Spawn: /hch template limbo spawn (stand inside)", NamedTextColor.GRAY),
+                    Component.text("Spawn: /hch template lobby spawn (stand inside)", NamedTextColor.GRAY),
                     Component.text("Border + HUD only while holding this wand", NamedTextColor.DARK_GRAY)
             ));
             meta.getPersistentDataContainer().set(
@@ -155,7 +155,7 @@ public final class HubLimboWandListener implements Listener {
                     "Lobby circle saved for " + templateKey
                             + " (radius "
                             + String.format(Locale.ROOT, "%.1f", horizontalRadius(state.center, state.edge))
-                            + "). Stand inside it and run /hch template limbo spawn.",
+                            + "). Stand inside it and run /hch template lobby spawn.",
                     NamedTextColor.GREEN));
             return;
         }

@@ -137,7 +137,7 @@ Session per lobby world
 Limbo spawn & zone
   Status: Implemented
   /hch template lobby wand sets a circle (center, edge, height) in worlds.yml.
-  /hch template limbo spawn sets spawn at your feet inside that circle.
+  /hch template lobby spawn sets spawn at your feet inside that circle.
   Older corner zones still load as boxes until redrawn with the circle wand.
 
 Limbo loadout

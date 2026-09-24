@@ -620,13 +620,12 @@ Permission: subcommands use `hollowcrownhub.use` (help), `hollowcrownhub.admin` 
 │   │   ├── <key> <mechanicId> [display]   Register template mechanic + display name
 │   │   ├── <key> display|enabled|maxplayers|teamsize|icon|minimumpercentage|gamerule …
 │   │   │                                  (IL worlds.yml fields when IL loaded)
-│   │   └── limbo spawn                    Alias for limbo spawn setter
 │   ├── setsource <key> <worldFolder>      Set source world folder for lobby copies
 │   ├── setqueue <key> <policy> <value>    Queue policy: maxUnitSize | soloOnly | soloAutoMerge | joinQueueFirst
-│   ├── limbo                              Limbo zone/spawn editing (writes worlds.yml)
-│   │   ├── wand                           Give limbo zone wand (left/right corner, shift-right save)
-│   │   ├── spawn                          Set limbo spawn at feet for template in current world
-│   │   └── help                           Limbo wand help
+│   ├── lobby                              Lobby circle zone + spawn (writes worlds.yml)
+│   │   ├── wand                           Center LMB, edge RMB, Shift+scroll, shift-right save
+│   │   ├── spawn                          Set lobby spawn at feet inside the saved circle
+│   │   └── help                           Lobby wand help
 │   └── worlds                             [requires IL] Iron Legacy worlds.yml admin
 │       ├── help | ?                       Subcommand help
 │       ├── list                           Summarize all IL template rows
@@ -769,7 +768,7 @@ Permission: `hcironlegacy.use` (default true); admin subcommands require OP / `h
 └── (help documents Hub commands: /hub, /hch sethub, /hch template …)
 ```
 
-**Moved to Hub (not in IL):** template create, publish, worlds admin GUI, limbo wand (Hub `/hch template limbo wand`), join compass flow, party commands, queue, lobby admin.
+**Moved to Hub (not in IL):** template create, publish, worlds admin GUI, lobby circle wand (Hub `/hch template lobby wand`), join compass flow, party commands, queue, lobby admin.
 
 ---
 
@@ -859,7 +858,7 @@ Permission: `hcironlegacy.use` (default true); admin subcommands require OP / `h
 | Lobby admin | `/hch lobby` | Admin shell → Lobbies |
 | Template registry | `/hch template set/list` | Admin shell → Hub Templates |
 | IL worlds admin | `/hch template worlds …` | `/hch gui maps` |
-| Limbo zone/spawn | `/hch template limbo wand/spawn` | IL detail menu buttons |
+| Limbo zone/spawn | `/hch template lobby wand/spawn` | IL detail menu buttons |
 | Template policy | — | Admin shell → Plugin Policies → template |
 | Match queue | `/hch queue` | Admin shell → Queues |
 | Alliances | `/ally`, `/enemy` | — |

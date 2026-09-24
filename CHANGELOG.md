@@ -11,11 +11,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- Template lobby zone is a circle: `/hch template lobby wand` (center, edge, Shift+scroll, shift-right save). `/hch template limbo wand` no longer gives the corner wand.
-- Lobby spawn is still `/hch template limbo spawn` while standing inside the saved circle.
+- Template lobby commands are only `/hch template lobby wand`, `spawn`, and `help`. `/hch template limbo` and `/hch template set lobby spawn` are removed.
 
 ### Removed
 
+- `/hch template set lobby spawn`.
 - `/hch hubworld lobby wand` (circle selection now belongs on the template lobby wand).
 
 ## [HC-Plugins-a0.1.22] - 2026-09-23

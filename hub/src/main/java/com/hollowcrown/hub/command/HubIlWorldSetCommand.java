@@ -29,7 +29,7 @@ public final class HubIlWorldSetCommand {
         };
     }
 
-    /** {@code /hch template set limbo spawn} — player must stand in template limbo zone. */
+    /** {@code /hch template lobby spawn} — player must stand inside the saved lobby circle. */
     public static boolean applyLimboSpawn(CommandSender sender, HollowCrownHubPlugin plugin) {
         if (!(sender instanceof Player p)) {
             sender.sendMessage(Component.text("Players only.", NamedTextColor.RED));
@@ -56,9 +56,6 @@ public final class HubIlWorldSetCommand {
                     NamedTextColor.YELLOW));
             sender.sendMessage(Component.text(
                     "<worldFolder> = folder name of the map on disk (worldName in worlds.yml).",
-                    NamedTextColor.GRAY));
-            sender.sendMessage(Component.text(
-                    "Or: /hch template limbo spawn  (same as set limbo spawn)",
                     NamedTextColor.GRAY));
             return true;
         }

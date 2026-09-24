@@ -177,7 +177,7 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
             sender.sendMessage(Component.text("  /hch sethub [n] — set hub spawn #1 or numbered instance", NamedTextColor.GRAY));
             sender.sendMessage(Component.text("  /hch clearhub [n] — clear hub spawn #1 or numbered instance", NamedTextColor.GRAY));
             sender.sendMessage(Component.text("  /hch hubworld … — hub protection, build mode, PvP pads", NamedTextColor.GRAY));
-            sender.sendMessage(Component.text("  /hch template … — Hub listings + worlds + limbo", NamedTextColor.GRAY));
+            sender.sendMessage(Component.text("  /hch template … — Hub listings + worlds + lobby zone", NamedTextColor.GRAY));
             sender.sendMessage(Component.text("  /hch lobby … — lobby instance worlds (admin)", NamedTextColor.GRAY));
             sender.sendMessage(Component.text("  /hch join — join-game GUI (compass uses this too)", NamedTextColor.GRAY));
             sender.sendMessage(Component.text("  /hch queue … — match queue per template", NamedTextColor.GRAY));
@@ -280,17 +280,7 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
         if (args.length == 2) {
             String p = args[1].toLowerCase();
             List<String> out = new ArrayList<>();
-            for (String c : List.of("list", "create", "get", "set", "lobby", "limbo", "worlds", "setsource", "setqueue", "remove")) {
-                if (c.startsWith(p)) {
-                    out.add(c);
-                }
-            }
-            return out;
-        }
-        if (args.length == 3 && args[1].equalsIgnoreCase("limbo")) {
-            String p = args[2].toLowerCase(Locale.ROOT);
-            List<String> out = new ArrayList<>();
-            for (String c : List.of("spawn", "help")) {
+            for (String c : List.of("list", "create", "get", "set", "lobby", "worlds", "setsource", "setqueue", "remove")) {
                 if (c.startsWith(p)) {
                     out.add(c);
                 }
@@ -299,7 +289,13 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
         }
         if (args.length == 3 && args[1].equalsIgnoreCase("lobby")) {
             String p = args[2].toLowerCase(Locale.ROOT);
-            return List.of("wand").stream().filter(c -> c.startsWith(p)).toList();
+            List<String> out = new ArrayList<>();
+            for (String c : List.of("wand", "spawn", "help")) {
+                if (c.startsWith(p)) {
+                    out.add(c);
+                }
+            }
+            return out;
         }
         if (args.length == 3 && args[1].equalsIgnoreCase("worlds")) {
             String p = args[2].toLowerCase(Locale.ROOT);

@@ -44,7 +44,7 @@ Each row traces: **player action → Java entry point → services → disk/API/
 | `/il buildmode` | `/hch hubworld buildmode` | `HubWorldAdminCommands` → `HubWorldManager` buildMode set |
 | `/il pvp pad` | `/hch hubworld pvp pad` | `HubWorldAdminCommands` → `HubWorldManager` pad item |
 | `/il create` | `/hch template create` | `HubTemplateCommands.createWorld` → `HubTemplateWorldBootstrap` |
-| Limbo wand | `/hch template limbo wand` | `HubTemplateLimboCommands` → `HubLimboWandListener` |
+| Lobby wand | `/hch template lobby wand` | `HubTemplateLimboCommands` → `HubLimboWandListener` |
 | `/hch ironlegacy` | removed | `HubCommandExecutor:136-140` stub message |
 | `/il game` | removed | `HGCommand:400-404` stub → use Hub `template worlds` |
 
@@ -315,13 +315,13 @@ Each row traces: **player action → Java entry point → services → disk/API/
 
 | # | Action | Expected | Code path |
 |---|--------|----------|-----------|
-| 19 | /hch template limbo wand | wand item | HubTemplateLimboCommands.wand → gives stick PDC limboWandTemplateKey |
-| 20 | Left-click corner 1 | saved | HubLimboWandListener left click → HubLimboLayout setCorner1 |
-| 21 | Right-click corner 2 | saved | HubLimboWandListener right click → setCorner2 |
-| 22 | Shift-right confirm | outline | HubLimboWandListener confirm → HubLimboWorldsYaml write IL worlds.yml limboZone |
+| 19 | /hch template lobby wand | wand item | HubTemplateLimboCommands wand → circle wand |
+| 20 | Left-click center | saved | HubLimboWandListener left click sets center |
+| 21 | Right-click edge | saved | HubLimboWandListener right click sets radius + height |
+| 22 | Shift-right confirm | outline | HubLimboWandListener confirm → writeLimboCircle |
 | 23 | Outline updates | particles | HubLimboWandListener particle task while holding wand |
-| 24 | limbo spawn in zone | spawn saved | HubTemplateLimboCommands.spawn → HubLimboWorldsYaml limbo spawn |
-| 25 | spawn outside zone | rejected | HubTemplateLimboCommands zone contains check |
+| 24 | /hch template lobby spawn inside circle | spawn saved | HubTemplateLimboCommands.spawn → HubLimboWorldsYaml limbo spawn |
+| 25 | spawn outside circle | rejected | HubLimboLayout zone contains check |
 | 26 | wand in testmap-L# | auto template key | HubLimboWandListener resolveTemplateFromWorld — HubIlTemplateDetailMenu logic |
 
 - ⬜ Subsection complete

@@ -96,7 +96,7 @@ public final class HubIlTemplateDetailMenu extends HubMenuView {
                 List.of("§7Same as §f/hch template lobby wand",
                         "§7Center + edge in §fthis§7 template world")));
         inv.setItem(44, btn(Material.RECOVERY_COMPASS, "§bLimbo spawn here",
-                List.of("§7Same as §f/hch template limbo spawn",
+                List.of("§7Same as §f/hch template lobby spawn",
                         "§7Stand §binside§7 saved zone")));
         inv.setItem(48, btn(Material.ARROW, "§7Back to list", List.of()));
         inv.setItem(53, btn(Material.BARRIER, "§cClose", List.of()));

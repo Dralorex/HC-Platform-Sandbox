@@ -110,7 +110,7 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
             return new Location(w, x, y, z, yaw, pitch);
         }
         plugin.getLogger().warning("No limbo spawn for template '" + info.key()
-                + "' — falling back to world spawn. Set via /hch template limbo spawn.");
+                + "' — falling back to world spawn. Set via /hch template lobby spawn.");
         return w.getSpawnLocation().clone().add(0.5, 0, 0.5);
     }
 
