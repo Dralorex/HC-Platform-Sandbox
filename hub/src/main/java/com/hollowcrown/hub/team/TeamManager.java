@@ -4,6 +4,7 @@ import com.hollowcrown.hub.HollowCrownHubPlugin;
 import net.hydraulicicecube.fakeTeamAPI.teams.FakeTeam;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
@@ -11,7 +12,6 @@ import org.bukkit.Color;
 import org.bukkit.Server;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
 
@@ -92,6 +92,112 @@ public class TeamManager {
     public static ArrayList<AllianceInvite> allianceInvites = new ArrayList<>();
     public static ArrayList<TeamJoinInvite> teamJoinInvites = new ArrayList<>();
 
+    //Triggers once every 5 seconds
+    //Warnings, in milliseconds
+    public static int FIRST_WARNING = 300000; //5 min
+    public static int SECOND_WARNING = 600000; //10 min
+    public static int THIRD_WARNING = 1200000; //20 min
+    public static int FOURTH_WARNING = 2400000; //40 min
+    public static int FIFTH_WARNING = 3600000; //60 min
+    public static void heartbeat(){
+        long timestamp = Instant.now().toEpochMilli();
+        for(TeamManager.TeamManagerInstance teamManagerInstance : TeamManager.instances.values()) {
+            if(!teamManagerInstance.gameNotRunning)
+                teamManagerInstance.verifyTeamIntegrity();
+            teamManagerInstance.sendAllFakeTeamPackets();
+
+            //Claim team leadership prompt.
+            //Because I thought it would be funny, I made the messages get increasingly human as time goes on.
+            for(Team team : teamManagerInstance.teams.values()){
+                if(team.members.size() < 2)
+                    continue;
+                long lastLogin = Bukkit.getOfflinePlayer(team.getLeader()).getLastLogin();
+                if(Bukkit.getOfflinePlayer(team.getLeader()).isOnline())
+                    team.leadershipMissingBeats = 0;
+                else if(team.leadershipMissingBeats < 1 && timestamp - lastLogin >= FIRST_WARNING){
+                    team.leadershipMissingBeats++;
+                    UUID highest = null;
+                    for(UUID uuid : team.members){
+                        if(Bukkit.getOfflinePlayer(uuid).isOnline()){
+                            highest = uuid;
+                            break;
+                        }
+                    }
+                    if(highest != null) {
+                        Player player = Bukkit.getPlayer(highest);
+                        if(player != null){
+                            player.sendMessage(Component.text("The team leader has been gone for 5 minutes. Do you want to claim team leadership? ").append(Component.text("[Claim]", NamedTextColor.GREEN).hoverEvent(HoverEvent.showText(Component.text("Claim leadership of the team!", NamedTextColor.GREEN))).clickEvent(ClickEvent.runCommand("/hch team acceptpromote"))));
+                        }
+                    }
+                }
+                else if(team.leadershipMissingBeats < 2 && timestamp - lastLogin >= SECOND_WARNING){
+                    team.leadershipMissingBeats++;
+                    UUID highest = null;
+                    for(UUID uuid : team.members){
+                        if(Bukkit.getOfflinePlayer(uuid).isOnline()){
+                            highest = uuid;
+                            break;
+                        }
+                    }
+                    if(highest != null) {
+                        Player player = Bukkit.getPlayer(highest);
+                        if(player != null){
+                            player.sendMessage(Component.text("The team leader has been gone for 10 minutes. Claim team leadership? ").append(Component.text("[Claim]", NamedTextColor.GREEN).hoverEvent(HoverEvent.showText(Component.text("Claim leadership of the team!", NamedTextColor.GREEN))).clickEvent(ClickEvent.runCommand("/hch team acceptpromote"))));
+                        }
+                    }
+                }
+                else if(team.leadershipMissingBeats < 3 && timestamp - lastLogin >= THIRD_WARNING){
+                    team.leadershipMissingBeats++;
+                    UUID highest = null;
+                    for(UUID uuid : team.members){
+                        if(Bukkit.getOfflinePlayer(uuid).isOnline()){
+                            highest = uuid;
+                            break;
+                        }
+                    }
+                    if(highest != null) {
+                        Player player = Bukkit.getPlayer(highest);
+                        if(player != null){
+                            player.sendMessage(Component.text("Your leader has been gone for 20 minutes. You should probably claim team leadership. ").append(Component.text("[Claim]", NamedTextColor.GREEN).hoverEvent(HoverEvent.showText(Component.text("Claim leadership of the team!", NamedTextColor.GREEN))).clickEvent(ClickEvent.runCommand("/hch team acceptpromote"))));
+                        }
+                    }
+                }
+                else if(team.leadershipMissingBeats < 4 && timestamp - lastLogin >= FOURTH_WARNING){
+                    team.leadershipMissingBeats++;
+                    UUID highest = null;
+                    for(UUID uuid : team.members){
+                        if(Bukkit.getOfflinePlayer(uuid).isOnline()){
+                            highest = uuid;
+                            break;
+                        }
+                    }
+                    if(highest != null) {
+                        Player player = Bukkit.getPlayer(highest);
+                        if(player != null){
+                            player.sendMessage(Component.text("They've been gone for 40 minutes. You gotta claim leadership. ").append(Component.text("[Claim]", NamedTextColor.GREEN).hoverEvent(HoverEvent.showText(Component.text("Claim leadership of the team!", NamedTextColor.GREEN))).clickEvent(ClickEvent.runCommand("/hch team acceptpromote"))));
+                        }
+                    }
+                }
+                else if(team.leadershipMissingBeats < 5 && timestamp - lastLogin >= FIFTH_WARNING){
+                    team.leadershipMissingBeats++;
+                    UUID highest = null;
+                    for(UUID uuid : team.members){
+                        if(Bukkit.getOfflinePlayer(uuid).isOnline()){
+                            highest = uuid;
+                            break;
+                        }
+                    }
+                    if(highest != null) {
+                        Player player = Bukkit.getPlayer(highest);
+                        if(player != null){
+                            player.sendMessage(Component.text("Accept it. It's been an hour, They aren't coming back. Please? ").append(Component.text("[Claim]", NamedTextColor.GREEN).hoverEvent(HoverEvent.showText(Component.text("Claim leadership of the team!", NamedTextColor.GREEN))).clickEvent(ClickEvent.runCommand("/hch team acceptpromote"))));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     public static class TeamManagerInstance {
         private final Object identifier;
         public HashMap<String, Team> teams;
@@ -99,7 +205,7 @@ public class TeamManager {
         //removed because I actually don't have commands to change teams stuff, you can only do that through the gui
         //TO/DO: Implement the following booleans
         //public boolean allowPartialTeams = false;
-        public boolean allowTeamCustomization = true; //Whether to allow changing team name, color, players, etc. Useful for disallowing changes mid-game.
+        public boolean gameNotRunning = true; //Whether to allow changing team name, color, players, etc. Used to disallow changes mid-game.
         public boolean allowAlliances = true; //Whether to allow alliances. Useful for disbanding alliances then disallowing new ones.
         public boolean friendlyFire = false; //Allow teammates to attack each-other
         public boolean allyFriendlyFire = true; //Allow allies to attack each-other
@@ -208,6 +314,7 @@ public class TeamManager {
         public ArrayList<UUID> members = new ArrayList<>();
         public ArrayList<Team> allies = new ArrayList<>();
         public ArrayList<Team> rivals = new ArrayList<>();
+        public int leadershipMissingBeats = 0;
 
         public Team(String name, TeamManagerInstance teamManagerInstance){
             this.name = name;
@@ -252,7 +359,7 @@ public class TeamManager {
          * @return true if the team was renamed successfully, or false if the new name was already taken.
          */
         public boolean rename(String newName){
-            if(!teamManagerInstance.allowTeamCustomization)
+            if(!teamManagerInstance.gameNotRunning)
                 return false;
             if(!teamManagerInstance.teams.containsValue(this)) //In the strange case that a team doesn't exist in its manger, nothing should happen.
                 return false;
@@ -269,7 +376,7 @@ public class TeamManager {
         }
 
         public boolean setColor(Color color){
-            if(!teamManagerInstance.allowTeamCustomization)
+            if(!teamManagerInstance.gameNotRunning)
                 return false;
             if(!teamManagerInstance.teams.containsValue(this)) //In the strange case that a team doesn't exist in its manger, nothing should happen.
                 return false;
@@ -657,6 +764,37 @@ public class TeamManager {
         return true;
     }
 
+    public static boolean acceptPromotionCommand(Player player){
+        Team team = findPlayerTeam(player);
+        if(team == null) {
+            player.sendMessage(Component.text("You are not on a team!", TextColor.color(255, 85, 85)));
+            return false;
+        }
+        if(team.leadershipMissingBeats <= 0){
+            player.sendMessage(Component.text("Leadership cannot be accepted at this time!", TextColor.color(255, 85, 85)));
+            return false;
+        }
+        //find the highest ranked online team member
+        UUID highest = null;
+        for(UUID uuid : team.members){
+            if(Bukkit.getOfflinePlayer(uuid).isOnline()){
+                highest = uuid;
+                break;
+            }
+        }
+        if(highest == null)
+            return false;
+        else if (highest != player.getUniqueId()){
+            player.sendMessage(Component.text("You are not the highest ranking successor!", TextColor.color(255, 85, 85)));
+        }
+
+        team.members.remove(player.getUniqueId());
+        team.members.addFirst(player.getUniqueId());
+        team.leadershipMissingBeats = 0;
+        player.sendMessage(Component.text("You have been promoted to team leader!"));
+        return true;
+    }
+
     /**
      * Check if a valid alliance invite exists that matches offering and receiving.
      * @param offering The team that offered the invite.
@@ -702,6 +840,7 @@ public class TeamManager {
      * @param reference A manager instance or the reference object that identifies the manager instance. This could be a world, plugin reference, or some other persistent object you keep a reference to. A {@link TeamManagerInstance} is not a valid reference and will be directly used as the instance.
      * @return true if the verification ran, false if the instance could not be found.
      * @see TeamManagerInstance
+     * @see TeamManagerInstance#massVerifyTeamIntegrity()
      */
     public static boolean verifyTeamIntegrity(Object reference){
         //Far too many loops for its own good
@@ -730,6 +869,40 @@ public class TeamManager {
         instance.teams.entrySet().removeIf(e -> e.getValue().members.isEmpty());
 
         return true;
+    }
+
+    /**
+     * Verifies the integrity of the teams in every instance. This method is extremely costly. There might be a better way to go about this, but this is the fastest way I could think to do it.
+     * @see TeamManagerInstance
+     * @see TeamManager#verifyTeamIntegrity(Object)
+     */
+    public static void massVerifyTeamIntegrity(){
+        //Far, far too many loops for its own good
+        //Remove duplicate UUIDs in teams, preferring newer teams. (Nanosecond timestamp)
+        for(TeamManagerInstance instance : instances.values()) {
+            for (Team team : instance.teams.values()) {
+                for (UUID member : team.members) {
+                    Team best = team;
+                    for(TeamManagerInstance subInstance : instances.values()) {
+                        for (Team other : subInstance.teams.values()) {
+                            if (other == best)
+                                continue;
+                            if (other.members.contains(member)) {
+                                if (other.timestamp <= best.timestamp)
+                                    other.members.remove(member);
+                                else {
+                                    best.members.remove(member);
+                                    best = other;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        //Remove empty teams
+        for(TeamManagerInstance instance : TeamManager.instances.values())
+            instance.teams.entrySet().removeIf(e -> e.getValue().members.isEmpty());
     }
 
     //Removed because
@@ -901,15 +1074,15 @@ public class TeamManager {
     public static void nukeTeamsForWorld(World world){
         FakeTeam nuke = new FakeTeam("tempTeamToTerrorizeTemporaryTeamTitles")
                 .players(world.getPlayers());
-        Bukkit.getLogger().info("Nuking teams with team containing " + world.getPlayers());
+        //Bukkit.getLogger().info("Nuking teams with team containing " + world.getPlayers());
         for(Player player : Bukkit.getOnlinePlayers()){
             nuke.sendTo(player);
-            Bukkit.getLogger().info("Sending nuke to " + player);
+            //Bukkit.getLogger().info("Sending nuke to " + player);
         }
         Bukkit.getScheduler().runTaskLater(HollowCrownHubPlugin.get(), () -> {
             for(Player player : Bukkit.getOnlinePlayers()){
                 nuke.sendRemovalTo(player);
-                Bukkit.getLogger().info("Sending nuke removal to " + player);
+                //Bukkit.getLogger().info("Sending nuke removal to " + player);
             }
         }, 5);
     }

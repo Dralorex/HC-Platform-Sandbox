@@ -1,6 +1,5 @@
 package com.hollowcrown.hungergames.managers;
 
-import com.google.common.collect.Lists;
 import com.hollowcrown.api.integration.PreMatchLimboService;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
 import com.hollowcrown.hungergames.integration.HubIntegrationRouting;
@@ -193,7 +192,7 @@ public class GameManager implements Listener {
             return false;
         }
         TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getOrCreateWorldInstance(world);
-        teamManagerInstance.allowTeamCustomization = false;
+        teamManagerInstance.gameNotRunning = false;
         teamManagerInstance.sendAllFakeTeamPackets();
 
         if (!skipTemplateClone) {
@@ -517,7 +516,7 @@ public class GameManager implements Listener {
         //clearMatchTeams();
         TeamManager.TeamManagerInstance teamManagerInstance = TeamManager.getInstance(currentWorld);
         if(teamManagerInstance != null) {
-            teamManagerInstance.allowTeamCustomization = true;
+            teamManagerInstance.gameNotRunning = true;
             teamManagerInstance.clearAllTeams();
             TeamManager.destroyInstance(teamManagerInstance.getIdentifier());
         }

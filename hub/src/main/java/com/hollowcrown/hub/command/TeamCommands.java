@@ -1,22 +1,14 @@
 package com.hollowcrown.hub.command;
 
 import com.hollowcrown.hub.HollowCrownHubPlugin;
-import com.hollowcrown.hub.HubLog;
-import com.hollowcrown.hub.party.HubPartyListener;
 import com.hollowcrown.hub.party.HubPartyService;
 import com.hollowcrown.hub.team.TeamManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.title.Title;
-import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 
-import java.time.Duration;
 import java.util.*;
-
-import static com.hollowcrown.hub.team.TeamManager.allianceAddCommand;
 
 /**
  * {@code /hch team …} — Hub-owned teams (UUID ids).
@@ -40,10 +32,10 @@ public final class TeamCommands {
         HubPartyService parties = plugin.partyService();
         String sub = args[1].toLowerCase(Locale.ROOT);
         if(sender instanceof Player player) {
-            List<String> arrayList = Arrays.stream(args).sequential().skip(3).toList();
-            String teamName = String.join(" ", arrayList);
             return switch (sub) {
                 case "ally" -> {
+                    List<String> arrayList = Arrays.stream(args).sequential().skip(3).toList();
+                    String teamName = String.join(" ", arrayList);
                     String sub2 = args[2].toLowerCase(Locale.ROOT);
                     yield switch (sub2) {
                         case "add" -> TeamManager.allianceAddCommand(player, teamName);
@@ -56,6 +48,8 @@ public final class TeamCommands {
                     };
                 }
                 case "rival" -> {
+                    List<String> arrayList = Arrays.stream(args).sequential().skip(3).toList();
+                    String teamName = String.join(" ", arrayList);
                     String sub2 = args[2].toLowerCase(Locale.ROOT);
                     yield switch (sub2) {
                         case "add" -> TeamManager.rivalAddCommand(player, teamName);
@@ -67,6 +61,7 @@ public final class TeamCommands {
                         }
                     };
                 }
+                case "acceptpromote" -> TeamManager.acceptPromotionCommand(player);
                 default -> {
                     sender.sendMessage(Component.text("Unknown party subcommand.", NamedTextColor.RED));
                     usage(sender);

@@ -463,7 +463,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 boolean openTeamsFirst = HungerGamesPlugin.get().getConfig().getBoolean("ui.openTeamsFirst", false);
-                if (openTeamsFirst) p.openInventory(new TeamsMenu(p.getWorld()).getInventory());
+                if (openTeamsFirst) p.openInventory(new TeamsMenu(p.getWorld(), p).getInventory());
                 else p.openInventory(new TeamMainMenu(p).getInventory());
                 return true;
             }
@@ -484,7 +484,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 boolean openTeamsFirst = HungerGamesPlugin.get().getConfig().getBoolean("ui.openTeamsFirst", false);
-                if (openTeamsFirst) p.openInventory(new TeamsMenu(p.getWorld()).getInventory());
+                if (openTeamsFirst) p.openInventory(new TeamsMenu(p.getWorld(), p).getInventory());
                 else p.openInventory(new TeamMainMenu(p).getInventory());
                 return true;
             }

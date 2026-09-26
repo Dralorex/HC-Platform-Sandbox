@@ -49,7 +49,7 @@ public class TeamMainMenu extends HubMenuView {
         
         // Always show Teams + Join Team
         inv.setItem(11, button(Material.OAK_SIGN, "§aTeams", List.of("View all teams")));
-        if(teamManagerInstance.allowTeamCustomization)
+        if(teamManagerInstance.gameNotRunning)
             inv.setItem(15, button(Material.BELL, "§bJoin Team", List.of("Teams you've been invited to")));
         else if(inTeam && t.getLeader().equals(viewer.getUniqueId()))
             inv.setItem(15, button(Material.DIAMOND_SWORD, "§bAllies & Rivals", List.of("See also:", "/ally <add|remove> <team>", "/rival <add|remove> <team>")));
@@ -57,26 +57,26 @@ public class TeamMainMenu extends HubMenuView {
         // Hide "Create Team" if already in a team and not OP OR team customization is disabled
         
         boolean canCreateTeam = viewer.isOp() || !inTeam;
-        if (canCreateTeam && teamManagerInstance.allowTeamCustomization) {
+        if (canCreateTeam && teamManagerInstance.gameNotRunning) {
             inv.setItem(13, button(Material.PLAYER_HEAD, "§eCreate Team", List.of("Create a new team")));
         }
 
         // Show Invite Player only if viewer owns a team AND team customization is enabled
-        if (t != null && t.getLeader().equals(viewer.getUniqueId()) && teamManagerInstance.allowTeamCustomization) {
+        if (t != null && t.getLeader().equals(viewer.getUniqueId()) && teamManagerInstance.gameNotRunning) {
             inv.setItem(22, button(Material.PLAYER_HEAD, "§6Invite Player", List.of("Click to open roster")));
         }
 
         // [Hydraulic] New buttons below:
         // Show leave team only if viewer is on a team AND team customization is enabled
-        if (t != null && teamManagerInstance.allowTeamCustomization) {
+        if (t != null && teamManagerInstance.gameNotRunning) {
             inv.setItem(4, button(Material.OAK_DOOR, "§cLeave Team", List.of("Leave this team")));
         }
         // Show rename team only if the viewer owns a team AND team customization is enabled
-        if (t != null && t.getLeader().equals(viewer.getUniqueId()) && teamManagerInstance.allowTeamCustomization) {
+        if (t != null && t.getLeader().equals(viewer.getUniqueId()) && teamManagerInstance.gameNotRunning) {
             inv.setItem(12, button(Material.NAME_TAG, "§9Rename Team", List.of("Click to rename team")));
         }
         // Show recolor team only if the viewer owns a team AND team customization is enabled
-        if (t != null && t.getLeader().equals(viewer.getUniqueId()) && teamManagerInstance.allowTeamCustomization) {
+        if (t != null && t.getLeader().equals(viewer.getUniqueId()) && teamManagerInstance.gameNotRunning) {
             inv.setItem(14, button(Material.DRAGON_BREATH, "§dRecolor Team", List.of("Click to open color picker")));
         }
     }
@@ -89,11 +89,11 @@ public class TeamMainMenu extends HubMenuView {
         var my = teamManagerInstance.findPlayerTeam(p.getUniqueId());
 
         if (slot == 11) {
-            p.openInventory(new TeamsMenu(p.getWorld()).getInventory());
+            p.openInventory(new TeamsMenu(p.getWorld(), p).getInventory());
             return;
         }
 
-        if (slot == 13 && teamManagerInstance.allowTeamCustomization) {
+        if (slot == 13 && teamManagerInstance.gameNotRunning) {
             boolean inTeam = teamManagerInstance.findPlayerTeam(p.getUniqueId()) != null;
             if (inTeam && !p.isOp()) {
                 p.sendMessage(Component.text("You're already in a team. Leave it first, or ask an OP.", NamedTextColor.RED));
@@ -117,14 +117,14 @@ public class TeamMainMenu extends HubMenuView {
             return;
         }
 
-        if (slot == 15 && teamManagerInstance.allowTeamCustomization) {
+        if (slot == 15 && teamManagerInstance.gameNotRunning) {
             p.openInventory(new TeamJoinMenu(p.getUniqueId()).getInventory());
             return;
         } else if (slot == 15) {
             p.openInventory(new TeamAllyAndRivalMenu(p, my).getInventory());
         }
 
-        if (slot == 22 && teamManagerInstance.allowTeamCustomization) {
+        if (slot == 22 && teamManagerInstance.gameNotRunning) {
             if (my == null || !my.getLeader().equals(p.getUniqueId())) {
                 p.sendMessage(Component.text("You don't own a team.", NamedTextColor.RED));
                 return;
@@ -132,7 +132,7 @@ public class TeamMainMenu extends HubMenuView {
             p.openInventory(new TeamInviteMenu(my.getName(), 0, p.getWorld()).getInventory());
             return;
         }
-        if (slot == 12 && teamManagerInstance.allowTeamCustomization) { //Rename
+        if (slot == 12 && teamManagerInstance.gameNotRunning) { //Rename
             if (my == null || !my.getLeader().equals(p.getUniqueId())) {
                 p.sendMessage(Component.text("You don't own a team.", NamedTextColor.RED));
                 return;
@@ -160,8 +160,8 @@ public class TeamMainMenu extends HubMenuView {
             p.closeInventory();
             return;
         }
-        if (slot == 14 && teamManagerInstance.allowTeamCustomization) { //Recolor
-            if (my == null || !my.getLeader().equals(p.getUniqueId()) && teamManagerInstance.allowTeamCustomization) {
+        if (slot == 14 && teamManagerInstance.gameNotRunning) { //Recolor
+            if (my == null || !my.getLeader().equals(p.getUniqueId()) && teamManagerInstance.gameNotRunning) {
                 p.sendMessage(Component.text("You don't own a team.", NamedTextColor.RED));
                 return;
             }
@@ -169,7 +169,7 @@ public class TeamMainMenu extends HubMenuView {
             return;
         }
 
-        if(slot == 4 && teamManagerInstance.allowTeamCustomization) {
+        if(slot == 4 && teamManagerInstance.gameNotRunning) {
             if (my == null) {
                 p.sendMessage(Component.text("You aren't on a team.", NamedTextColor.RED));
                 return;

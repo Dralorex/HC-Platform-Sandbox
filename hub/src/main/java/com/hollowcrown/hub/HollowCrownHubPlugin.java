@@ -318,15 +318,12 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         //        () -> allianceService.tickPending(System.currentTimeMillis() / 50L),
         //        40L, 40L);
 
-        Bukkit.getScheduler().runTaskTimer(this, () -> {
-            for(TeamManager.TeamManagerInstance teamManagerInstance : TeamManager.instances.values())
-                teamManagerInstance.sendAllFakeTeamPackets();
-            //for (org.bukkit.World w : Bukkit.getWorlds()) {
-            //    if (nametagService.isManagedWorld(w)) {
-            //        nametagService.refreshWorld(w);
-            //    }
-            //}
-        }, 100L, 100L);
+        //for (org.bukkit.World w : Bukkit.getWorlds()) {
+        //    if (nametagService.isManagedWorld(w)) {
+        //        nametagService.refreshWorld(w);
+        //    }
+        //}
+        Bukkit.getScheduler().runTaskTimer(this, TeamManager::heartbeat, 100L, 100L);
         if (getCommand("ally") != null) {
             TeamAllyCommandExecutor exec = new TeamAllyCommandExecutor(this);
             getCommand("ally").setExecutor(exec);

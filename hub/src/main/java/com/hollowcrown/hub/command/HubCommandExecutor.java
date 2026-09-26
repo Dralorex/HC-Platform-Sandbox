@@ -198,8 +198,8 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
             boolean admin = sender.hasPermission("hollowcrownhub.admin");
             List<String> cmds = admin
                     ? List.of("help", "version", "sethub", "clearhub", "hubworld", "template", "lobby", "join",
-                    "party", "queue", "debug", "gui", "worldsgui", "worldgui")
-                    : List.of("help", "party");
+                    "party", "team", "queue", "debug", "gui", "worldsgui", "worldgui")
+                    : List.of("help", "party", "team");
             for (String c : cmds) {
                 if (c.startsWith(p)) {
                     out.add(c);
@@ -549,7 +549,7 @@ public final class HubCommandExecutor implements CommandExecutor, TabCompleter {
         if (args.length == 2) {
             String p = args[1].toLowerCase(Locale.ROOT);
             List<String> out = new ArrayList<>();
-            for (String c : List.of("ally", "rival")) {
+            for (String c : List.of("ally", "rival", "acceptpromote")) {
                 if (c.startsWith(p)) {
                     out.add(c);
                 }
