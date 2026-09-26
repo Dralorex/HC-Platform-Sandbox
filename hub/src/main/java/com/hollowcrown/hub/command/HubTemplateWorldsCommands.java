@@ -147,7 +147,8 @@ public final class HubTemplateWorldsCommands {
                 yield true;
             }
             case "discover" -> {
-                List<String> found = discoverAndAdopt(plugin, admin);
+                var result = HubManagedTemplateBootstrap.syncFromDisk(plugin, admin);
+                List<String> found = result.newlyRegisteredIlKeys();
                 if (found.isEmpty()) {
                     sender.sendMessage(Component.text(
                             "No new folders under hch-worlds/templates/ (need level.dat or region/). "
@@ -160,6 +161,11 @@ public final class HubTemplateWorldsCommands {
                     sender.sendMessage(Component.text(
                             "Edit with /hch template worlds edit <key> — set mechanic before publish.",
                             NamedTextColor.GRAY));
+                }
+                if (!result.prunedKeys().isEmpty()) {
+                    sender.sendMessage(Component.text(
+                            "Pruned missing template(s): " + String.join(", ", result.prunedKeys()),
+                            NamedTextColor.GOLD));
                 }
                 yield true;
             }
@@ -443,7 +449,7 @@ public final class HubTemplateWorldsCommands {
                 " snapshots <world|key> · toggle <world|key> · iconpreview [iconKey]",
                 NamedTextColor.GRAY));
         sender.sendMessage(Component.text(
-                "Limbo: /hch template limbo wand <world|key> · limbo spawn",
+                "Lobby: /hch template lobby wand · /hch template lobby spawn",
                 NamedTextColor.GRAY));
         sender.sendMessage(Component.text(
                 "World fields: /hch template set <world|key> display|enabled|…",

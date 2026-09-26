@@ -11,7 +11,7 @@
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
-  <version>1.21.4-a0.3.21</version>
+  <version>1.21.4-a0.3.22</version>
   <artifactId>hcironlegacy</artifactId>
   <packaging>jar</packaging>
   <name>HCIronLegacy</name>
@@ -34,7 +34,7 @@
       <dependency>
           <groupId>com.hollowcrown</groupId>
           <artifactId>hollowcrown-hub</artifactId>
-          <version>1.21.4-a0.1.17</version>
+          <version>1.21.4-a0.1.19</version>
           <scope>provided</scope>
       </dependency>
   </dependencies>

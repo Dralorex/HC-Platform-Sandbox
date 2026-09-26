@@ -1,4 +1,4 @@
-package com.hollowcrown.hub.limbo;
+package com.hollowcrown.hub.lobby;
 
 import org.bukkit.entity.Player;
 
@@ -8,8 +8,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/** PvP opt-in state shared between {@link HubPreMatchLimboService} and {@link HubPreMatchLimboArenaListener}. */
-public final class HubLimboArenaState {
+/** PvP opt-in state shared between {@link HubPreMatchLobbyService} and {@link HubPreMatchLobbyArenaListener}. */
+public final class HubLobbyArenaState {
 
     private final Set<UUID> pvpActive = new HashSet<>();
     private final Map<UUID, Integer> activateCountdown = new HashMap<>();
@@ -17,7 +17,7 @@ public final class HubLimboArenaState {
     private final Set<UUID> pendingDeactivateOnDeath = new HashSet<>();
     private final Map<UUID, Long> pvpInvulnerableUntil = new HashMap<>();
 
-    public void prepareForLimboJoin(Player p) {
+    public void prepareForLobbyJoin(Player p) {
         if (p == null) return;
         UUID id = p.getUniqueId();
         pvpActive.remove(id);

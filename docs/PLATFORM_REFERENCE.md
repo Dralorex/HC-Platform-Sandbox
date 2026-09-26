@@ -45,7 +45,7 @@ flowchart TB
 
     subgraph Hub["HollowCrownHub"]
         GP[GamePlatform]
-        Limbo[PreMatchLimboService]
+        Lobby[PreMatchLobbyService]
         Party[PartyService]
         Team[TeamService]
         Queue[MatchQueueService]
@@ -56,7 +56,7 @@ flowchart TB
     end
 
     subgraph IL["HCIronLegacy"]
-        Bridge[IronLegacyLimboBridge]
+        Bridge[IronLegacyLobbyBridge]
         TAdmin[IronLegacyTemplateAdmin]
         GM[GameManager]
         Envoys[EnvoyManager]
@@ -68,10 +68,10 @@ flowchart TB
     Hub --> IL
     IL --> Hub
 
-    Bridge -.->|called by| Limbo
+    Bridge -.->|called by| Lobby
     TAdmin -.->|called by| Hub
-    Limbo -.->|calls| Bridge
-    GM -.->|calls| Limbo
+    Lobby -.->|calls| Bridge
+    GM -.->|calls| Lobby
 ```
 
 **Division of responsibility**
@@ -80,13 +80,13 @@ flowchart TB
 |---------|--------|
 | Hub spawn, protection, hotbar, PvP zone, build mode | **Hub** (`HubWorldApi`) |
 | Template registry (Hub rows), join GUI, lobby instances (`*-L#`) | **Hub** |
-| Pre-match limbo queue, countdown, limbo loadout, zone clamp | **Hub** (`PreMatchLimboService`) |
+| Pre-match lobby queue, countdown, lobby loadout, zone clamp | **Hub** (`PreMatchLobbyService`) |
 | Parties (persistent social groups) | **Hub** |
 | Match teams (Team 1, Team 2, … per lobby/match session) | **Hub** (`TeamService`) |
 | Alliances & designated enemies, nametags/TAB/chat colors | **Hub** |
-| Plugin policy (Hub / Limbo / Match scopes) | **Hub** |
+| Plugin policy (Hub / Lobby / Match scopes) | **Hub** |
 | Match queue (FIFO units) | **Hub** (enqueue only today) |
-| `worlds.yml` template catalog, publish/snapshots, editor worlds | **IL** (Hub writes limbo sections) |
+| `worlds.yml` template catalog, publish/snapshots, editor worlds | **IL** (Hub writes lobby sections) |
 | Match engine: freeze, pads, border, elimination, win | **IL** (`GameManager`) |
 | Envoys, replenish, build/dig rules, spawn pads | **IL** |
 | Match instance provisioning (optional Hub path) | **Hub** or **IL** (config flag) |
@@ -117,7 +117,7 @@ All interfaces under `api/src/main/java/com/hollowcrown/api/` are available to H
 | `team` | `TeamService`, `TeamView`, `TeamChatProvider` |
 | `queue` | `MatchQueueService`, `MatchEnqueueResult` |
 | `template` | `TemplateRegistry`, `TemplateEntry` |
-| `integration` | `HubWorldApi`, `PreMatchLimboService`, `IronLegacyLimboBridge`, `IronLegacyTemplateAdmin`, … |
+| `integration` | `HubWorldApi`, `PreMatchLobbyService`, `IronLegacyLobbyBridge`, `IronLegacyTemplateAdmin`, … |
 
 ### Dependencies
 
@@ -163,20 +163,20 @@ None. Foundation is invisible to players and operators except in `/plugins` and 
 | **Publish gate** | Requires mechanic assigned; chat **yes** flow for vanilla publish confirmation. | Implemented |
 | **Mechanic assignment** | `/hch template worlds mechanic <key> <mechanicId>` before publish. | Implemented |
 
-### 3.3 Pre-match limbo
+### 3.3 Pre-match lobby
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| **Session per lobby world** | Each `*-L#` world has its own limbo session, countdown, player set. | Implemented |
-| **Limbo spawn & zone** | Configured in `worlds.yml` per template; wand sets corners; spawn at feet. | Implemented |
-| **Limbo loadout** | Adventure mode, cleared inv, hotbar: Match Team (slot 3), Leave (barrier slot 9). | Implemented |
+| **Session per lobby world** | Each `*-L#` world has its own lobby session, countdown, player set. | Implemented |
+| **Lobby spawn & zone** | Configured in `worlds.yml` per template; wand sets corners; spawn at feet. | Implemented |
+| **Lobby loadout** | Adventure mode, cleared inv, hotbar: Match Team (slot 3), Leave (barrier slot 9). | Implemented |
 | **Queue countdown** | 5-minute (configurable) fill timer; min-fill % from template; cancels if fill drops. | Implemented |
 | **Force start** | `/il start` bypasses min fill (admin). | Implemented |
 | **Teleport countdown** | Final seconds before match launch; low-fill cancel during teleport phase. | Implemented |
-| **Match launch handoff** | Hub calls `IronLegacyLimboBridge.startGameOnPreparedInstance`; IL runs match engine. | Implemented |
-| **Limbo zone clear** | After spawn-pad teleports, Hub clears blocks/entities in limbo volume. | Implemented |
-| **Leave limbo** | Leave item, `/hub`, failed start, evacuate → hub spawn (exits session first). | Implemented |
-| **Zone clamp** | Non-OP players cannot leave limbo zone (movement clamped). | Implemented |
+| **Match launch handoff** | Hub calls `IronLegacyLobbyBridge.startGameOnPreparedInstance`; IL runs match engine. | Implemented |
+| **Lobby zone clear** | After spawn-pad teleports, Hub clears blocks/entities in lobby volume. | Implemented |
+| **Leave lobby** | Leave item, `/hub`, failed start, evacuate → hub spawn (exits session first). | Implemented |
+| **Zone clamp** | Non-OP players cannot leave lobby zone (movement clamped). | Implemented |
 
 ### 3.4 Parties (social — persistent)
 
@@ -195,9 +195,9 @@ None. Foundation is invisible to players and operators except in `/plugins` and 
 |---------|-------------|--------|
 | **Team 1, Team 2, … naming** | Numbered team names with `[Team N]` nametag prefix. | Implemented |
 | **Match Team menu (slot 3)** | Create team, invite, accept/decline, members, leave — mirrors party UX. | Implemented |
-| **Team cap** | Template `teamSizeMax` in limbo; global `teams.memberCap` fallback. | Implemented |
+| **Team cap** | Template `teamSizeMax` in lobby; global `teams.memberCap` fallback. | Implemented |
 | **Color modes** | **TEAM mode**: auto RGB prefix colors + relationship name colors. **LEGACY**: wool picker. | Implemented |
-| **Reset on lobby entry** | Stale team cleared when entering new lobby limbo. | Implemented |
+| **Reset on lobby entry** | Stale team cleared when entering a new lobby. | Implemented |
 | **Party auto-team on lobby join** | Party placed on one team up to cap; solo gets create/join prompt. | Implemented (Unreleased) |
 | **Session-scoped cleanup** | Lobby destroy / match end clears teams **only for that session's players**. | Implemented (Unreleased) |
 | **Independent invites** | Any player can invite others to their team (not party-locked). | Implemented |
@@ -218,7 +218,7 @@ None. Foundation is invisible to players and operators except in `/plugins` and 
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| **Per-viewer scoreboards** | Each player in limbo/match gets private scoreboard for others' nametags. | Implemented |
+| **Per-viewer scoreboards** | Each player in lobby/match gets private scoreboard for others' nametags. | Implemented |
 | **Relationship colors** | Green teammate, red enemy, blue ally, orange designated enemy. | Implemented |
 | **Team prefix** | `[Team N]` with team RGB (TEAM mode) or legacy ChatColor. | Implemented |
 | **Sneak hides nametag** | When template policy `shiftHidesNameTag` enabled. | Implemented |
@@ -235,13 +235,13 @@ None. Foundation is invisible to players and operators except in `/plugins` and 
 | **Queue policy gates** | `soloOnly`, `maxUnitSize`, `soloAutoMerge`, `joinQueueFirst` per template. | Implemented |
 | **Queue bypass** | OP permission `hollowcrownhub.queue.bypass`. | Implemented |
 | **Queue overview GUI** | Admin shell → Queues tab. | Implemented |
-| **Auto-dequeue to limbo** | Queue does **not** yet auto-teleport when slot opens. | **Gap** — enqueue only |
+| **Auto-dequeue to lobby** | Queue does **not** yet auto-teleport when slot opens. | **Gap** — enqueue only |
 
 ### 3.9 Plugin policy
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| **Global scopes** | Hub / Limbo / Match whitelist or blacklist per plugin id. | Implemented |
+| **Global scopes** | Hub / Lobby / Match whitelist or blacklist per plugin id. | Implemented |
 | **Per-template overrides** | Match-scope plugin list overrides global for that template. | Implemented |
 | **Command blocking** | `HubPluginPolicyEnforcer` blocks disallowed plugin commands in scope. | Implemented (best-effort) |
 | **Policy GUIs** | Plugin Allocation landing + per-template blacklist tab. | Implemented |
@@ -253,7 +253,7 @@ None. Foundation is invisible to players and operators except in `/plugins` and 
 | Feature | Description | Status |
 |---------|-------------|--------|
 | **Admin shell GUI** | Central hub for maps, templates, queues, lobbies, policies. | Implemented |
-| **IL template admin GUI** | List → detail → publish/edit/snapshots/limbo tools. | Implemented |
+| **IL template admin GUI** | List → detail → publish/edit/snapshots/lobby tools. | Implemented |
 | **Debug mechanics / why** | `/hch debug mechanics`, `/hch debug why <player>`. | Implemented |
 | **MySQL storage (optional)** | Parties, lobbies, queues mirrored when `storage.type=MYSQL`. | Implemented |
 
@@ -269,9 +269,9 @@ None. Foundation is invisible to players and operators except in `/plugins` and 
 | `MatchQueueService` | `HubMatchQueueService` |
 | `HubPlayerMenus` | `DefaultHubPlayerMenus` |
 | `HubAdminGui` | `DefaultHubAdminGui` |
-| `IronLegacyWorldsCatalog` | `HubLimboWorldsYaml` |
+| `IronLegacyWorldsCatalog` | `HubLobbyWorldsYaml` |
 | `IronLegacyMatchInstanceRuntime` | `HubIronLegacyMatchInstanceRuntime` |
-| `PreMatchLimboService` | `HubPreMatchLimboService` |
+| `PreMatchLobbyService` | `HubPreMatchLobbyService` |
 | `HubTemplatePublishLifecycle` | publish callback lambda |
 | `HubPluginPolicyApi` | `HubPluginPolicyApiAdapter` |
 
@@ -306,11 +306,11 @@ None. Foundation is invisible to players and operators except in `/plugins` and 
 | **Hub template merge** | `integrations.mergeHubTemplatesIntoList: true` merges Hub registry. | Implemented |
 | **Hub match provisioning** | `integrations.preferHubMatchInstanceProvisioning` — Hub creates match worlds. | Implemented (flag) |
 
-### 4.2 Limbo bridge (IL side)
+### 4.2 Lobby bridge (IL side)
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| **`IronLegacyLimboBridge`** | Hub calls this for templates, instances, game start, hub return. | Implemented |
+| **`IronLegacyLobbyBridge`** | Hub calls this for templates, instances, game start, hub return. | Implemented |
 | **Team assign at launch** | Optional auto-assign for un-teamed players at match start (IL logic). | Implemented |
 | **Velocity routing** | Cross-server hub connect when proxy enabled and hub ≠ this server. | Implemented |
 | **Kill credit** | Records kills for leaderboard when in hub PvP zone. | Implemented |
@@ -349,8 +349,8 @@ None. Foundation is invisible to players and operators except in `/plugins` and 
 | Feature | Description | Status |
 |---------|-------------|--------|
 | **`TeamManager` wrapper** | All CRUD delegates to Hub `TeamService`. | Implemented |
-| **Legacy IL team GUIs** | MainMenu, TeamsMenu, etc. — used outside limbo / admin. | Implemented |
-| **In limbo** | `/il teams` opens Hub party/team menus instead. | Implemented |
+| **Legacy IL team GUIs** | MainMenu, TeamsMenu, etc. — used outside lobby / admin. | Implemented |
+| **In lobby** | `/il teams` opens Hub party/team menus instead. | Implemented |
 | **Team chat provider** | `TeamChatProvider` SPI for prefix/color in chat mods. | Implemented |
 
 ### 4.7 Multi-server & roles
@@ -365,7 +365,7 @@ None. Foundation is invisible to players and operators except in `/plugins` and 
 
 | Service | Implementation |
 |---------|----------------|
-| `IronLegacyLimboBridge` | `IronLegacyLimboBridgeImpl` |
+| `IronLegacyLobbyBridge` | `IronLegacyLobbyBridgeImpl` |
 | `IronLegacyTemplateAdmin` | `IronLegacyTemplateAdminImpl` |
 | `IronLegacyHubBridge` | `IronLegacyHubBridgeImpl` |
 | `GameWorldScopeResolver` | `IlGameWorldScopeResolver` |
@@ -379,8 +379,8 @@ None. Foundation is invisible to players and operators except in `/plugins` and 
 ### 5.1 Startup sequence
 
 1. **HC-Foundation** — API types on classpath.
-2. **HollowCrownHub** — registers platform services (party, team, limbo, etc.).
-3. **HCIronLegacy** — requires `GamePlatform`; registers `IronLegacyLimboBridge`, `IronLegacyTemplateAdmin`, mechanic `iron-legacy`; attaches limbo listener to Hub's `PreMatchLimboService`.
+2. **HollowCrownHub** — registers platform services (party, team, lobby, etc.).
+3. **HCIronLegacy** — requires `GamePlatform`; registers `IronLegacyLobbyBridge`, `IronLegacyTemplateAdmin`, mechanic `iron-legacy`; attaches lobby listener to Hub's `PreMatchLobbyService`.
 
 If Hub is missing, IL **disables itself**.
 
@@ -392,13 +392,13 @@ Hub spawn (compass)
   → LobbyJoinTemplateMenu (pick template)
   → [optional] LobbyJoinInstanceMenu OR auto-join oldest OPEN lobby
   → HubLobbyService.teleportPlayerJoin
-  → PreMatchLimboService.registerHubLobbyJoin
+  → PreMatchLobbyService.registerHubLobbyJoin
        • clear stale personal team
        • party auto-team (if in party)
-       • limbo loadout + spawn
+       • lobby loadout + spawn
        • queue countdown
   → [optional] Match Team menu (slot 3) — create/invite teams
-  → countdown completes → IronLegacyLimboBridge.startGameOnPreparedInstance
+  → countdown completes → IronLegacyLobbyBridge.startGameOnPreparedInstance
   → GameManager: freeze → pads → RUNNING
   → match end OR /il stop
   → evacuate to hub (party routing, template editor inventory save if applicable)
@@ -438,15 +438,15 @@ Admin: /hch template worlds edit <key>  OR  General Settings → Teleport to edi
 
 | Caller | Callee | Interface | Purpose |
 |--------|--------|-----------|---------|
-| Hub | IL | `IronLegacyLimboBridge` | Start match, templates, instances, hub return |
+| Hub | IL | `IronLegacyLobbyBridge` | Start match, templates, instances, hub return |
 | Hub | IL | `IronLegacyTemplateAdmin` | Publish, edit TP, reload, import |
-| IL | Hub | `PreMatchLimboService` | All limbo queue UX |
+| IL | Hub | `PreMatchLobbyService` | All lobby queue UX |
 | IL | Hub | `TeamService` | Team CRUD |
 | IL | Hub | `PartyService` | Party graph at launch |
 | IL | Hub | `HubWorldApi` | Hub spawn, loadouts, PvP |
 | IL | Hub | `HubPlayerMenus` | Open join/party GUIs |
 | IL | Hub | `IronLegacyMatchInstanceRuntime` | Create/destroy match worlds |
-| IL | Hub | `IronLegacyWorldsCatalog` | Read/write worlds.yml limbo fields |
+| IL | Hub | `IronLegacyWorldsCatalog` | Read/write worlds.yml lobby fields |
 | IL | Hub | `HubTemplatePublishLifecycle` | Callback after publish |
 | Both | Both | `GamePlatform` | Mechanics, hub spawn, reservations |
 
@@ -464,25 +464,25 @@ Admin: /hch template worlds edit <key>  OR  General Settings → Teleport to edi
 | **LobbyJoinTemplateMenu** | 6 | Template icons for selected mechanic | **Left-click**: join oldest OPEN lobby OR enqueue if `joinQueueFirst`; **Right-click**: instance picker; back |
 | **LobbyJoinInstanceMenu** | 6 | OPEN lobby instances for template | Click instance → join; **Leave Lobby** (barrier) → hub; back |
 
-#### Party (nether star hotbar — hub & limbo)
+#### Party (nether star hotbar — hub & lobby)
 
 | Menu | Contents | Actions |
 |------|----------|---------|
-| **HubPartyMenu** | Create party, view members, invite players, pending invites, **Match Team** (limbo only) | Navigation to submenus |
+| **HubPartyMenu** | Create party, view members, invite players, pending invites, **Match Team** (lobby only) | Navigation to submenus |
 | **HubPartyInvitePlayersMenu** | Online player heads | Click → send party invite |
 | **HubPartyMembersMenu** | Member heads, kick (leader) | Paginated |
 | **HubPartyPendingInvitesMenu** | Invite papers | Left accept / right decline |
 | **HubPartyLobbyTrimMenu** | Party member skulls when party too big for lobby | Kick member → retry join; cancel |
 
-#### Match Team (limbo slot 3 only)
+#### Match Team (lobby slot 3 only)
 
 | Menu | Contents | Actions |
 |------|----------|---------|
 | **HubTeamMenu** | Create team, members, invite, pending invites, link to party menu | **Create**: auto color (TEAM mode) or wool swatches (LEGACY); cap from `teamSizeMax` |
 | **HubTeamMembersMenu** | Roster | Leave team |
-| **HubTeamInvitePlayersMenu** | Players in same limbo session | Send team invite |
+| **HubTeamInvitePlayersMenu** | Players in same lobby session | Send team invite |
 | **HubTeamPendingInvitesMenu** | Pending team invites | Accept / decline |
-| **HubLimboTeamMenu** | *(deprecated)* | Delegates to `HubTeamMenu` |
+| **HubLobbyTeamMenu** | *(deprecated)* | Delegates to `HubTeamMenu` |
 
 ### 6.2 Admin GUIs (Hub)
 
@@ -500,7 +500,7 @@ Admin: /hch template worlds edit <key>  OR  General Settings → Teleport to edi
 | Menu | Contents | Actions |
 |------|----------|---------|
 | **HubIlTemplateListMenu** | All IL maps from worlds.yml | Click → detail; reload; import from Hub; paging |
-| **HubIlTemplateDetailMenu** | Per-map actions | Teleport editor, Publish, Delete, Snapshots, Toggle enabled, Icon preview, Limbo wand, Limbo spawn here, Back |
+| **HubIlTemplateDetailMenu** | Per-map actions | Teleport editor, Publish, Delete, Snapshots, Toggle enabled, Icon preview, Lobby wand, Lobby spawn here, Back |
 | **HubIlSnapshotListMenu** | Snapshot ids | Click → rollback confirm |
 | **HubIlIconPreviewMenu** | Icon item preview | Display only; close |
 
@@ -508,7 +508,7 @@ Admin: /hch template worlds edit <key>  OR  General Settings → Teleport to edi
 
 | Menu | Contents | Actions |
 |------|----------|---------|
-| **HubPluginAllocationLandingMenu** | Tabs: Hub / Limbo / Match global policy | Opens scoped policy menu |
+| **HubPluginAllocationLandingMenu** | Tabs: Hub / Lobby / Match global policy | Opens scoped policy menu |
 | **HubPluginPolicyAdminMenu** | Plugin book list | Toggle whitelist/blacklist; add/remove plugins |
 | **HubMatchTemplateListMenu** | Template picker | → per-template landing |
 | **HubTemplateLandingMenu** | General Settings / Plugin Allocation tabs | Navigate |
@@ -517,7 +517,7 @@ Admin: /hch template worlds edit <key>  OR  General Settings → Teleport to edi
 
 ### 6.3 Iron Legacy GUIs (in-game `/il gui` or `/il admin`)
 
-#### Player / team (legacy — primarily outside Hub limbo)
+#### Player / team (legacy — primarily outside Hub lobby)
 
 | Menu | Purpose |
 |------|---------|
@@ -554,8 +554,8 @@ Admin: /hch template worlds edit <key>  OR  General Settings → Teleport to edi
 |------|------|-------|-------|
 | Compass (config slot, default 5) | Hub | Join GUI |
 | Slot 9 | Nether star | Hub | Party menu |
-| Slot 3 | Team item | Limbo only | Match Team menu |
-| Slot 9 | Barrier | Limbo only | Leave → hub |
+| Slot 3 | Team item | Lobby only | Match Team menu |
+| Slot 9 | Barrier | Lobby only | Leave → hub |
 
 ---
 
@@ -620,13 +620,12 @@ Permission: subcommands use `hollowcrownhub.use` (help), `hollowcrownhub.admin` 
 │   │   ├── <key> <mechanicId> [display]   Register template mechanic + display name
 │   │   ├── <key> display|enabled|maxplayers|teamsize|icon|minimumpercentage|gamerule …
 │   │   │                                  (IL worlds.yml fields when IL loaded)
-│   │   └── limbo spawn                    Alias for limbo spawn setter
 │   ├── setsource <key> <worldFolder>      Set source world folder for lobby copies
 │   ├── setqueue <key> <policy> <value>    Queue policy: maxUnitSize | soloOnly | soloAutoMerge | joinQueueFirst
-│   ├── limbo                              Limbo zone/spawn editing (writes worlds.yml)
-│   │   ├── wand                           Give limbo zone wand (left/right corner, shift-right save)
-│   │   ├── spawn                          Set limbo spawn at feet for template in current world
-│   │   └── help                           Limbo wand help
+│   ├── lobby                              Lobby circle zone + spawn (writes worlds.yml)
+│   │   ├── wand                           Center LMB, edge RMB, Shift+scroll, shift-right save
+│   │   ├── spawn                          Set lobby spawn at feet inside the saved circle
+│   │   └── help                           Lobby wand help
 │   └── worlds                             [requires IL] Iron Legacy worlds.yml admin
 │       ├── help | ?                       Subcommand help
 │       ├── list                           Summarize all IL template rows
@@ -655,7 +654,7 @@ Permission: subcommands use `hollowcrownhub.use` (help), `hollowcrownhub.admin` 
 │
 └── debug                         [admin]
     ├── mechanics                 List registered minigame mechanic ids
-    └── why <player>              Snapshot: world, limbo, party, team, queue state
+    └── why <player>              Snapshot: world, lobby, party, team, queue state
 ```
 
 ### `/hub` — Player hub teleport
@@ -669,9 +668,9 @@ Permission: `hollowcrownhub.use`
 
 Aliases: `lobby`, `spawnhub`
 
-**Behavior:** Exits limbo first (same as Leave Lobby). Saves template editor inventory if leaving editor world. Applies hub loadout after teleport.
+**Behavior:** Exits lobby first (same as Leave Lobby). Saves template editor inventory if leaving editor world. Applies hub loadout after teleport.
 
-### `/ally` — Team alliances (in match/limbo when policy allows)
+### `/ally` — Team alliances (in match/lobby when policy allows)
 
 ```
 /ally <teamName>                  Team leader sends alliance invite
@@ -696,7 +695,7 @@ Permission: `hcironlegacy.use` (default true); admin subcommands require OP / `h
 ├── [help]                        Show help (default when no args)
 │
 ├── party                         Open Hub party menu (HubPlayerMenus) — requires Hub
-├── teams                         In limbo: Hub Match Team menu; else OP team admin GUI
+├── teams                         In lobby: Hub Match Team menu; else OP team admin GUI
 ├── gui                           OP: open MainMenu or TeamsMenu (config ui.openTeamsFirst)
 ├── admin                         OP: AdminControlCenterMenu
 │
@@ -705,15 +704,14 @@ Permission: `hcironlegacy.use` (default true); admin subcommands require OP / `h
 ├── joingame <worldname>          [OP] Bypass join to world
 ├── reload                        [OP] Reload config, files, spawns, rules, templates, icons
 │
-├── start [limbo_world|template]  [role: GAME or STANDALONE] Force limbo countdown (ignores min fill)
-├── stop                          Abort limbo queues + stop active match → send players to hub
+├── start [lobby_world|template]  [role: GAME or STANDALONE] Force lobby countdown (ignores min fill)
+├── stop                          Abort lobby queues + stop active match → send players to hub
 │
-├── hostilemobspawn <true|false>  [OP, HUB/STANDALONE] Toggle hostile mob spawns in limbo
-├── passivemobspawn <true|false>  [OP, HUB/STANDALONE] Toggle passive mob spawns in limbo
+├── hostilemobspawn <true|false>  [OP, HUB/STANDALONE] Toggle hostile mob spawns in lobby
+├── passivemobspawn <true|false>  [OP, HUB/STANDALONE] Toggle passive mob spawns in lobby
 │
 ├── addspawn                      [OP] Add spawn pad at feet
-├── clearspawns                   [OP] Clear all spawn pads
-├── removespawn                   [OP] Remove nearest spawn pad
+├── clearspawn [closest|all]      [OP] Remove closest pad (default) or clear all
 ├── listspawns                    [OP] List spawn pad count
 ├── addspawnring <count> <radius> [here|spawn]  [OP] Ring of pads
 ├── showpads [seconds]            [OP] Show pad particles temporarily
@@ -769,7 +767,7 @@ Permission: `hcironlegacy.use` (default true); admin subcommands require OP / `h
 └── (help documents Hub commands: /hub, /hch sethub, /hch template …)
 ```
 
-**Moved to Hub (not in IL):** template create, publish, worlds admin GUI, limbo wand (Hub `/hch template limbo wand`), join compass flow, party commands, queue, lobby admin.
+**Moved to Hub (not in IL):** template create, publish, worlds admin GUI, lobby circle wand (Hub `/hch template lobby wand`), join compass flow, party commands, queue, lobby admin.
 
 ---
 
@@ -807,7 +805,7 @@ Permission: `hcironlegacy.use` (default true); admin subcommands require OP / `h
 | `parties.yml` | Party persistence |
 | `teams.yml` | Match team persistence (session teams also cleared on teardown) |
 | `team-name-database.yml` | Optional team name pool |
-| `plugin-policies.yml` | Global Hub/Limbo/Match plugin lists |
+| `plugin-policies.yml` | Global Hub/Lobby/Match plugin lists |
 | `template-policies.yml` | Per-template match settings + plugin overrides |
 | `storage-meta.yml` | YAML storage schema version |
 
@@ -816,7 +814,7 @@ Permission: `hcironlegacy.use` (default true); admin subcommands require OP / `h
 | File | Purpose |
 |------|---------|
 | `config.yml` | Game settings, integrations, rules, spawns, UI |
-| `worlds.yml` | Template catalog, limbo zones/spawns, per-template match spawn pads, min-fill %, team caps |
+| `worlds.yml` | Template catalog, lobby zones/spawns, per-template match spawn pads, min-fill %, team caps |
 | `gameflow.yml` | Server role, Velocity, shard caps, team defaults |
 | `lobby.yml` | Legacy lobby coords (migrated toward Hub) |
 | `envoys.yml` + `world-envoys/<key>/` | Envoy definitions per map |
@@ -840,11 +838,11 @@ Permission: `hcironlegacy.use` (default true); admin subcommands require OP / `h
 
 | Item | Expected | Current |
 |------|----------|---------|
-| **Queue → limbo auto-dequeue** | Queue should send units when lobby slot opens | Enqueue + status only; join via GUI |
+| **Queue → lobby auto-dequeue** | Queue should send units when lobby slot opens | Enqueue + status only; join via GUI |
 | **`HubPluginPolicyApi`** | External HC plugins query policy | API exists; no in-game test |
-| **IL legacy team GUIs in limbo** | Use Hub Match Team only | `/il teams` redirects to Hub in limbo |
+| **IL legacy team GUIs in lobby** | Use Hub Match Team only | `/il teams` redirects to Hub in lobby |
 | **Global `clearAllTeams`** | Admin nuke / stale recovery only | Not called on normal match end |
-| **Velocity multi-server** | Full cross-server limbo + match | Routing exists; single-server stack is primary test target |
+| **Velocity multi-server** | Full cross-server lobby + match | Routing exists; single-server stack is primary test target |
 
 ---
 
@@ -855,11 +853,11 @@ Permission: `hcironlegacy.use` (default true); admin subcommands require OP / `h
 | Hub spawn | `/hch sethub`, `/hub` | — |
 | Join game | `/hch join` | Compass → Join menus |
 | Party | `/hch party` | Nether star |
-| Match team | — (limbo slot 3) | Match Team menu |
+| Match team | — (lobby slot 3) | Match Team menu |
 | Lobby admin | `/hch lobby` | Admin shell → Lobbies |
 | Template registry | `/hch template set/list` | Admin shell → Hub Templates |
 | IL worlds admin | `/hch template worlds …` | `/hch gui maps` |
-| Limbo zone/spawn | `/hch template limbo wand/spawn` | IL detail menu buttons |
+| Lobby zone/spawn | `/hch template lobby wand/spawn` | IL detail menu buttons |
 | Template policy | — | Admin shell → Plugin Policies → template |
 | Match queue | `/hch queue` | Admin shell → Queues |
 | Alliances | `/ally`, `/enemy` | — |

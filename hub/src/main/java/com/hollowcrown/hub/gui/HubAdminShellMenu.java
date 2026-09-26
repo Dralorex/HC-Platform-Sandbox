@@ -63,7 +63,7 @@ public final class HubAdminShellMenu extends HubMenuView {
                 Component.text("Iron Legacy · Maps", NamedTextColor.YELLOW),
                 List.of(
                         Component.text("Template worlds, publish, snapshots,", NamedTextColor.GRAY),
-                        Component.text("limbo (/hch template limbo), icons.", NamedTextColor.GRAY),
+                        Component.text("lobby (/hch template lobby), icons.", NamedTextColor.GRAY),
                         Component.empty(),
                         Component.text("Click to open", NamedTextColor.GREEN))));
 
@@ -93,7 +93,7 @@ public final class HubAdminShellMenu extends HubMenuView {
                 Component.text("Plugin policies", NamedTextColor.LIGHT_PURPLE),
                 List.of(
                         Component.text("Whitelist/blacklist server plugins", NamedTextColor.GRAY),
-                        Component.text("in hub, limbo, and active matches.", NamedTextColor.GRAY),
+                        Component.text("in hub, lobby, and active matches.", NamedTextColor.GRAY),
                         Component.empty(),
                         Component.text("Click to configure", NamedTextColor.GREEN))));
 

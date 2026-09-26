@@ -8,15 +8,15 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Pre-match limbo queues and arena UX (registered by HollowCrownHub).
- * Iron Legacy delegates here instead of owning session/limbo listeners.
+ * Pre-match lobby queues and arena UX (registered by HollowCrownHub).
+ * Iron Legacy delegates here instead of owning session/lobby listeners.
  */
-public interface PreMatchLimboService {
+public interface PreMatchLobbyService {
 
-    boolean sendToLimbo(Player player, String templateKey);
+    boolean sendToLobby(Player player, String templateKey);
 
     /**
-     * Register a player in the limbo queue for an existing Hub lobby world (after teleport).
+     * Register a player in the lobby queue for an existing Hub lobby world (after teleport).
      * Session is keyed by {@code lobbyWorldName} so each {@code <template>-L#} instance has its own queue.
      */
     boolean registerHubLobbyJoin(Player player, String templateKey, String lobbyWorldName);
@@ -24,33 +24,33 @@ public interface PreMatchLimboService {
     /** End queue/countdown for a lobby world (e.g. when the Hub lobby instance is destroyed). */
     void endSessionForWorld(String lobbyWorldName);
 
-    boolean isInLimbo(Player player);
+    boolean isInLobby(Player player);
 
-    String limboTemplateKey(Player player);
+    String lobbyTemplateKey(Player player);
 
     Set<UUID> playersInSameTemplateSession(Player player);
 
-    Location getSessionLimboSpawn(Player player);
+    Location getSessionLobbySpawn(Player player);
 
-    void leaveLimbo(Player player);
+    void leaveLobby(Player player);
 
     void abortAllQueuesAndKickToHub();
 
     boolean forceBeginTeleportCountdown(String worldOrTemplateKey);
 
     /**
-     * After match start teleports players to spawn pads, clears the limbo arena volume in
+     * After match start teleports players to spawn pads, clears the lobby arena volume in
      * {@code instanceWorldName} (air + entities). No-op when zone metadata is missing.
      */
-    void clearLimboZoneAfterSpawnPads(String instanceWorldName, String templateKey);
+    void clearLobbyZoneAfterSpawnPads(String instanceWorldName, String templateKey);
 
-    boolean isInLimboWorld(World world);
+    boolean isInLobbyWorld(World world);
 
-    Set<String> limboWorldNames();
+    Set<String> lobbyWorldNames();
 
-    void prepareForLimboJoin(Player player);
+    void prepareForLobbyJoin(Player player);
 
-    void applyLimboLoadout(Player player);
+    void applyLobbyLoadout(Player player);
 
     boolean allowHostileMobSpawns();
 
@@ -61,8 +61,8 @@ public interface PreMatchLimboService {
     void setAllowPassiveMobSpawns(boolean value);
 
     /**
-     * Per-template team size cap while the player is in pre-match limbo ({@code teamSizeMax} from worlds.yml),
-     * or {@code -1} when not in limbo.
+     * Per-template team size cap while the player is in pre-match lobby ({@code teamSizeMax} from worlds.yml),
+     * or {@code -1} when not in lobby.
      */
     int teamSizeMaxFor(Player player);
 }

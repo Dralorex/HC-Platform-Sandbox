@@ -1,6 +1,6 @@
 package com.hollowcrown.hub.gui;
 
-import com.hollowcrown.api.integration.PreMatchLimboService;
+import com.hollowcrown.api.integration.PreMatchLobbyService;
 import com.hollowcrown.api.party.PartyService;
 import com.hollowcrown.api.party.PartyView;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
@@ -70,7 +70,7 @@ public final class HubPartyMenu extends HubMenuView {
     private void build() {
         inv.clear();
         PartyView party = parties.partyForMember(viewer.getUniqueId()).orElse(null);
-        boolean inLimbo = isViewerInLimbo();
+        boolean inLobby = isViewerInLobby();
         if (party == null) {
             inv.setItem(SLOT_CREATE, button(Material.EMERALD,
                     Component.text("Create Party", NamedTextColor.GREEN),
@@ -78,7 +78,7 @@ public final class HubPartyMenu extends HubMenuView {
             inv.setItem(SLOT_INVITES_HUB, button(Material.PAPER,
                     Component.text("Party Invites", NamedTextColor.AQUA),
                     List.of(Component.text("Open pending invites", NamedTextColor.GRAY))));
-            if (inLimbo) {
+            if (inLobby) {
                 inv.setItem(SLOT_MATCH_TEAM, button(Material.WHITE_BANNER,
                         Component.text("Match Team", NamedTextColor.YELLOW),
                         List.of(Component.text("Configure your match team", NamedTextColor.GRAY))));
@@ -99,7 +99,7 @@ public final class HubPartyMenu extends HubMenuView {
         inv.setItem(SLOT_INVITES_IN_PARTY, button(Material.PAPER,
                 Component.text("Party Invites", NamedTextColor.AQUA),
                 List.of(Component.text("Click to view pending invites", NamedTextColor.GRAY))));
-        if (inLimbo) {
+        if (inLobby) {
             inv.setItem(SLOT_MATCH_TEAM, button(Material.WHITE_BANNER,
                     Component.text("Match Team", NamedTextColor.YELLOW),
                     List.of(
@@ -110,10 +110,10 @@ public final class HubPartyMenu extends HubMenuView {
         }
     }
 
-    private boolean isViewerInLimbo() {
-        RegisteredServiceProvider<PreMatchLimboService> reg =
-                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
-        return reg != null && reg.getProvider().isInLimbo(viewer);
+    private boolean isViewerInLobby() {
+        RegisteredServiceProvider<PreMatchLobbyService> reg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLobbyService.class);
+        return reg != null && reg.getProvider().isInLobby(viewer);
     }
 
     private static String nameOf(UUID id) {

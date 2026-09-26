@@ -1,6 +1,6 @@
 package com.hollowcrown.hub.policy;
 
-import com.hollowcrown.api.integration.PreMatchLimboService;
+import com.hollowcrown.api.integration.PreMatchLobbyService;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -82,7 +82,7 @@ public final class HubPluginPolicyEnforcer implements Listener {
     /**
      * Resolution order for MATCH scope: per-template policy (when the player is in a known template's
      * match world) overrides the global Match policy entirely. Falls back to global Match policy when
-     * no template is associated. Hub and Limbo scopes use the global policy as before.
+     * no template is associated. Hub and Lobby scopes use the global policy as before.
      */
     private boolean isOwnerAllowedForPlayer(String owner, Player p, HubPluginPolicyService.Scope scope) {
         if (scope != HubPluginPolicyService.Scope.MATCH || templatePolicies == null) {
@@ -101,7 +101,7 @@ public final class HubPluginPolicyEnforcer implements Listener {
         if (p == null || p.getWorld() == null) return null;
         try {
             String world = p.getWorld().getName();
-            return hub.limboLayout().worldsYaml().resolveTemplateKeyForWorld(world).orElse(null);
+            return hub.lobbyLayout().worldsYaml().resolveTemplateKeyForWorld(world).orElse(null);
         } catch (Throwable ignored) {
             return null;
         }
@@ -114,13 +114,13 @@ public final class HubPluginPolicyEnforcer implements Listener {
     }
 
     private HubPluginPolicyService.Scope currentScope(Player p) {
-        // Limbo takes precedence
-        RegisteredServiceProvider<PreMatchLimboService> limboReg =
-                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
-        if (limboReg != null) {
+        // Lobby takes precedence
+        RegisteredServiceProvider<PreMatchLobbyService> lobbyReg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLobbyService.class);
+        if (lobbyReg != null) {
             try {
-                if (limboReg.getProvider().isInLimbo(p)) {
-                    return HubPluginPolicyService.Scope.LIMBO;
+                if (lobbyReg.getProvider().isInLobby(p)) {
+                    return HubPluginPolicyService.Scope.LOBBY;
                 }
             } catch (Throwable ignored) {
             }
@@ -136,7 +136,7 @@ public final class HubPluginPolicyEnforcer implements Listener {
         if (policies.isMatchWorld(p.getWorld())) {
             return HubPluginPolicyService.Scope.MATCH;
         }
-        // Default to MATCH for non-hub/non-limbo on hub-like servers; otherwise HUB.
+        // Default to MATCH for non-hub/non-lobby on hub-like servers; otherwise HUB.
         return HubPluginPolicyService.Scope.MATCH;
     }
 }

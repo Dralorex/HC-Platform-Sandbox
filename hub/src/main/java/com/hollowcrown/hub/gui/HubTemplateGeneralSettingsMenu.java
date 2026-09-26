@@ -149,7 +149,7 @@ public final class HubTemplateGeneralSettingsMenu extends HubMenuView {
                 .filter(r -> r.key().equalsIgnoreCase(templateKey)).findFirst());
         int teamSize = rowOpt.map(r -> r.teamSizeMax()).orElse(-1);
         int maxPlayers = rowOpt.map(r -> r.maxPlayers()).orElse(-1);
-        int minPct = plugin.limboLayout().worldsYaml().minimumPercentage(templateKey);
+        int minPct = plugin.lobbyLayout().worldsYaml().minimumPercentage(templateKey);
 
         inv.setItem(SLOT_TEAM_SIZE, btn(Material.IRON_SWORD,
                 Component.text("Team size max: " + (teamSize > 0 ? teamSize : "—"), NamedTextColor.AQUA),
@@ -218,10 +218,10 @@ public final class HubTemplateGeneralSettingsMenu extends HubMenuView {
                 });
             }
             case SLOT_MIN_PCT -> {
-                int cur = plugin.limboLayout().worldsYaml().minimumPercentage(templateKey);
+                int cur = plugin.lobbyLayout().worldsYaml().minimumPercentage(templateKey);
                 int next = right ? cur - 5 : cur + 5;
                 next = Math.max(1, Math.min(100, next));
-                plugin.limboLayout().worldsYaml().setMinimumPercentage(templateKey, next);
+                plugin.lobbyLayout().worldsYaml().setMinimumPercentage(templateKey, next);
             }
             case SLOT_MAX_PLAYERS -> {
                 HubIronLegacySupport.ilAdmin().ifPresent(a -> {

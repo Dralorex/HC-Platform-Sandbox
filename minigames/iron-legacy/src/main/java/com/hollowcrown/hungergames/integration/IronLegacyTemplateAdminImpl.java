@@ -115,6 +115,11 @@ public record IronLegacyTemplateAdminImpl(HungerGamesPlugin plugin) implements I
     }
 
     @Override
+    public List<String> pruneMissingWorldFolders() {
+        return plugin.templates().pruneMissingWorldFolders();
+    }
+
+    @Override
     public boolean publish(String templateKey) {
         plugin.templates().ensureTemplateRow(templateKey);
         boolean ok = plugin.templates().publishTemplate(templateKey);

@@ -23,18 +23,20 @@ party:
   allOfflineDisbandSeconds: 180
   leaderAbandonedPromoteSeconds: 180
 
-# Limbo layout wand writes limbo.zone + limbo spawn under this plugin's data folder:
+# Lobby layout wand writes lobby.zone + lobby spawn under this plugin's data folder:
 #   plugins/<ironLegacy.pluginName>/worlds.yml
 ironLegacy:
   pluginName: HCIronLegacy
 
-# Match teams (limbo-only; reset each lobby/match). Cap in limbo uses template teamSizeMax.
+# Match teams (lobby-only; reset each lobby/match). Cap in lobby uses template teamSizeMax.
 teams:
   memberCap: 4
 
 # Drop a Minecraft world into hch-worlds/templates/<name> — on startup Hub + IL register it automatically.
+# Missing folders are removed from templates.yml / worlds.yml / lobbies / queues on startup.
 templates:
   autoDiscoverOnStartup: true
+  pruneMissingOnStartup: true
 
 # Set in-game with /hch sethub [1] (writes world-uuid + coords). Hub #1 = /hub and /hub join 1.
 # Extra hubs: /hch sethub 2, /hch sethub 3, … (writes hub.instances.<n> below).
@@ -53,7 +55,7 @@ hub:
   #     pitch: 0.0
 
 # =========================
-# Limbo / lobby team display names — substring block list (case-insensitive).
+# Lobby / lobby team display names — substring block list (case-insensitive).
 # =========================
-limboTeamNaming:
+lobbyTeamNaming:
   blockedWords: [ ]

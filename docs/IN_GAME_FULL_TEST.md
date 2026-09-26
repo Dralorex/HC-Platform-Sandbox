@@ -31,7 +31,7 @@ Each row traces: **player action → Java entry point → services → disk/API/
 | `hub/` | HollowCrownHub | `hub/target/HollowCrownHub-*.jar` |
 | `iron-legacy/` | HCIronLegacy | `minigames/iron-legacy/target/HCIronLegacy-*.jar` |
 
-**Known gap:** queue enqueues only — no auto limbo/match (`hub/queue/HubMatchQueueService.java`).
+**Known gap:** queue enqueues only — no auto lobby/match (`hub/queue/HubMatchQueueService.java`).
 
 ---
 
@@ -44,7 +44,7 @@ Each row traces: **player action → Java entry point → services → disk/API/
 | `/il buildmode` | `/hch hubworld buildmode` | `HubWorldAdminCommands` → `HubWorldManager` buildMode set |
 | `/il pvp pad` | `/hch hubworld pvp pad` | `HubWorldAdminCommands` → `HubWorldManager` pad item |
 | `/il create` | `/hch template create` | `HubTemplateCommands.createWorld` → `HubTemplateWorldBootstrap` |
-| Limbo wand | `/hch template limbo wand` | `HubTemplateLimboCommands` → `HubLimboWandListener` |
+| Lobby wand | `/hch template lobby wand` | `HubTemplateLobbyCommands` → `HubLobbyWandListener` |
 | `/hch ironlegacy` | removed | `HubCommandExecutor:136-140` stub message |
 | `/il game` | removed | `HGCommand:400-404` stub → use Hub `template worlds` |
 
@@ -77,7 +77,7 @@ Each row traces: **player action → Java entry point → services → disk/API/
 | # | Action | Expected | Code path |
 |---|--------|----------|-----------|
 | 1 | IL disables | missing dep | MinigameBootstrap.assertRunnableStack in HungerGamesPlugin.onEnable |
-| 2 | LimboBridge warning | Hub warns | HollowCrownHubPlugin.onEnable:204-210 — no IronLegacyLimboBridge service |
+| 2 | LobbyBridge warning | Hub warns | HollowCrownHubPlugin.onEnable:204-210 — no IronLegacyLobbyBridge service |
 | 3 | MYSQL SEVERE | YAML fallback | HubSqlRuntime.tryConnect null → HollowCrownHubPlugin:92-93 |
 
 - ⬜ Subsection complete
@@ -161,7 +161,7 @@ Each row traces: **player action → Java entry point → services → disk/API/
 | 6 | Left-click testmap | join/create lobby | LobbyJoinMenuListener.handleTemplateClick jtpl_pick:78 → joinQueueFirst check :87 → HubLobbyService.joinOldestOpenForTemplate · PERSIST: hch-worlds/minigames/<key>-L# |
 | 7 | Right-click testmap | instance picker | LobbyJoinMenuListener:84-85 → LobbyJoinInstanceMenu.open |
 | 8 | Click OPEN instance | teleport L# | LobbyJoinMenuListener.handleInstanceClick → HubLobbyService.teleportPlayerToInstance |
-| 9 | Leave Lobby bed | hub return | LobbyJoinMenuListener leave action → HubPreMatchLimboService.leaveLimbo → HubPlayerCommand spawn |
+| 9 | Leave Lobby bed | hub return | LobbyJoinMenuListener leave action → HubPreMatchLobbyService.leaveLobby → HubPlayerCommand spawn |
 | 10 | GUI pagination | prev/next | LobbyJoinTemplateMenu / LobbyJoinInstanceMenu nav items jtpl_prev/jtpl_next PDC keys |
 | 11 | OP template lore | key + mechanic | LobbyJoinTemplateMenu.build — adds lore if player.isOp() |
 
@@ -257,7 +257,7 @@ Each row traces: **player action → Java entry point → services → disk/API/
 
 | # | Action | Expected | Code path |
 |---|--------|----------|-----------|
-| 11 | /hch lobby destroy | unload+delete | HubLobbyService.destroyLobby — evacuate, end limbo, unload world |
+| 11 | /hch lobby destroy | unload+delete | HubLobbyService.destroyLobby — evacuate, end lobby, unload world |
 | 12 | Destroy fails | BROKEN state | HubLobbyService marks LobbyInstanceState.BROKEN on IO failure |
 | 13 | /hch lobby forget | registry row gone | HubLobbyCommands.forget → HubLobbyInstanceRegistry.remove |
 | 14 | BROKEN GUI barrier | forget | LobbyAdminMenuListener barrier action |
@@ -268,7 +268,7 @@ Each row traces: **player action → Java entry point → services → disk/API/
 
 | # | Action | Expected | Code path |
 |---|--------|----------|-----------|
-| 15 | Last lobby starts match | next L# pre-created | HubLobbyService.onMatchStarted / HubPreMatchLimboService.launchSession → prefetch createLobby |
+| 15 | Last lobby starts match | next L# pre-created | HubLobbyService.onMatchStarted / HubPreMatchLobbyService.launchSession → prefetch createLobby |
 | 16 | lobby list after start | new OPEN | HubLobbyInstanceRegistry |
 
 - ⬜ Subsection complete
@@ -284,7 +284,7 @@ Each row traces: **player action → Java entry point → services → disk/API/
 
 - ⬜ Subsection complete
 
-## Phase 4 — Iron Legacy integration (limbo → match)
+## Phase 4 — Iron Legacy integration (lobby → match)
 
 ### 4.1 IL worlds admin via Hub
 
@@ -301,7 +301,7 @@ Each row traces: **player action → Java entry point → services → disk/API/
 | 9 | set display | IL display | HubTemplateCommands routeTemplateSet → HubIlWorldSetCommand.applyWorldFields |
 | 10 | set maxplayers | saved | HubIlWorldSetCommand → WorldSettingsManager |
 | 11 | set teamsize | saved | HubIlWorldSetCommand |
-| 12 | set minimumpercentage | limbo fill % | HubIlWorldSetCommand → worlds.yml · read HubPreMatchLimboService fill gate |
+| 12 | set minimumpercentage | lobby fill % | HubIlWorldSetCommand → worlds.yml · read HubPreMatchLobbyService fill gate |
 | 13 | set gamerule | saved | HubIlWorldSetCommand gamerule branch |
 | 14 | set enabled true | join GUI | HubIlWorldSetCommand enabled field |
 | 15 | worlds toggle | flip enabled | IronLegacyTemplateAdminImpl.toggle |
@@ -311,35 +311,35 @@ Each row traces: **player action → Java entry point → services → disk/API/
 
 - ⬜ Subsection complete
 
-### 4.2 Limbo zone setup
+### 4.2 Lobby zone setup
 
 | # | Action | Expected | Code path |
 |---|--------|----------|-----------|
-| 19 | /hch template limbo wand | wand item | HubTemplateLimboCommands.wand → gives stick PDC limboWandTemplateKey |
-| 20 | Left-click corner 1 | saved | HubLimboWandListener left click → HubLimboLayout setCorner1 |
-| 21 | Right-click corner 2 | saved | HubLimboWandListener right click → setCorner2 |
-| 22 | Shift-right confirm | outline | HubLimboWandListener confirm → HubLimboWorldsYaml write IL worlds.yml limboZone |
-| 23 | Outline updates | particles | HubLimboWandListener particle task while holding wand |
-| 24 | limbo spawn in zone | spawn saved | HubTemplateLimboCommands.spawn → HubLimboWorldsYaml limbo spawn |
-| 25 | spawn outside zone | rejected | HubTemplateLimboCommands zone contains check |
-| 26 | wand in testmap-L# | auto template key | HubLimboWandListener resolveTemplateFromWorld — HubIlTemplateDetailMenu logic |
+| 19 | /hch template lobby wand | wand item | HubTemplateLobbyCommands wand → circle wand |
+| 20 | Left-click center | saved | HubLobbyWandListener left click sets center |
+| 21 | Right-click edge | saved | HubLobbyWandListener right click sets radius + height |
+| 22 | Shift-right confirm | outline | HubLobbyWandListener confirm → writeLobbyCircle |
+| 23 | Outline updates | particles | HubLobbyWandListener particle task while holding wand |
+| 24 | /hch template lobby spawn inside circle | spawn saved | HubTemplateLobbyCommands.spawn → HubLobbyWorldsYaml lobby spawn |
+| 25 | spawn outside circle | rejected | HubLobbyLayout zone contains check |
+| 26 | wand in testmap-L# | auto template key | HubLobbyWandListener resolveTemplateFromWorld — HubIlTemplateDetailMenu logic |
 
 - ⬜ Subsection complete
 
-### 4.3 Pre-match limbo
+### 4.3 Pre-match lobby
 
 | # | Action | Expected | Code path |
 |---|--------|----------|-----------|
-| 27 | Join via compass | limbo loadout | HubLobbyService.join → HubPreMatchLimboService.registerHubLobbyJoin → HubWorldManager limbo loadout |
-| 28 | Limbo hotbar items | sword/compass/party/barrier | hub-world.yml items.limbo + items.hub — HubWorldManager.applyLimboLoadout |
-| 29 | Walk outside zone | clamped | HubPreMatchLimboArenaListener.onMove / HubPreMatchLimboService.onMoveClamp:60-74 |
-| 30 | Action bar fill | N/max Players | HubPreMatchLimboService tickFill actionbar |
-| 31 | Below minimumpercentage | no auto start | HubPreMatchLimboService fill gate + IronLegacyLimboBridge minimumpercentage |
-| 32 | Fill threshold | 5min countdown | HubPreMatchLimboService queue countdown timer |
-| 33 | 10s teleport countdown | titles | HubPreMatchLimboService.tickTeleportCountdown |
-| 34 | Barrier leave | hub return | HubPreMatchLimboArenaListener barrier interact → leaveLimbo:451 |
+| 27 | Join via compass | lobby loadout | HubLobbyService.join → HubPreMatchLobbyService.registerHubLobbyJoin → HubWorldManager lobby loadout |
+| 28 | Lobby hotbar items | sword/compass/party/barrier | hub-world.yml items.lobby + items.hub — HubWorldManager.applyLobbyLoadout |
+| 29 | Walk outside zone | clamped | HubPreMatchLobbyArenaListener.onMove / HubPreMatchLobbyService.onMoveClamp:60-74 |
+| 30 | Action bar fill | N/max Players | HubPreMatchLobbyService tickFill actionbar |
+| 31 | Below minimumpercentage | no auto start | HubPreMatchLobbyService fill gate + IronLegacyLobbyBridge minimumpercentage |
+| 32 | Fill threshold | 5min countdown | HubPreMatchLobbyService queue countdown timer |
+| 33 | 10s teleport countdown | titles | HubPreMatchLobbyService.tickTeleportCountdown |
+| 34 | Barrier leave | hub return | HubPreMatchLobbyArenaListener barrier interact → leaveLobby:451 |
 | 35 | Picker red bed leave | hub return | LobbyJoinMenuListener leave lobby bed action |
-| 36 | /il hostilemobspawn false | no hostiles | HGCommand:326 → IronLegacyLimboBridgeImpl.setLimboHostileMobSpawns → HubPreMatchLimboArenaListener.onMobSpawn |
+| 36 | /il hostilemobspawn false | no hostiles | HGCommand:326 → IronLegacyLobbyBridgeImpl.setLobbyHostileMobSpawns → HubPreMatchLobbyArenaListener.onMobSpawn |
 | 37 | /il passivemobspawn false | no passives | HGCommand:351 → passive mob toggle |
 
 - ⬜ Subsection complete
@@ -348,10 +348,10 @@ Each row traces: **player action → Java entry point → services → disk/API/
 
 | # | Action | Expected | Code path |
 |---|--------|----------|-----------|
-| 38 | /il start in limbo | countdown→match | HGCommand:437 → PreMatchLimboService.forceBeginTeleportCountdown → HubPreMatchLimboService → IronLegacyLimboBridge.launchSession |
-| 39 | Match instance world | testmap-M# | IronLegacyLimboBridgeImpl → HubIronLegacyMatchInstanceRuntime.createMatchInstance → DefaultGamePlatform.createMatchWorld |
+| 38 | /il start in lobby | countdown→match | HGCommand:437 → PreMatchLobbyService.forceBeginTeleportCountdown → HubPreMatchLobbyService → IronLegacyLobbyBridge.launchSession |
+| 39 | Match instance world | testmap-M# | IronLegacyLobbyBridgeImpl → HubIronLegacyMatchInstanceRuntime.createMatchInstance → DefaultGamePlatform.createMatchWorld |
 | 40 | Lobby registry detach | row released | HubLobbyService.releaseForMatch → MinigameMechanic.onLobbyInstanceReleased |
-| 41 | /il stop | abort to hub | HGCommand:458 → GameManager.stopGame + PreMatchLimboService.abort |
+| 41 | /il stop | abort to hub | HGCommand:458 → GameManager.stopGame + PreMatchLobbyService.abort |
 | 42 | /il joingame | OP bypass | HGCommand:376 joingame branch |
 
 - ⬜ Subsection complete
@@ -392,7 +392,7 @@ Each row traces: **player action → Java entry point → services → disk/API/
 | 10 | Build freely | allowed | onBreak/onPlace skip when buildMode contains player |
 | 11 | buildmode false | survival+loadout | HubWorldManager.disableBuildMode → applySurvivalHubLoadoutAfterTemplate |
 | 12 | Toggle on again | restore build inv | enableBuildMode restores buildModeSnapshots |
-| 13 | /hub after limbo | build mode restored | HubPlayerCommand teleport callback → applySurvivalHubLoadoutAfterTemplate checks buildMode |
+| 13 | /hub after lobby | build mode restored | HubPlayerCommand teleport callback → applySurvivalHubLoadoutAfterTemplate checks buildMode |
 
 - ⬜ Subsection complete
 
@@ -442,13 +442,13 @@ Each row traces: **player action → Java entry point → services → disk/API/
 
 - ⬜ Subsection complete
 
-### 5.6 Limbo PvP
+### 5.6 Lobby PvP
 
 | # | Action | Expected | Code path |
 |---|--------|----------|-----------|
-| 39 | Sword activation limbo | same countdown | HubPreMatchLimboArenaListener — delegates HubWorldManager PvP state or parallel limbo PvP handlers |
-| 40 | PvP off limbo no TP | stays put | HubPreMatchLimboArenaListener deactivate — no hub teleport |
-| 41 | PvP off keeps slot | no forced swap | limbo arena listener slot policy |
+| 39 | Sword activation lobby | same countdown | HubPreMatchLobbyArenaListener — delegates HubWorldManager PvP state or parallel lobby PvP handlers |
+| 40 | PvP off lobby no TP | stays put | HubPreMatchLobbyArenaListener deactivate — no hub teleport |
+| 41 | PvP off keeps slot | no forced swap | lobby arena listener slot policy |
 
 - ⬜ Subsection complete
 
@@ -475,8 +475,8 @@ Each row traces: **player action → Java entry point → services → disk/API/
 | 8 | /il listspawns | count | HGCommand:480 → SpawnManager.getSpawnPads().size() |
 | 9 | /il showpads 10 | particles | HGCommand:493 BukkitRunnable Particle.DUST/END_ROD |
 | 10 | /il addspawnring 8 20 here | ring | HGCommand:481 → SpawnManager.addRing |
-| 11 | /il removespawn | nearest removed | HGCommand:473 → SpawnManager.removeNearest |
-| 12 | /il clearspawns | all cleared | HGCommand:472 → SpawnManager.clear |
+| 11 | /il clearspawn closest | nearest removed | HGCommand clearspawn closest → SpawnManager.removeNearest |
+| 12 | /il clearspawn all | all cleared | HGCommand clearspawn all → SpawnManager.clear |
 
 - ⬜ Subsection complete
 
@@ -507,7 +507,7 @@ Each row traces: **player action → Java entry point → services → disk/API/
 | 26 | /il admin | control center | HGCommand:289 → AdminControlCenterMenu |
 | 27 | Core Settings | persist | CoreSettingsAdminMenu.onClick → saveConfig |
 | 28 | Game Worlds settings | per-map | GameWorldsListMenu → GameWorldSettingsMenu → WorldSettingsManager.save · PERSIST: world-game-settings.yml |
-| 29 | Worlds Hub Settings | hub integration | WorldsHubSettingsMenu → IronLegacyLimboBridgeImpl mob toggles |
+| 29 | Worlds Hub Settings | hub integration | WorldsHubSettingsMenu → IronLegacyLobbyBridgeImpl mob toggles |
 | 30 | Team Name Database | CRUD | TeamNameDatabaseAdminMenu → TeamNameDatabaseManager · PERSIST: Hub teams.yml |
 | 31 | Back navigation | parent menu | MenuListener.onClick → MenuView back handlers |
 
@@ -573,9 +573,9 @@ Each row traces: **player action → Java entry point → services → disk/API/
 
 | # | Action | Expected | Code path |
 |---|--------|----------|-----------|
-| 1 | /il start from limbo | staged countdown | HGCommand:437 → HubPreMatchLimboService.forceBeginTeleportCountdown → launchSession · API: PreMatchLimboService IronLegacyLimboBridge |
+| 1 | /il start from lobby | staged countdown | HGCommand:437 → HubPreMatchLobbyService.forceBeginTeleportCountdown → launchSession · API: PreMatchLobbyService IronLegacyLobbyBridge |
 | 2 | Pre-teleport 5..1 | DO NOT MOVE | GameManager.startGame:326-344 pre countdown titles |
-| 3 | Teleport timing | correct moment | HubPreMatchLimboService.tickTeleportCountdown → launchSession → GameManager.doTeleportPhase |
+| 3 | Teleport timing | correct moment | HubPreMatchLobbyService.tickTeleportCountdown → launchSession → GameManager.doTeleportPhase |
 | 4 | Post-teleport freeze delay | hidden delay | GameManager.doTeleportPhase softLeashEndMs + runTaskLater 5*20 |
 | 5 | Freeze countdown | center numbers | GameManager.beginCountdown sendPrompt per second |
 | 6 | launchOnMove | punishment | GameManager.onMove:648 reads launchOnMove toggle |
@@ -618,7 +618,7 @@ Each row traces: **player action → Java entry point → services → disk/API/
 | 22 | Sent out of world | hub return | GameManager.sendPlayerToHub → HubIntegrationRouting.returnToHubOrLobby |
 | 23 | Death boom scoped | same world only | GameManager.onDeath playSound loop currentWorld.getPlayers |
 | 24 | Hub doesn't hear boom | excluded | same loop — hub players not in match world |
-| 25 | Kill leaderboard | increments | Hub PvP: IronLegacyHubBridge.recordKill · limbo: HubPreMatchLimboArenaListener → KillLeaderboardManager |
+| 25 | Kill leaderboard | increments | Hub PvP: IronLegacyHubBridge.recordKill · lobby: HubPreMatchLobbyArenaListener → KillLeaderboardManager |
 | 26 | /il giftdrop | gift drops | HGCommand:206 → GiftDropManager → GiftDropListener |
 
 - ⬜ Subsection complete
@@ -634,7 +634,7 @@ Each row traces: **player action → Java entry point → services → disk/API/
 | 31 | Cleanup evacuate | all out | GameManager.stopGame evacuatePlayersFromInstance |
 | 32 | Instance destroyed | M# gone | TemplateWorldManager.destroyMatchInstanceByWorld → HubIronLegacyMatchInstanceRuntime |
 | 33 | Next match clean | fresh clone | DefaultGamePlatform.createMatchWorld WorldFolderCopier |
-| 34 | Limbo reset | next run | HubPreMatchLimboService.cleanupLimboSession |
+| 34 | Lobby reset | next run | HubPreMatchLobbyService.cleanupLobbySession |
 | 35 | Replenish/envoy stop | on end | GameManager.stopGame ReplenishManager.stopSchedule + envoy stop hook |
 
 - ⬜ Subsection complete
@@ -643,8 +643,8 @@ Each row traces: **player action → Java entry point → services → disk/API/
 
 | # | Action | Expected | Code path |
 |---|--------|----------|-----------|
-| 36 | /il teams in limbo | Hub party menu | HGCommand:273 isInLimbo → HubPlayerMenus.openPartyMenu |
-| 37 | Create team limbo | works | TeamsMenu → TeamManager.createTeam → HubTeamService |
+| 36 | /il teams in lobby | Hub party menu | HGCommand:273 isInLobby → HubPlayerMenus.openPartyMenu |
+| 37 | Create team lobby | works | TeamsMenu → TeamManager.createTeam → HubTeamService |
 | 38 | Invite/join/color menus | paging | InviteMenu JoinTeamMenu TeamColorMenu MenuListener |
 | 39 | Team cap | enforced | TeamManager.acceptTeamInvite → HubTeamService memberCap |
 | 40 | /il randomteams 2 | randomize | HGCommand:633 runRandomTeams wipeAllTeamsHard |
@@ -664,7 +664,7 @@ Each row traces: **player action → Java entry point → services → disk/API/
 | 4 | hub-world.yml | pvp/pads/radius | HubWorldYaml load in HubWorldManager ctor |
 | 5 | parties.yml | party state | HubPartyService loadFromDisk:54 |
 | 6 | lobby-instances.yml | OPEN restored | HubLobbyInstanceRegistry load |
-| 7 | IL worlds.yml | limbo zone | TemplateWorldManager.reload worlds.yml |
+| 7 | IL worlds.yml | lobby zone | TemplateWorldManager.reload worlds.yml |
 | 8 | world-envoys/<key>/ | scoped yaml | WorldEnvoyStorage on disk |
 | 9 | Kill leaderboard | persists | KillLeaderboardManager.reload kills.yml |
 | 10 | No stale worlds | clean | TemplateWorldManager.recoverStaleInstances HubLobbyService reconciliation |
@@ -740,7 +740,7 @@ Each row traces: **player action → Java entry point → services → disk/API/
 | 1 | Phase 0 console | Foundation/Hub/IL onEnable |
 | 2 | sethub → hub → join → lobby | HubCommandExecutor + HubPlayerCommand + HubLobbyService |
 | 3 | party create/invite/accept | hub/party/* |
-| 4 | compass → limbo → /il start | HubWorldManager.onHubCompassUse + HubPreMatchLimboService + IronLegacyLimboBridgeImpl |
+| 4 | compass → lobby → /il start | HubWorldManager.onHubCompassUse + HubPreMatchLobbyService + IronLegacyLobbyBridgeImpl |
 | 5 | /il stop → /hub | GameManager.stopGame + HubPlayerCommand |
 
 ---
@@ -752,7 +752,7 @@ Each row traces: **player action → Java entry point → services → disk/API/
 | Command not found | `hub/plugin.yml` or `iron-legacy/plugin.yml` | — |
 | Template list/queue/join | `hub/template/HubTemplateRegistry` | `api/template/TemplateRegistry` |
 | Lobby L# | `hub/lobby/HubLobbyService` | `api/platform/GamePlatform` |
-| Limbo | `hub/limbo/HubPreMatchLimboService` | `api/integration/PreMatchLimboService` |
+| Lobby | `hub/lobby/HubPreMatchLobbyService` | `api/integration/PreMatchLobbyService` |
 | Match M# | `hub/integration/HubIronLegacyMatchInstanceRuntime` | `api/integration/IronLegacyMatchInstanceRuntime` |
 | Match gameplay | `iron-legacy/managers/GameManager` | — |
 | Hub PvP/protection | `hub/world/HubWorldManager` | `api/integration/HubWorldApi` |

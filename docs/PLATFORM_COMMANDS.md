@@ -7,7 +7,7 @@ Copy-paste reference for all player and admin commands.
 **Feature descriptions:** `docs/PLATFORM_FEATURES.md`  
 **GUIs & integration:** `docs/PLATFORM_REFERENCE.md`
 
-**Bundle baseline:** HC-Plugins a0.1.21
+**Bundle baseline:** HC-Plugins a0.1.23
 
 ================================================================================
 PERMISSIONS
@@ -42,7 +42,7 @@ Permission: hollowcrownhub.use
 
 /hub
   Teleport to hub #1. Party leader pulls online party (capacity routing).
-  Exits limbo first. Saves template editor inventory if leaving editor.
+  Exits lobby first. Saves template editor inventory if leaving editor.
 
 /hub join <hubNumber>
   Teleport to numbered hub spawn (/hch sethub <n>).
@@ -91,7 +91,7 @@ Permission: hollowcrownhub.team
   [admin] List registered minigame mechanic ids.
 
 /hch debug why <player>
-  [admin] Snapshot: world, limbo, party, team, queue state.
+  [admin] Snapshot: world, lobby, party, team, queue state.
 
 --- Player join ---
 
@@ -207,25 +207,23 @@ Permission: hollowcrownhub.team
 /hch template set <key> display|enabled|maxplayers|teamsize|icon|minimumpercentage|gamerule …
   Set IL worlds.yml fields when IL loaded.
 
-/hch template set limbo spawn
-  Alias for limbo spawn setter.
-
 /hch template setsource <key> <worldFolder>
   Set source world folder for lobby copies.
 
 /hch template setqueue <key> maxUnitSize|soloOnly|soloAutoMerge|joinQueueFirst <value>
   Queue policy for template.
 
---- Template — Limbo  [admin] ---
+--- Template — Lobby zone  [admin] ---
 
-/hch template limbo wand
-  Give limbo zone wand (left/right corner, shift-right save).
+/hch template lobby wand
+  Give the lobby circle wand. Stand in the template world.
+  Left-click center, right-click edge (radius + height), Shift+scroll cycles tip, shift-right saves.
 
-/hch template limbo spawn
-  Set limbo spawn at feet for template in current world.
+/hch template lobby spawn
+  Set lobby spawn at your feet. You must be standing inside the saved circle.
 
-/hch template limbo help
-  Limbo wand help.
+/hch template lobby help
+  Wand and spawn help.
 
 --- Template — IL worlds  [admin, requires IL] ---
 
@@ -325,7 +323,7 @@ Permission: hcironlegacy.use (admin subcommands: op / hcironlegacy.admin)
   Open Hub party menu (requires Hub).
 
 /il teams
-  In limbo: Hub Match Team menu. Else OP: team admin GUI.
+  In lobby: Hub Match Team menu. Else OP: team admin GUI.
 
 /il gui
   [OP] Open MainMenu or TeamsMenu (config ui.openTeamsFirst).
@@ -345,30 +343,27 @@ Permission: hcironlegacy.use (admin subcommands: op / hcironlegacy.admin)
 /il reload
   [OP] Reload config, files, spawns, rules, templates, icons.
 
---- Match & limbo control  [OP; role: GAME or STANDALONE for start/stop] ---
+--- Match & lobby control  [OP; role: GAME or STANDALONE for start/stop] ---
 
-/il start [limbo_world|template]
-  [OP] Force limbo countdown (ignores min fill).
+/il start [lobby_world|template]
+  [OP] Force lobby countdown (ignores min fill).
 
 /il stop
-  Abort limbo queues + stop active match → hub.
+  Abort lobby queues + stop active match → hub.
 
 /il hostilemobspawn <true|false|t|f>
-  [OP, HUB/STANDALONE] Toggle hostile mob spawns in limbo.
+  [OP, HUB/STANDALONE] Toggle hostile mob spawns in lobby.
 
 /il passivemobspawn <true|false|t|f>
-  [OP, HUB/STANDALONE] Toggle passive mob spawns in limbo.
+  [OP, HUB/STANDALONE] Toggle passive mob spawns in lobby.
 
 --- Spawn pads  [OP]  (per template → worlds.yml worlds.<key>.spawnPads) ---
 
 /il addspawn
   Add spawn pad at feet for the current template world.
 
-/il clearspawns
-  Clear spawn pads for the current template.
-
-/il removespawn
-  Remove nearest spawn pad for the current template.
+/il clearspawn [closest|all]
+  Remove the closest spawn pad (default / closest) or clear all pads for the current template.
 
 /il listspawns
   List spawn pad count for the current template.
@@ -471,10 +466,10 @@ Compass (hub-world.yml slot, default 5)
 Nether star (slot 9, hub)
   Opens HubPartyMenu
 
-Match Team item (slot 3, limbo only)
+Match Team item (slot 3, lobby only)
   Opens Hub TeamMainMenu / TeamsMenu
 
-Barrier (slot 9, limbo only)
+Barrier (slot 9, lobby only)
   Leave lobby → hub
 
 ================================================================================
@@ -484,11 +479,11 @@ COMMAND OWNERSHIP QUICK MAP
 Hub spawn           /hch sethub, /hub
 Join game           /hch join, compass GUI
 Party               /hch party, /il party
-Match team          limbo slot 3 GUI; /ally; /rival
+Match team          lobby slot 3 GUI; /ally; /rival
 Lobby admin         /hch lobby, /hch gui lobby
 Template registry   /hch template set/list/…
 IL worlds admin     /hch template worlds …, /hch gui maps
-Limbo zone/spawn    /hch template limbo …
+Lobby zone/spawn    /hch template lobby …
 Template policy     GUIs only (admin shell → policies)
 Match queue         /hch queue
 Alliances           /ally, /enemy

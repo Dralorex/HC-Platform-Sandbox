@@ -29,17 +29,17 @@ public final class HubIlWorldSetCommand {
         };
     }
 
-    /** {@code /hch template set limbo spawn} — player must stand in template limbo zone. */
-    public static boolean applyLimboSpawn(CommandSender sender, HollowCrownHubPlugin plugin) {
+    /** {@code /hch template lobby spawn} — player must stand inside the saved lobby circle. */
+    public static boolean applyLobbySpawn(CommandSender sender, HollowCrownHubPlugin plugin) {
         if (!(sender instanceof Player p)) {
             sender.sendMessage(Component.text("Players only.", NamedTextColor.RED));
             return true;
         }
-        if (plugin.limboLayout().setLimboSpawnHere(p)) {
-            p.sendMessage(Component.text("Limbo spawn set.", NamedTextColor.GREEN));
+        if (plugin.lobbyLayout().setLobbySpawnHere(p)) {
+            p.sendMessage(Component.text("Lobby spawn set.", NamedTextColor.GREEN));
         } else {
             p.sendMessage(Component.text(
-                    "Failed — stand in the template world inside the saved limbo zone (/hch template limbo wand first).",
+                    "Failed — stand in the template world inside the saved lobby circle (/hch template lobby wand first).",
                     NamedTextColor.RED));
         }
         return true;
@@ -56,9 +56,6 @@ public final class HubIlWorldSetCommand {
                     NamedTextColor.YELLOW));
             sender.sendMessage(Component.text(
                     "<worldFolder> = folder name of the map on disk (worldName in worlds.yml).",
-                    NamedTextColor.GRAY));
-            sender.sendMessage(Component.text(
-                    "Or: /hch template limbo spawn  (same as set limbo spawn)",
                     NamedTextColor.GRAY));
             return true;
         }

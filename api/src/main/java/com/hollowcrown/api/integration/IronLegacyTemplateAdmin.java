@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * HCIronLegacy template/map administration ({@code worlds.yml}, snapshots, icons).
- * Limbo zone/spawn editing is owned by HollowCrownHub; this API exposes a reload after Hub writes {@code worlds.yml}.
+ * Lobby zone/spawn editing is owned by HollowCrownHub; this API exposes a reload after Hub writes {@code worlds.yml}.
  *
  * <p>Registered by HCIronLegacy when present; HollowCrownHub resolves it from {@code ServicesManager}.</p>
  */
@@ -51,6 +51,13 @@ public interface IronLegacyTemplateAdmin {
      */
     List<String> syncManagedTemplatesFromDisk();
 
+    /**
+     * Removes {@code worlds.yml} rows whose world folder is missing from disk (no snapshot required).
+     *
+     * @return template keys that were unregistered
+     */
+    List<String> pruneMissingWorldFolders();
+
     boolean publish(String templateKey);
 
     boolean delete(String templateKey);
@@ -69,7 +76,7 @@ public interface IronLegacyTemplateAdmin {
     IronLegacyHubImportResult importFromHub(boolean dryRun, boolean syncMeta, String singleTemplateKeyOrNull);
 
     /**
-     * Reload {@code worlds.yml} from disk (Hub writes limbo layout directly).
+     * Reload {@code worlds.yml} from disk (Hub writes lobby layout directly).
      * Safe to call from the main thread after saves.
      */
     void reloadWorldsYamlFromDisk();

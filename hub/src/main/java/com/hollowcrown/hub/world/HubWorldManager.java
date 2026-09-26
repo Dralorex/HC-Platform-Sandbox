@@ -5,6 +5,7 @@ import com.hollowcrown.api.integration.HubWorldApi;
 import com.hollowcrown.api.integration.IronLegacyHubBridge;
 import com.hollowcrown.api.platform.HubSpawn;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
+import com.hollowcrown.hub.HubLog;
 import io.papermc.paper.event.entity.EntityMoveEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -32,6 +33,8 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityPotionEffectEvent;
+import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -51,6 +54,7 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.RegisteredServiceProvider;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.HashMap;
@@ -347,7 +351,7 @@ public final class HubWorldManager implements HubWorldApi, Listener {
     }
 
     @Override
-    public void applyLimboUtilityLoadout(Player player, int hotbarSlotAfterApply) {
+    public void applyLobbyUtilityLoadout(Player player, int hotbarSlotAfterApply) {
         if (player == null) {
             return;
         }
@@ -355,7 +359,7 @@ public final class HubWorldManager implements HubWorldApi, Listener {
             return;
         }
         var partySpec = readHubPartySpec();
-        var teamSpec = readLimboTeamSpec();
+        var teamSpec = readLobbyTeamSpec();
         Map<Integer, ItemStack> expected = new HashMap<>();
         expected.put(0, lobbySword());
         if (isCompassEnabled()) {
@@ -363,7 +367,7 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         }
         expected.put(teamSpec.slotIndex(), utilityItem(teamSpec));
         expected.put(partySpec.slotIndex(), utilityItem(partySpec));
-        var leaveSpec = readLimboLeaveSpec();
+        var leaveSpec = readLobbyLeaveSpec();
         expected.put(leaveSpec.slotIndex(), utilityItem(leaveSpec));
         normalizeExpectedLockedHotbar(player, expected);
         int held = Math.max(0, Math.min(8, hotbarSlotAfterApply));
@@ -371,24 +375,24 @@ public final class HubWorldManager implements HubWorldApi, Listener {
     }
 
     @Override
-    public boolean isLimboTeamUtilityItem(Player player, ItemStack stack) {
+    public boolean isLobbyTeamUtilityItem(Player player, ItemStack stack) {
         if (player == null || stack == null || stack.getType() == Material.AIR) {
             return false;
         }
         if (!isLockedHubItem(stack)) {
             return false;
         }
-        var spec = readLimboTeamSpec();
+        var spec = readLobbyTeamSpec();
         return player.getInventory().getHeldItemSlot() == spec.slotIndex()
                 && stack.getType() == spec.material();
     }
 
     @Override
-    public boolean isLimboLeaveUtilityItem(ItemStack stack) {
+    public boolean isLobbyLeaveUtilityItem(ItemStack stack) {
         if (stack == null || stack.getType() == Material.AIR) {
             return false;
         }
-        ItemStack ref = utilityItem(readLimboLeaveSpec());
+        ItemStack ref = utilityItem(readLobbyLeaveSpec());
         return stack.getType() == ref.getType() && isLockedHubItem(stack) && sameDisplayName(stack, ref);
     }
 
@@ -480,11 +484,11 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         return new UtilityItemSpec(slot - 1, material, name);
     }
 
-    private UtilityItemSpec readLimboTeamSpec() {
+    private UtilityItemSpec readLobbyTeamSpec() {
         FileConfiguration c = hw();
-        int slot = Math.max(1, Math.min(9, c.getInt("items.limbo.team.slot", 3)));
-        String materialRaw = c.getString("items.limbo.team.material", "NETHER_STAR");
-        String name = c.getString("items.limbo.team.name", "Match Team");
+        int slot = Math.max(1, Math.min(9, c.getInt("items.lobby.team.slot", 3)));
+        String materialRaw = c.getString("items.lobby.team.material", "NETHER_STAR");
+        String name = c.getString("items.lobby.team.name", "Match Team");
         Material material;
         try {
             material = Material.valueOf(materialRaw.toUpperCase());
@@ -494,11 +498,11 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         return new UtilityItemSpec(slot - 1, material, name);
     }
 
-    private UtilityItemSpec readLimboLeaveSpec() {
+    private UtilityItemSpec readLobbyLeaveSpec() {
         FileConfiguration c = hw();
-        int slot = Math.max(1, Math.min(9, c.getInt("items.limbo.leave.slot", 9)));
-        String materialRaw = c.getString("items.limbo.leave.material", "BARRIER");
-        String name = c.getString("items.limbo.leave.name", "Leave Lobby");
+        int slot = Math.max(1, Math.min(9, c.getInt("items.lobby.leave.slot", 9)));
+        String materialRaw = c.getString("items.lobby.leave.material", "BARRIER");
+        String name = c.getString("items.lobby.leave.name", "Leave Lobby");
         Material material;
         try {
             material = Material.valueOf(materialRaw.toUpperCase());
@@ -693,6 +697,7 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         activateCountdown.remove(id);
         deactivateCountdown.remove(id);
         pendingDeactivateOnDeath.remove(id);
+        HubCombatVitals.clearAbsorptionAndRegen(p);
         sendPvpStatusLine(p, "PVP mode Activated", NamedTextColor.RED);
     }
 
@@ -714,6 +719,7 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         if (inZone || hadPad) {
             hubCenterLocation().ifPresent(lobby -> p.teleport(lobby));
         }
+        HubCombatVitals.resetAfterCombat(p);
     }
 
     private void sendPvpStatusLine(Player p, String text, NamedTextColor color) {
@@ -854,7 +860,7 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         }.runTaskTimer(plugin, 20L, 20L);
     }
 
-    /** Clears hub PvP opt-in / respawn invulnerability (e.g. when leaving limbo for a match). */
+    /** Clears hub PvP opt-in / respawn invulnerability (e.g. when leaving lobby for a match). */
     public void clearPvpOptInState(Player player) {
         if (player == null) {
             return;
@@ -1022,8 +1028,39 @@ public final class HubWorldManager implements HubWorldApi, Listener {
                     hubCenterLocation().ifPresent(p::teleport);
                     applyHubUtilityLoadout(p, true, false);
                 }
+                HubCombatVitals.resetAfterCombat(p);
             }
         }.runTask(plugin);
+    }
+
+    /** No hunger/saturation healing while hub PvP is active. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onRegainHealth(EntityRegainHealthEvent e) {
+        if (!(e.getEntity() instanceof Player p)) return;
+        if (!pvpActive.contains(p.getUniqueId())) return;
+        EntityRegainHealthEvent.RegainReason reason = e.getRegainReason();
+        if (reason == EntityRegainHealthEvent.RegainReason.SATIATED
+                || reason == EntityRegainHealthEvent.RegainReason.REGEN
+                || reason == EntityRegainHealthEvent.RegainReason.EATING) {
+            e.setCancelled(true);
+        }
+    }
+
+    /** Block free absorption/regen potions while hub PvP is active (combat items mid-fight stay vanilla outside this). */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPotionEffect(EntityPotionEffectEvent e) {
+        if (!(e.getEntity() instanceof Player p)) return;
+        if (!pvpActive.contains(p.getUniqueId())) return;
+        if (e.getAction() != EntityPotionEffectEvent.Action.ADDED
+                && e.getAction() != EntityPotionEffectEvent.Action.CHANGED) {
+            return;
+        }
+        PotionEffectType type = e.getModifiedType();
+        if (type != null && (type.equals(PotionEffectType.ABSORPTION)
+                || type.equals(PotionEffectType.REGENERATION)
+                || type.equals(PotionEffectType.HEALTH_BOOST))) {
+            e.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
@@ -1171,9 +1208,9 @@ public final class HubWorldManager implements HubWorldApi, Listener {
 
         if (isLocationInHubProtection(to)) return;
         double size = protectionRadiusBlocks();
+        Location safe = to.clone();
         double clampedX = Math.max(center.getX() - size, Math.min(center.getX() + size, to.getX()));
         double clampedZ = Math.max(center.getZ() - size, Math.min(center.getZ() + size, to.getZ()));
-        Location safe = to.clone();
         safe.setX(clampedX);
         safe.setZ(clampedZ);
         e.setTo(safe);

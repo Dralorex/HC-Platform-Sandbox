@@ -54,7 +54,7 @@ public class ConfigFilesManager {
         if (!gameflowCfg.contains("lobbies.autoscaleEnabled")) gameflowCfg.set("lobbies.autoscaleEnabled", true);
         if (!gameflowCfg.contains("lobbies.maxShards")) gameflowCfg.set("lobbies.maxShards", 24);
         if (!gameflowCfg.contains("lobbies.shardSpacing")) gameflowCfg.set("lobbies.shardSpacing", 48.0);
-        if (!gameflowCfg.contains("limbo.prewarmSeconds")) gameflowCfg.set("limbo.prewarmSeconds", 25);
+        if (!gameflowCfg.contains("lobby.prewarmSeconds")) gameflowCfg.set("lobby.prewarmSeconds", 25);
         if (!gameflowCfg.contains("teams.randomizeDefault")) gameflowCfg.set("teams.randomizeDefault", false);
         if (!gameflowCfg.contains("teams.defaultSize")) gameflowCfg.set("teams.defaultSize", 5);
         if (!gameflowCfg.contains("parties.clearOnMatchEnd")) gameflowCfg.set("parties.clearOnMatchEnd", true);

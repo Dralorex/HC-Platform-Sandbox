@@ -1,5 +1,7 @@
 package com.hollowcrown.hungergames.managers;
 
+import com.google.common.collect.Lists;
+import com.hollowcrown.api.integration.PreMatchLobbyService;
 import com.hollowcrown.api.integration.PreMatchLimboService;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
 import com.hollowcrown.hungergames.integration.HubIntegrationRouting;
@@ -11,11 +13,15 @@ import org.bukkit.*;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityPotionEffectEvent;
+import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.*;
 
@@ -91,13 +97,13 @@ public class GameManager implements Listener {
      * True when {@code player} is inside the active match world (freeze or running). Used by Hub
      * for scope resolution (e.g. plugin policy MATCH scope) and post-game routing.
      */
-    private static void scheduleLimboZoneClearAfterSpawnPads(String instanceWorldName, String templateKey) {
-        RegisteredServiceProvider<PreMatchLimboService> reg =
-                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
+    private static void scheduleLobbyZoneClearAfterSpawnPads(String instanceWorldName, String templateKey) {
+        RegisteredServiceProvider<PreMatchLobbyService> reg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLobbyService.class);
         if (reg == null) {
             return;
         }
-        reg.getProvider().clearLimboZoneAfterSpawnPads(instanceWorldName, templateKey);
+        reg.getProvider().clearLobbyZoneAfterSpawnPads(instanceWorldName, templateKey);
     }
 
     public boolean isPlayerInActiveMatchWorld(Player player) {
@@ -140,7 +146,7 @@ public class GameManager implements Listener {
         return startGameFromTemplate(templateKey, explicitParticipants, false);
     }
 
-    public boolean startGameFromTemplate(String templateKey, Set<UUID> explicitParticipants, boolean immediateTeleportFromLimbo) {
+    public boolean startGameFromTemplate(String templateKey, Set<UUID> explicitParticipants, boolean immediateTeleportFromLobby) {
         if (state != State.LOBBY && state != State.ENDED) {
             lastError = "Game already running or freezing.";
             plugin.getLogger().warning(lastError);
@@ -159,20 +165,20 @@ public class GameManager implements Listener {
             return false;
         }
         activeInstanceWorldName = iw.getName();
-        return startGame(iw, explicitParticipants, true, immediateTeleportFromLimbo);
+        return startGame(iw, explicitParticipants, true, immediateTeleportFromLobby);
     }
 
     /** Starts a match on a pre-created runtime instance world. */
-    public boolean startGameOnPreparedInstance(World instanceWorld, Set<UUID> explicitParticipants, boolean immediateTeleportFromLimbo) {
+    public boolean startGameOnPreparedInstance(World instanceWorld, Set<UUID> explicitParticipants, boolean immediateTeleportFromLobby) {
         if (instanceWorld == null) {
             lastError = "Prepared instance world is null.";
             return false;
         }
         activeInstanceWorldName = instanceWorld.getName();
-        return startGame(instanceWorld, explicitParticipants, true, immediateTeleportFromLimbo);
+        return startGame(instanceWorld, explicitParticipants, true, immediateTeleportFromLobby);
     }
 
-    private boolean startGame(World world, Set<UUID> explicitParticipants, boolean skipTemplateClone, boolean immediateTeleportFromLimbo) {
+    private boolean startGame(World world, Set<UUID> explicitParticipants, boolean skipTemplateClone, boolean immediateTeleportFromLobby) {
         if (state != State.LOBBY && state != State.ENDED) {
             lastError = "Game already running or freezing.";
             plugin.getLogger().warning(lastError);
@@ -301,8 +307,8 @@ public class GameManager implements Listener {
         final World launchWorld = world;
         final WorldGameSettings ws = activeMatchSettings;
 
-        final boolean fromLimboLaunch = immediateTeleportFromLimbo;
-        final String limboClearTemplateKey = activeMatchTemplateKey;
+        final boolean fromLobbyLaunch = immediateTeleportFromLobby;
+        final String lobbyClearTemplateKey = activeMatchTemplateKey;
         Runnable doTeleportPhase = () -> {
             new BukkitRunnable() {
             @Override public void run() {
@@ -324,12 +330,17 @@ public class GameManager implements Listener {
                         p.setGameMode(keepAdventure ? GameMode.ADVENTURE : GameMode.SURVIVAL);
                     }
                     p.setFoodLevel(20);
-                    p.setSaturation(5f);
+                    p.setSaturation(6f);
+                    p.setExhaustion(0f);
+                    p.setAbsorptionAmount(0f);
+                    p.removePotionEffect(PotionEffectType.ABSORPTION);
+                    p.removePotionEffect(PotionEffectType.REGENERATION);
+                    p.removePotionEffect(PotionEffectType.HEALTH_BOOST);
                     p.setHealth(Math.min(20.0, p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue()));
                 }
 
-                if (fromLimboLaunch && limboClearTemplateKey != null) {
-                    scheduleLimboZoneClearAfterSpawnPads(launchWorld.getName(), limboClearTemplateKey);
+                if (fromLobbyLaunch && lobbyClearTemplateKey != null) {
+                    scheduleLobbyZoneClearAfterSpawnPads(launchWorld.getName(), lobbyClearTemplateKey);
                 }
 
                 try {
@@ -367,7 +378,7 @@ public class GameManager implements Listener {
             }.runTask(plugin);
         };
 
-        boolean skipPreTeleportCountdown = immediateTeleportFromLimbo || !ws.movementCountdownEnabled();
+        boolean skipPreTeleportCountdown = immediateTeleportFromLobby || !ws.movementCountdownEnabled();
         if (skipPreTeleportCountdown) {
             doTeleportPhase.run();
         } else {
@@ -437,6 +448,22 @@ public class GameManager implements Listener {
 
     private void beginCountdown(List<Player> plist, World launchWorld) {
         hardFreezeActive = true; // punish moves from now on
+        for (Player p : plist) {
+            if (p == null || !p.isOnline()) continue;
+            p.setFoodLevel(20);
+            p.setSaturation(6f);
+            p.setExhaustion(0f);
+            p.setAbsorptionAmount(0f);
+            p.removePotionEffect(PotionEffectType.ABSORPTION);
+            p.removePotionEffect(PotionEffectType.REGENERATION);
+            p.removePotionEffect(PotionEffectType.HEALTH_BOOST);
+            try {
+                double max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
+                p.setHealth(Math.min(20.0, max));
+            } catch (Throwable ignored) {
+                p.setHealth(20.0);
+            }
+        }
 
         final int base = activeMatchSettings != null
                 ? activeMatchSettings.freezeCountdownSeconds()
@@ -504,9 +531,18 @@ public class GameManager implements Listener {
         bypassParticipants.clear();
         forcedParticipants = null;
         hardFreezeActive = false;
+        softLeashEndMs = 0L;
+        // Clear match membership so hub/lobby deaths never trigger "Your Legacy is Over".
+        participants.clear();
+        eliminated.clear();
+        punished.clear();
+        legacyDeathHold.clear();
+        countedJoinIntent.clear();
+        bypassJoinIntent.clear();
         activeMatchTemplateKey = null;
         activeMatchSettings = null;
-        
+        currentWorld = null;
+
         // Clean up border shrink manager
         if (borderShrinkManager != null) {
             borderShrinkManager.reset();
@@ -689,14 +725,19 @@ public class GameManager implements Listener {
         if (now < softLeashEndMs) {
             Location pad = assignedPads.get(id);
             if (pad != null) {
-                // if they left the pad block, snap them
+                // if they left the pad block, snap them (keep look direction)
                 if (e.getTo().getBlockX() != pad.getBlockX() ||
                     e.getTo().getBlockY() != pad.getBlockY() ||
                     e.getTo().getBlockZ() != pad.getBlockZ()) {
+                    Player mover = e.getPlayer();
+                    Location look = mover.getLocation();
+                    Location dest = pad.clone();
+                    dest.setYaw(look.getYaw());
+                    dest.setPitch(look.getPitch());
                     new BukkitRunnable() { @Override public void run() {
-                        if (e.getPlayer().isOnline()) {
-                            e.getPlayer().teleport(pad);
-                            e.getPlayer().setFallDistance(0f);
+                        if (mover.isOnline()) {
+                            mover.teleport(dest);
+                            mover.setFallDistance(0f);
                         }
                     }}.runTask(plugin);
                 }
@@ -704,43 +745,84 @@ public class GameManager implements Listener {
             return;
         }
 
-        // Hard freeze (the 30s countdown): default is teleport-back + damage.
+        // Hard freeze (the 30s countdown): cancel move (no camera snap) + damage/sound.
         if (hardFreezeActive) {
             long last = punished.getOrDefault(id, 0L);
             boolean launchMode = activeMatchSettings != null
                     ? activeMatchSettings.launchOnMove()
                     : plugin.getConfig().getBoolean("game.launchOnMove", false);
             long cooldownMs = launchMode ? 2000L : 500L;
-            if (now - last < cooldownMs) return;
-            punished.put(id, now);
-            Location pad = assignedPads.get(id);
-            if (pad != null) {
-                new BukkitRunnable() { @Override public void run() {
-                    if (e.getPlayer().isOnline()) {
-                        e.getPlayer().teleport(new Location(pad.getWorld(), pad.x(), pad.y(), pad.z())); //Don't pass a rotation so the player's is maintained
-                        e.getPlayer().setFallDistance(0f);
-                    }
-                }}.runTask(plugin);
+            if (now - last < cooldownMs) {
+                e.setCancelled(true);
+                return;
             }
+            punished.put(id, now);
+            e.setCancelled(true);
+
+            Player mover = e.getPlayer();
             if (launchMode) {
+                Location pad = assignedPads.get(id);
+                if (pad != null) {
+                    Location look = mover.getLocation();
+                    Location dest = pad.clone();
+                    dest.setYaw(look.getYaw());
+                    dest.setPitch(look.getPitch());
+                    new BukkitRunnable() { @Override public void run() {
+                        if (mover.isOnline()) {
+                            mover.teleport(dest);
+                            mover.setFallDistance(0f);
+                        }
+                    }}.runTask(plugin);
+                }
                 int height = activeMatchSettings != null
                         ? activeMatchSettings.freezePenaltyHeight()
                         : plugin.getConfig().getInt("game.freezePenaltyHeight", 100);
-                e.getPlayer().setVelocity(new org.bukkit.util.Vector(0, Math.max(2, height / 20.0), 0));
-                e.getPlayer().sendMessage(Component.text("You should not have moved!", NamedTextColor.RED));
+                mover.setVelocity(new org.bukkit.util.Vector(0, Math.max(2, height / 20.0), 0));
+                mover.sendMessage(Component.text("You should not have moved!", NamedTextColor.RED));
+                mover.playSound(mover.getLocation(), Sound.ENTITY_PLAYER_HURT, SoundCategory.PLAYERS, 1.0f, 1.0f);
                 new BukkitRunnable() {
                     @Override public void run() {
-                        if (e.getPlayer().isOnline() && e.getPlayer().getHealth() > 0) {
-                            e.getPlayer().setHealth(0.0);
+                        if (mover.isOnline() && mover.getHealth() > 0) {
+                            mover.setHealth(0.0);
                         }
                     }
                 }.runTaskLater(plugin, 40L);
-            } else {
-                Player mover = e.getPlayer();
-                if (mover.getHealth() > 0) {
-                    mover.setHealth(Math.max(0.0, mover.getHealth() - 1.0));
-                }
+            } else if (mover.getHealth() > 0) {
+                mover.setHealth(Math.max(0.0, mover.getHealth() - 1.0));
+                mover.playSound(mover.getLocation(), Sound.ENTITY_PLAYER_HURT, SoundCategory.PLAYERS, 1.0f, 1.0f);
             }
+        }
+    }
+
+    /** No hunger/saturation healing for match participants during FREEZE or RUNNING. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onRegainHealth(EntityRegainHealthEvent e) {
+        if (!(e.getEntity() instanceof Player p)) return;
+        if (state != State.FREEZE && state != State.RUNNING) return;
+        if (!participants.contains(p.getUniqueId())) return;
+        EntityRegainHealthEvent.RegainReason reason = e.getRegainReason();
+        if (reason == EntityRegainHealthEvent.RegainReason.SATIATED
+                || reason == EntityRegainHealthEvent.RegainReason.REGEN
+                || reason == EntityRegainHealthEvent.RegainReason.EATING) {
+            e.setCancelled(true);
+        }
+    }
+
+    /** During freeze countdown, block absorption/regen potion application so pads start clean. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPotionEffect(EntityPotionEffectEvent e) {
+        if (!(e.getEntity() instanceof Player p)) return;
+        if (!hardFreezeActive) return;
+        if (!participants.contains(p.getUniqueId())) return;
+        if (e.getAction() != EntityPotionEffectEvent.Action.ADDED
+                && e.getAction() != EntityPotionEffectEvent.Action.CHANGED) {
+            return;
+        }
+        PotionEffectType type = e.getModifiedType();
+        if (type != null && (type.equals(PotionEffectType.ABSORPTION)
+                || type.equals(PotionEffectType.REGENERATION)
+                || type.equals(PotionEffectType.HEALTH_BOOST))) {
+            e.setCancelled(true);
         }
     }
 
@@ -752,7 +834,9 @@ public class GameManager implements Listener {
         if (suppress) {
             e.deathMessage(null);
         }
-        boolean inGame = participants.contains(e.getEntity().getUniqueId());
+        // Only active match deaths — never hub/lobby PvP after stopGame / win return.
+        boolean inGame = (state == State.FREEZE || state == State.RUNNING)
+                && participants.contains(e.getEntity().getUniqueId());
         if (inGame) {
             Player dead = e.getEntity();
             final UUID deadId = dead.getUniqueId();
@@ -863,15 +947,19 @@ public class GameManager implements Listener {
                 finalWinner.setInvulnerable(true);
                 new BukkitRunnable() {
                     @Override public void run() {
+                        World matchWorld = currentWorld;
+                        WorldGameSettings settingsSnapshot = activeMatchSettings;
+                        // Drop match membership before hub return so hub PvP deaths are clean.
+                        removeFromGame(finalWinner.getUniqueId());
                         if (finalWinner.isOnline()) {
                             finalWinner.setInvulnerable(false);
                             sendPlayerToHub(finalWinner);
                         }
-                        if (currentWorld != null) {
-                            double start = activeMatchSettings != null
-                                    ? activeMatchSettings.borderStartSize()
+                        if (matchWorld != null) {
+                            double start = settingsSnapshot != null
+                                    ? settingsSnapshot.borderStartSize()
                                     : plugin.getConfig().getDouble("worldborder.startSize");
-                            currentWorld.getWorldBorder().setSize(start);
+                            matchWorld.getWorldBorder().setSize(start);
                         }
                         stopGame(true);
                     }
@@ -962,6 +1050,8 @@ public class GameManager implements Listener {
 
     private void sendPlayerToHub(Player p) {
         if (p == null) return;
+        removeFromGame(p.getUniqueId());
+        legacyDeathHold.remove(p.getUniqueId());
         p.getInventory().clear();
         p.getInventory().setArmorContents(new ItemStack[4]);
         p.getInventory().setItemInOffHand(new ItemStack(Material.AIR));

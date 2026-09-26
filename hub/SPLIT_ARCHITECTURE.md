@@ -69,7 +69,7 @@ Artifacts:
 
 ## Product spec (summary)
 
-Full behavioral spec (queue, `L#` lobbies, party→team in limbo, `TeamSize`, profanity, storage fallbacks, delete retries, etc.) lives in your design notes; implement against that as Hub features are built out.
+Full behavioral spec (queue, `L#` lobbies, party→team in lobby, `TeamSize`, profanity, storage fallbacks, delete retries, etc.) lives in your design notes; implement against that as Hub features are built out.
 
 **Integration style:** hot path = Hub → `MinigameMechanic` direct calls; events only where optional listeners need them.
 

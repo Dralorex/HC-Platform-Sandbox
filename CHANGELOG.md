@@ -9,6 +9,53 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [HC-Plugins-a0.1.23] - 2026-09-24
+
+Tagged plugins: **API a0.1.15**, **Foundation a0.1.5**, **Hub a0.1.19**, **Iron Legacy a0.3.22**.
+
+### Added
+
+- In-game QA Excel workbook (`docs/IN_GAME_QA_GoogleSheets.xlsx`) and legend key (`docs/IN_GAME_QA_KEY.xlsx`).
+- `/il clearspawn [closest|all]` — remove nearest pad or clear all pads for the current template.
+
+### Fixed
+
+- Startup / discover: prune template rows whose folders are gone from `hch-worlds/templates/` (Hub `templates.yml`, IL `worlds.yml`, lobbies, queues, policies).
+- Non-ops no longer see technical match/lobby failure paths; they get `OOPS... something messed up! Please inform a Team Member!` (ops still see detail).
+- Hub / pre-match lobby / Iron Legacy: no hunger–saturation healing while hub PvP is on or while a match is FREEZE/RUNNING; clear absorption on PvP activate and match countdown.
+- After PvP deactivates, hub/lobby death, or match countdown start: full health, food 20, saturation 6/20 (≡ 3/10), no absorption/regen effects.
+- Freeze countdown move penalty: play hurt sound, cancel move instead of teleporting (no camera snap); soft-leash snaps keep look direction.
+- Pre-match lobby: locked utility items (sword/compass/party/leave) cannot be dropped or moved out of the hotbar.
+- Match end / win return: clear participants and related match state in `stopGame` so hub/lobby PvP deaths no longer show "Your Legacy is Over".
+
+### Changed
+
+- Template lobby commands are `/hch template lobby wand`, `spawn`, and `help`. Internal and saved names that said limbo now say lobby. Hosting lobby worlds stays `/hch lobby`. Existing `worlds.yml` zone sections and plugin-policy scopes are copied onto the lobby keys on load.
+- Hub protection is the square around hub spawn again (`/hch hubworld size`). A saved hub circle is turned off on load.
+
+### Removed
+
+- `/il clearspawns` and `/il removespawn` (use `/il clearspawn`).
+- `/hch template set lobby spawn`.
+- `/hch hubworld lobby wand` (circle selection now belongs on the template lobby wand).
+
+## [HC-Plugins-a0.1.22] - 2026-09-23
+
+Tagged plugins: **API a0.1.14**, **Foundation a0.1.5**, **Hub a0.1.18**, **Iron Legacy a0.3.21**.
+
+### Added
+
+- Circle lobby zone wand (`/hch hubworld lobby wand`): left-click center, right-click edge (radius + height), Shift+scroll cycles Center/Edge and locks that hotbar slot while holding the wand, particle border + action-bar status only while holding the wand, shift-right-click saves cylindrical hub protection to `hub-world.yml`.
+
+### Changed
+
+- Team invite GUI lists only online players in the same lobby who are not already on a team (Hydraulic).
+- `/ally` and `/rival` aliases expanded (Hydraulic).
+
+### Fixed
+
+- Lobby leave barrier / solo hub routing use hub spawn #1 with liquid-safe stand locations.
+
 ## [HC-Plugins-a0.1.21] - 2026-09-21
 
 Tagged plugins: **API a0.1.14**, **Foundation a0.1.5**, **Hub a0.1.17**, **Iron Legacy a0.3.21**.
@@ -41,8 +88,8 @@ Tagged plugins: **API a0.1.13**, **Foundation a0.1.5**, **Hub a0.1.15**, **Iron 
 
 ### Fixed
 
-- Limbo lobby spawn: IL now reloads `worlds.yml` from disk when Hub saves limbo spawn/zone; IL join path prefers Hub catalog (fresh disk) instead of stale in-memory config.
-- Hub lobby join logs a warning when falling back to the world's vanilla spawn because limbo.x/y/z is missing.
+- Lobby spawn: IL now reloads `worlds.yml` from disk when Hub saves lobby spawn/zone; IL join path prefers Hub catalog (fresh disk) instead of stale in-memory config.
+- Hub lobby join logs a warning when falling back to the world's vanilla spawn because lobby.x/y/z is missing.
 - Match spawn pads are per-template in `worlds.yml` (`spawnPads`), survive publish, and no longer drop on reload when the editor world is unloaded. Legacy global `config.yml` `spawns.pads` migrate automatically.
 - `/il start` is now OP-only (was usable by any player with `hcironlegacy.use`).
 
@@ -120,13 +167,13 @@ Tagged plugins: **API a0.1.11**, **Hub a0.1.11**, **Iron Legacy a0.3.11** (Found
 
 ### Changed
 
-- Lobby limbo: parties are auto-placed on one numbered match team (up to template `teamSizeMax`) when joining together; solo players still get the Match Team prompt. Party members see their team name on entry.
+- Lobby: parties are auto-placed on one numbered match team (up to template `teamSizeMax`) when joining together; solo players still get the Match Team prompt. Party members see their team name on entry.
 - `/hub` and hub spawn returns now save/restore template editor inventory and resume position (same as leaving via Iron Legacy lobby routing).
 
 ### Fixed
 
-- Team relationship nametag colors in hub lobby instance worlds (`…/template-L#`) — template policy now resolves from the limbo session / lobby folder so green/red/blue/orange colors render while waiting in lobby.
-- Team member cap in limbo respects template `teamSizeMax` when adding members (not only the global `teams.memberCap` default).
+- Team relationship nametag colors in hub lobby instance worlds (`…/template-L#`) — template policy now resolves from the lobby session / lobby folder so green/red/blue/orange colors render while waiting in lobby.
+- Team member cap in lobby respects template `teamSizeMax` when adding members (not only the global `teams.memberCap` default).
 - Nametags re-sync for all players in the world when anyone creates, joins, or leaves a match team (immediate + next-tick refresh).
 - Match team cleanup is **session-scoped**: ending one match or destroying one lobby clears teams only for that world's players; other active lobbies are untouched. Global `clearAllTeams` remains admin/backup only.
 - Dropping a custom world into `hch-worlds/templates/<name>` was invisible to HCH until manually registered — discover/ensure now finds managed folders.
@@ -137,13 +184,13 @@ Tagged plugins: **API a0.1.10**, **Hub a0.1.10**, **Iron Legacy a0.3.10** (Found
 
 ### Added
 
-- **Match Team menu** (limbo slot 3): independent from parties — create team, invite players, accept/decline invites, view roster (mirrors party UX). Team cap uses template `teamSizeMax` in limbo.
+- **Match Team menu** (lobby slot 3): independent from parties — create team, invite players, accept/decline invites, view roster (mirrors party UX). Team cap uses template `teamSizeMax` in lobby.
 - **Hub instance capacity** (`hub.instanceCapacity`, default 20): party hub return and match-end evacuation keep parties together and overflow extra members to the next numbered hub when one instance is full.
 
 ### Changed
 
-- Parties and match teams are **separate** — joining a party no longer auto-adds you to the leader's team. Teams reset when entering a new lobby limbo and after each match; parties persist.
-- Limbo team names use **Team 1**, **Team 2**, … again (stale teams cleared on lobby join; IL no longer binds party display names at launch).
+- Parties and match teams are **separate** — joining a party no longer auto-adds you to the leader's team. Teams reset when entering a new lobby and after each match; parties persist.
+- Lobby team names use **Team 1**, **Team 2**, … again (stale teams cleared on lobby join; IL no longer binds party display names at launch).
 
 ### Fixed
 
@@ -156,7 +203,7 @@ Tagged plugins: **API a0.1.9**, **Hub a0.1.9**, **Iron Legacy a0.3.9** (Foundati
 
 ### Changed
 
-- Match teams use numbered names again (**Team 1**, **Team 2**, …) with a shared **`[Team N]`** prefix on every teammate’s nametag (e.g. `[Team 1] Steve`). Pre-match limbo shows the same prefixes with relationship colors (green teammates, red others, blue allies, orange designated enemies); allies and enemies set before launch carry into the match.
+- Match teams use numbered names again (**Team 1**, **Team 2**, …) with a shared **`[Team N]`** prefix on every teammate’s nametag (e.g. `[Team 1] Steve`). Pre-match lobby shows the same prefixes with relationship colors (green teammates, red others, blue allies, orange designated enemies); allies and enemies set before launch carry into the match.
 
 ## [HC-Plugins-a0.1.8] - 2026-06-01
 
@@ -169,7 +216,7 @@ Tagged plugins: **API a0.1.8**, **Hub a0.1.8**, **Iron Legacy a0.3.8** (Foundati
 - Compass join flow: **mechanic tabs** → worlds → auto-join / lobby list; **Vanilla** mechanic tab for worlds without a minigame mechanic.
 - `/hch template worlds mechanic <world|key> <mechanicName>` — mechanics are no longer auto-assigned on template create; multiple worlds may share one mechanic.
 - `/hch worldsgui` (top-level and via `/hch gui worldsgui`); `/hch template worlds gui` redirects here.
-- Pre-match limbo **Match Team** item in hotbar **slot 3**; match teams named after the **party leader's username** (e.g. `Steve`, `Steve 2` if taken).
+- Pre-match lobby **Match Team** item in hotbar **slot 3**; match teams named after the **party leader's username** (e.g. `Steve`, `Steve 2` if taken).
 - `/hub join <hubNumber>` for numbered hub spawns; `/hch sethub [n]` and `/hch clearhub [n]` for in-game setup.
 - Typing **yes** in chat after a blocked publish sets **vanilla** mechanic and retries publish automatically.
 - Template policy GUIs **save on close**; changed policies kick players from that template’s lobbies with a republish-style message.
@@ -180,7 +227,7 @@ Tagged plugins: **API a0.1.8**, **Hub a0.1.8**, **Iron Legacy a0.3.8** (Foundati
 - Hub PvP: swapping **off** the hub PvP sword starts the deactivate countdown; death respawn uses hub spawn unless the player was in a PvP zone (then PvP zone spawn; pad selection still prioritized until PvP deactivates).
 - World command tab completion suggests **YAML keys** only, not full folder paths.
 - Publish blocked until a mechanic is set (or **vanilla**); typing **yes** in chat applies vanilla and retries publish.
-- **Team Mode** (non-Legacy): limbo no longer shows wool color picker — teams auto-form with fixed prefix colors; player names use green / red / blue / orange by relationship during the match. **Legacy Mode** still uses the wool picker. Team names use the **leader's username** and show in the Match Team menu after forming or joining.
+- **Team Mode** (non-Legacy): lobby no longer shows wool color picker — teams auto-form with fixed prefix colors; player names use green / red / blue / orange by relationship during the match. **Legacy Mode** still uses the wool picker. Team names use the **leader's username** and show in the Match Team menu after forming or joining.
 
 ### Fixed
 
@@ -193,10 +240,10 @@ Tagged plugins: **API a0.1.7**, **Hub a0.1.7**, **Iron Legacy a0.3.7** (Foundati
 
 ### Added
 
-- In-limbo "Match Team" entry in the party menu — leader picks a team color before match start; party becomes the match team.
+- In-lobby "Match Team" entry in the party menu — leader picks a team color before match start; party becomes the match team.
 - Lobby-entry team prompt: leader, party member, and solo players each see a tailored title and chat hint about the team system.
 - Per-template policy store (`hub/template-policies.yml`): color mode (Team/Legacy), shift-hides-nametag, TAB visibility, allies on/off, max-teams-per-alliance, per-template plugin allow/block list.
-- New Plugin Allocation admin GUI (4-row landing → Hub / Limbo / Match tabs); Match opens a paginated template list, then a per-template landing with **General Settings** and **Plugin Allocation** tabs.
+- New Plugin Allocation admin GUI (4-row landing → Hub / Lobby / Match tabs); Match opens a paginated template list, then a per-template landing with **General Settings** and **Plugin Allocation** tabs.
 - General Settings tab: toggle Color Mode, toggle sneak hides nametag, toggle TAB visibility, toggle allies, toggle ally-friendly-fire (default ON), toggle team-friendly-fire (default ON), ±max teams per alliance, ±team size, ±min fill %, ±max players, teleport to template editor.
 - Alliance system (toggleable per template): `/ally <team>` and `/ally accept <team>` (leader-only) form transitive alliances up to a per-template cap; `/enemy <team>` paints another team orange for your team's view. When only one alliance group is left alive, alliances dissolve and "Only one team will make it out alive." is broadcast.
 - Per-viewer nametag/TAB rendering for match worlds: `[TeamName] PlayerName` with the team's RGB color in the prefix; in Team Mode the player name shows green / red / blue / orange based on the viewer's relationship (teammate / enemy / ally / designated enemy). Legacy Mode uses the team's 16-color uniformly for all viewers.
@@ -204,7 +251,7 @@ Tagged plugins: **API a0.1.7**, **Hub a0.1.7**, **Iron Legacy a0.3.7** (Foundati
 - TAB list visibility per match template (default OFF) — when off, TAB shows no players in that match.
 - Chat and death messages prefixed with `[TeamName] PlayerName` while in a match world.
 - Auto-register templates in `template-policies.yml` on template publish.
-- Limbo spawn/zone/publish key resolution now maps Hub template keys to canonical Iron Legacy worlds.yml keys via source-world fallback, fixing multi-template cases where non-primary templates would not enter limbo correctly or failed to publish reliably.
+- Lobby spawn/zone/publish key resolution now maps Hub template keys to canonical Iron Legacy worlds.yml keys via source-world fallback, fixing multi-template cases where non-primary templates would not enter lobby correctly or failed to publish reliably.
 - Expanded `docs/IN_GAME_FULL_TEST.md` with changelog cross-reference and phases for lobby prefetch/publish, PvP zones, plugin policy scopes, alliances, and multi-template regression.
 
 ### Changed
@@ -214,7 +261,7 @@ Tagged plugins: **API a0.1.7**, **Hub a0.1.7**, **Iron Legacy a0.3.7** (Foundati
 
 ### Fixed
 
-- Lobby "Leave Lobby" item drags the whole party with the leader (online members in the same limbo session leave together).
+- Lobby "Leave Lobby" item drags the whole party with the leader (online members in the same lobby session leave together).
 
 ## [HC-Plugins-a0.1.6] - 2026-05-27
 
@@ -222,7 +269,7 @@ Tagged plugins: **API a0.1.6**, **Hub a0.1.6**, **Iron Legacy a0.3.6** (Foundati
 
 ### Fixed
 
-- Limbo zone clears to air after spawn-pad teleports (not before); entities inside the zone are removed.
+- Lobby zone clears to air after spawn-pad teleports (not before); entities inside the zone are removed.
 - Template publish takes a fresh world snapshot every time (subsequent edits apply to new matches).
 - Lobby folder cleanup and L2/L3 fallback when a stale `…-L#` folder blocks recreation.
 - `/hch template worlds edit <world|key>` is the only CLI path into the template editor (`tp` removed).
@@ -240,37 +287,39 @@ Tagged plugins: **API a0.1.5**, **Hub a0.1.5**, **Iron Legacy a0.3.5** (Foundati
 - In-game test plan (`docs/IN_GAME_FULL_TEST.md`): per-test **Code path** column tracing command → class → persistence → API/cross-plugin links; generator script `scripts/generate_in_game_test_doc.py`.
 - Copy-paste QA exports: `docs/IN_GAME_FULL_TEST_CHECKLIST.txt` (plain text) and `docs/IN_GAME_FULL_TEST_CHECKLIST.csv` (spreadsheet); export via `scripts/export_in_game_checklist.py`.
 - Google Sheets QA workbook CSV: `docs/IN_GAME_QA_GoogleSheets.csv` (+ import steps in `docs/IN_GAME_QA_GoogleSheets_IMPORT.txt`); regenerate with `scripts/export_google_sheets_qa.py`.
+- Excel QA workbook: `docs/IN_GAME_QA_GoogleSheets.xlsx`.
+- QA key/legend workbook: `docs/IN_GAME_QA_KEY.xlsx` (Status options, columns A–Z, modules, permissions, phases, bug template).
 - Lobby prefetch when the last OPEN lobby starts a match.
 - Template publish flow: destroy old lobbies, notify players, pre-create a fresh lobby.
-- `PreMatchLimboService.registerHubLobbyJoin` API for Hub lobby → limbo registration.
+- `PreMatchLobbyService.registerHubLobbyJoin` API for Hub lobby → lobby registration.
 
 ### Changed
 
 - Hub lobby instance folders under `hch-worlds/minigames/<template>-L#`.
-- Lobby join teleports to limbo spawn from `worlds.yml` and registers pre-match limbo.
+- Lobby join teleports to lobby spawn from `worlds.yml` and registers pre-match lobby.
 - Per-plugin Maven versions (API, Foundation, Hub, Iron Legacy) and `HC-Plugins-a0.1.4` deploy zip tag.
 - Release rules: bump tags only on explicit request; zip/ship does not bump versions.
 - PvP zone wand outline visible only while holding the wand.
 
 ### Fixed
 
-- Limbo zone clears to air (and removes entities) after all players teleport to spawn pads on match start, not before.
+- Lobby zone clears to air (and removes entities) after all players teleport to spawn pads on match start, not before.
 - Template publish saves world snapshots again on every publish (fixes edits after the first publish not applying to matches).
 - Template editor access is `/hch template worlds edit <world|key>` only (`tp` / `teleport` aliases removed).
 - Lobby/match world teardown: synchronous hub evacuation before unload, longer folder-delete retries, and orphan `…-L#` folder detection so the next lobby uses L2/L3 when a stale folder remains.
 - Match world cleanup on game-end: evacuate stragglers to hub spawn, then best-effort folder delete with retries (fixes lobby/match world folder lingering after match end on Windows).
-- Plugin policy admin GUI: per-scope whitelist/blacklist with auto-discovered plugins; best-effort enforcement blocks disallowed plugin commands in hub/limbo/match.
+- Plugin policy admin GUI: per-scope whitelist/blacklist with auto-discovered plugins; best-effort enforcement blocks disallowed plugin commands in hub/lobby/match.
 - `HubPluginPolicyApi` (api module): cooperative service so other Hollow Crown plugins can ask "am I allowed in this scope?" and self-disable when blocked.
-- Golden PvP invulnerability ring only shows while hub/limbo PvP mode is active (not after in-game deaths).
-- Limbo zone resets on match start (restores from template source world when loaded, otherwise clears blocks).
+- Golden PvP invulnerability ring only shows while hub/lobby PvP mode is active (not after in-game deaths).
+- Lobby zone resets on match start (restores from template source world when loaded, otherwise clears blocks).
 - Match spawn sets saturation to 2.5 bars (vanilla new-world level) with full health and hunger.
 - Party invite when target is already in a party shows their colored name and a clear message.
 - Party leader leave/kick promotes the next leader with a promotion notice (colored former leader name).
-- `/il start` force-starts limbo countdown without minimum-player fill cancellation.
-- Spawn-pad setup failures in limbo show a dedicated complaint message before returning players to hub.
-- Failed lobby starts and all kick/evacuate paths now send players to configured hub spawn (leaves limbo first).
-- `/hub` now leaves lobby/pre-match limbo the same way as the lobby join GUI Leave button.
-- Limbo wand template resolution from current world (`HubIlTemplateDetailMenu`).
+- `/il start` force-starts lobby countdown without minimum-player fill cancellation.
+- Spawn-pad setup failures in lobby show a dedicated complaint message before returning players to hub.
+- Failed lobby starts and all kick/evacuate paths now send players to configured hub spawn (leaves lobby first).
+- `/hub` now leaves lobby/pre-match lobby the same way as the lobby join GUI Leave button.
+- Lobby wand template resolution from current world (`HubIlTemplateDetailMenu`).
 
 ## [HC-Plugins-a0.1.4] - 2026-05-27
 
@@ -291,9 +340,9 @@ Tagged plugins: **API a0.1.5**, **Hub a0.1.5**, **Iron Legacy a0.3.5** (Foundati
 ### Fixed
 
 - Lobby creation path validation on Windows (absolute world container).
-- Lobby join teleports to limbo spawn from `worlds.yml`.
-- Joining a Hub lobby registers players in pre-match limbo (natural start and `/hg start`).
-- Limbo wand auto-detects template from current world; leave lobby/party GUI buttons.
+- Lobby join teleports to lobby spawn from `worlds.yml`.
+- Joining a Hub lobby registers players in pre-match lobby (natural start and `/hg start`).
+- Lobby wand auto-detects template from current world; leave lobby/party GUI buttons.
 - Hub return restores build mode when applicable.
 
 ### Changed

@@ -8,9 +8,10 @@ import com.hollowcrown.api.mechanic.MechanicContext;
 import com.hollowcrown.api.mechanic.MinigameMechanic;
 import com.hollowcrown.api.party.PartyView;
 import com.hollowcrown.api.queue.MatchEnqueueResult;
-import com.hollowcrown.api.integration.PreMatchLimboService;
+import com.hollowcrown.api.integration.PreMatchLobbyService;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.HubLog;
+import com.hollowcrown.hub.HubPlayerFacingErrors;
 import com.hollowcrown.hub.command.MatchEnqueueMessages;
 import com.hollowcrown.hub.integration.HubIronLegacySupport;
 import com.hollowcrown.hub.template.HubTemplateEntry;
@@ -343,10 +344,10 @@ public final class HubLobbyService {
             plugin.evacuateWorldToHubSpawnSync(world);
         }
 
-        RegisteredServiceProvider<PreMatchLimboService> limboReg =
-                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
-        if (limboReg != null) {
-            limboReg.getProvider().endSessionForWorld(rec.worldName());
+        RegisteredServiceProvider<PreMatchLobbyService> lobbyReg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLobbyService.class);
+        if (lobbyReg != null) {
+            lobbyReg.getProvider().endSessionForWorld(rec.worldName());
         }
 
         notifyReleased(rec);
@@ -439,27 +440,27 @@ public final class HubLobbyService {
         }
         Location spawn = resolveLobbySpawn(r.templateKey(), w);
         player.teleport(spawn);
-        registerLobbyLimbo(player, r);
+        registerJoinedLobby(player, r);
         player.sendMessage(Component.text("Joined " + w.getName(), NamedTextColor.GREEN));
         HubLog.info(plugin, "action=lobby_player_join", "player=" + player.getName(), "id=" + instanceId, "world=" + r.worldName());
         return true;
     }
 
-    private void registerLobbyLimbo(Player player, HubLobbyInstanceRecord lobby) {
-        RegisteredServiceProvider<PreMatchLimboService> reg =
-                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
+    private void registerJoinedLobby(Player player, HubLobbyInstanceRecord lobby) {
+        RegisteredServiceProvider<PreMatchLobbyService> reg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLobbyService.class);
         if (reg == null) {
             return;
         }
         boolean ok = reg.getProvider().registerHubLobbyJoin(player, lobby.templateKey(), lobby.worldName());
         if (!ok) {
-            HubLog.warn(plugin, "action=lobby_limbo_register_failed",
+            HubLog.warn(plugin, "action=lobby_lobby_register_failed",
                     "player=" + player.getName(), "templateKey=" + lobby.templateKey(), "world=" + lobby.worldName());
         }
     }
 
     private Location resolveLobbySpawn(String templateKey, World lobbyWorld) {
-        var spawnOpt = plugin.limboLayout().worldsYaml().limboSpawn(templateKey);
+        var spawnOpt = plugin.lobbyLayout().worldsYaml().lobbySpawn(templateKey);
         if (spawnOpt.isPresent()) {
             var s = spawnOpt.get();
             return new Location(lobbyWorld, s.x(), s.y(), s.z(), s.yaw(), s.pitch());
@@ -467,7 +468,7 @@ public final class HubLobbyService {
         HubLog.warn(plugin, "action=lobby_spawn_fallback_world_spawn",
                 "templateKey=" + templateKey,
                 "world=" + lobbyWorld.getName(),
-                "hint=set_limbo_spawn_via_/hch_template_limbo_spawn");
+                "hint=set_lobby_spawn_via_/hch_template_lobby_spawn");
         return lobbyWorld.getSpawnLocation();
     }
 
@@ -515,7 +516,7 @@ public final class HubLobbyService {
                     "unitSize=" + prep.unitSize());
             return teleportUnitToLobby(newId, prep.partyOpt(), player);
         } catch (IOException ex) {
-            player.sendMessage(Component.text("Could not open a lobby: " + ex.getMessage(), NamedTextColor.RED));
+            HubPlayerFacingErrors.sendFailure(player, "Could not open a lobby: " + ex.getMessage());
             HubLog.warn(plugin, "action=lobby_auto_create_failed", "templateKey=" + templateKey, "err=" + ex.getMessage());
             return false;
         }

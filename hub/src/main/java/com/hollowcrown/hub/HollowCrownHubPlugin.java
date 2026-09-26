@@ -5,10 +5,10 @@ import com.hollowcrown.api.integration.HubPlayerMenus;
 import com.hollowcrown.api.integration.HubPluginPolicyApi;
 import com.hollowcrown.api.integration.HubTemplatePublishLifecycle;
 import com.hollowcrown.api.integration.HubWorldApi;
-import com.hollowcrown.api.integration.IronLegacyLimboBridge;
+import com.hollowcrown.api.integration.IronLegacyLobbyBridge;
 import com.hollowcrown.api.integration.IronLegacyMatchInstanceRuntime;
 import com.hollowcrown.api.integration.IronLegacyWorldsCatalog;
-import com.hollowcrown.api.integration.PreMatchLimboService;
+import com.hollowcrown.api.integration.PreMatchLobbyService;
 import com.hollowcrown.api.party.PartyService;
 import com.hollowcrown.api.queue.MatchQueueService;
 import com.hollowcrown.api.platform.GamePlatform;
@@ -33,10 +33,10 @@ import com.hollowcrown.hub.gui.LobbyJoinMenuListener;
 import com.hollowcrown.hub.integration.HubIronLegacySupport;
 import com.hollowcrown.hub.integration.DefaultHubPlayerMenus;
 import com.hollowcrown.hub.integration.HubIronLegacyMatchInstanceRuntime;
-import com.hollowcrown.hub.limbo.HubLimboArenaState;
-import com.hollowcrown.hub.limbo.HubLimboLayout;
-import com.hollowcrown.hub.limbo.HubPreMatchLimboArenaListener;
-import com.hollowcrown.hub.limbo.HubPreMatchLimboService;
+import com.hollowcrown.hub.lobby.HubLobbyArenaState;
+import com.hollowcrown.hub.lobby.HubLobbyLayout;
+import com.hollowcrown.hub.lobby.HubPreMatchLobbyArenaListener;
+import com.hollowcrown.hub.lobby.HubPreMatchLobbyService;
 import com.hollowcrown.hub.party.HubPartyListener;
 import com.hollowcrown.hub.party.HubPartyService;
 import com.hollowcrown.hub.policy.HubPluginPolicyApiAdapter;
@@ -89,11 +89,12 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
     private NamespacedKey lobbyJoinInstanceIdKey;
     private NamespacedKey lobbyJoinMechanicKey;
     private NamespacedKey partyInviteKey;
-    private NamespacedKey limboWandTemplateKey;
+    private NamespacedKey lobbyWandTemplateKey;
     private NamespacedKey pvpZoneWandKey;
-    private HubLimboLayout hubLimboLayout;
-    private HubLimboArenaState hubLimboArenaState;
-    private HubPreMatchLimboService hubPreMatchLimboService;
+    private NamespacedKey lobbyCircleWandKey;
+    private HubLobbyLayout hubLobbyLayout;
+    private HubLobbyArenaState hubLobbyArenaState;
+    private HubPreMatchLobbyService hubPreMatchLobbyService;
     private HubAdminGui hubAdminGui;
     private HubPluginPolicyService pluginPolicyService;
     private com.hollowcrown.hub.policy.HubTemplatePolicyService templatePolicyService;
@@ -147,11 +148,12 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         this.lobbyJoinInstanceIdKey = new NamespacedKey(this, "lobby_join_instance");
         this.lobbyJoinMechanicKey = new NamespacedKey(this, "lobby_join_mechanic");
         this.partyInviteKey = new NamespacedKey(this, "party_invite_id");
-        this.limboWandTemplateKey = new NamespacedKey(this, "limbo_wand_template");
+        this.lobbyWandTemplateKey = new NamespacedKey(this, "lobby_wand_template");
         this.pvpZoneWandKey = new NamespacedKey(this, "pvp_zone_wand");
-        this.hubLimboLayout = new HubLimboLayout(this);
-        this.hubLimboArenaState = new HubLimboArenaState();
-        this.hubPreMatchLimboService = new HubPreMatchLimboService(this, hubLimboArenaState);
+        this.lobbyCircleWandKey = new NamespacedKey(this, "lobby_circle_wand");
+        this.hubLobbyLayout = new HubLobbyLayout(this);
+        this.hubLobbyArenaState = new HubLobbyArenaState();
+        this.hubPreMatchLobbyService = new HubPreMatchLobbyService(this, hubLobbyArenaState);
         this.pluginPolicyService = new HubPluginPolicyService(this);
         this.templatePolicyService = new com.hollowcrown.hub.policy.HubTemplatePolicyService(this);
         //this.allianceService = new com.hollowcrown.hub.alliance.HubAllianceService(this);
@@ -229,19 +231,19 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         );
         Bukkit.getServicesManager().register(
                 IronLegacyWorldsCatalog.class,
-                hubLimboLayout.worldsYaml(),
+                hubLobbyLayout.worldsYaml(),
                 this,
                 ServicePriority.Normal
         );
         Bukkit.getServicesManager().register(
                 IronLegacyMatchInstanceRuntime.class,
-                new HubIronLegacyMatchInstanceRuntime(this, gamePlatform, hubLimboLayout.worldsYaml()),
+                new HubIronLegacyMatchInstanceRuntime(this, gamePlatform, hubLobbyLayout.worldsYaml()),
                 this,
                 ServicePriority.Normal
         );
         Bukkit.getServicesManager().register(
-                PreMatchLimboService.class,
-                hubPreMatchLimboService,
+                PreMatchLobbyService.class,
+                hubPreMatchLobbyService,
                 this,
                 ServicePriority.Normal
         );
@@ -260,18 +262,18 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
                 this,
                 ServicePriority.Normal
         );
-        Bukkit.getPluginManager().registerEvents(hubPreMatchLimboService, this);
+        Bukkit.getPluginManager().registerEvents(hubPreMatchLobbyService, this);
 
         Bukkit.getScheduler().runTask(this, () -> {
-            RegisteredServiceProvider<IronLegacyLimboBridge> bridgeReg =
-                    Bukkit.getServicesManager().getRegistration(IronLegacyLimboBridge.class);
+            RegisteredServiceProvider<IronLegacyLobbyBridge> bridgeReg =
+                    Bukkit.getServicesManager().getRegistration(IronLegacyLobbyBridge.class);
             if (bridgeReg == null) {
-                getLogger().warning("IronLegacyLimboBridge not registered (HCIronLegacy disabled?). Limbo arena listeners inactive.");
+                getLogger().warning("IronLegacyLobbyBridge not registered (HCIronLegacy disabled?). Lobby arena listeners inactive.");
             } else {
-                IronLegacyLimboBridge bridge = bridgeReg.getProvider();
-                hubPreMatchLimboService.attachBridge(bridge);
-                HubPreMatchLimboArenaListener arena = new HubPreMatchLimboArenaListener(
-                        this, hubLimboArenaState, bridge, hubPreMatchLimboService);
+                IronLegacyLobbyBridge bridge = bridgeReg.getProvider();
+                hubPreMatchLobbyService.attachBridge(bridge);
+                HubPreMatchLobbyArenaListener arena = new HubPreMatchLobbyArenaListener(
+                        this, hubLobbyArenaState, bridge, hubPreMatchLobbyService);
                 arena.startScheduledTasks();
                 Bukkit.getPluginManager().registerEvents(arena, this);
             }
@@ -396,7 +398,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         return hubWorldManager;
     }
 
-    /** Join-game + party GUIs for hub/limbo hotbar (also registered as {@link HubPlayerMenus}). */
+    /** Join-game + party GUIs for hub/lobby hotbar (also registered as {@link HubPlayerMenus}). */
     public HubPlayerMenus playerMenus() {
         return playerMenus;
     }
@@ -454,9 +456,9 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         return partyInviteKey;
     }
 
-    /** PDC on Hub limbo corner wand items (not the legacy IL namespace). */
-    public NamespacedKey limboWandTemplateKey() {
-        return limboWandTemplateKey;
+    /** PDC on Hub lobby corner wand items (not the legacy IL namespace). */
+    public NamespacedKey lobbyWandTemplateKey() {
+        return lobbyWandTemplateKey;
     }
 
     /** PDC marker on PvP zone selection wand items. */
@@ -464,20 +466,24 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         return pvpZoneWandKey;
     }
 
-    /** Limbo zone/spawn editing + wand listener (writes HCIronLegacy {@code worlds.yml}). */
-    public HubLimboLayout limboLayout() {
-        return hubLimboLayout;
+    public NamespacedKey lobbyCircleWandKey() {
+        return lobbyCircleWandKey;
+    }
+
+    /** Lobby zone/spawn editing + wand listener (writes HCIronLegacy {@code worlds.yml}). */
+    public HubLobbyLayout lobbyLayout() {
+        return hubLobbyLayout;
     }
 
     /**
-     * Exit pre-match / lobby limbo before returning to hub spawn (same as lobby GUI Leave).
+     * Exit pre-match lobby before returning to hub spawn (same as lobby GUI Leave).
      */
-    public void exitLimboBeforeHubReturn(Player player) {
-        if (player == null || hubPreMatchLimboService == null) {
+    public void exitLobbyBeforeHubReturn(Player player) {
+        if (player == null || hubPreMatchLobbyService == null) {
             return;
         }
-        if (hubPreMatchLimboService.isInLimbo(player)) {
-            hubPreMatchLimboService.leaveLimbo(player);
+        if (hubPreMatchLobbyService.isInLobby(player)) {
+            hubPreMatchLobbyService.leaveLobby(player);
             hubWorldManager.suppressGameLobbyGuiBriefly(player, 1500L);
         }
     }
@@ -495,7 +501,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
     }
 
     /**
-     * Evacuate/kick path: limbo exit + hub spawn (or Velocity hub when configured on Iron Legacy).
+     * Evacuate/kick path: lobby exit + hub spawn (or Velocity hub when configured on Iron Legacy).
      */
     public boolean sendPlayerToHubSpawn(Player player) {
         return sendPlayerToHubSpawn(player, 1);
@@ -509,13 +515,13 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         if (player == null || !player.isOnline()) {
             return false;
         }
-        exitLimboBeforeHubReturn(player);
+        exitLobbyBeforeHubReturn(player);
         prepareTemplateEditorLeave(player);
 
-        RegisteredServiceProvider<IronLegacyLimboBridge> bridgeReg =
-                Bukkit.getServicesManager().getRegistration(IronLegacyLimboBridge.class);
+        RegisteredServiceProvider<IronLegacyLobbyBridge> bridgeReg =
+                Bukkit.getServicesManager().getRegistration(IronLegacyLobbyBridge.class);
         if (bridgeReg != null) {
-            IronLegacyLimboBridge bridge = bridgeReg.getProvider();
+            IronLegacyLobbyBridge bridge = bridgeReg.getProvider();
             if (bridge.velocityEnabled() && !bridge.hubTargetIsThisServer()) {
                 bridge.returnToHubOrLobby(player, true, true);
                 return true;
@@ -542,7 +548,7 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
             player.sendMessage(Component.text("Hub world is not loaded on this server.", NamedTextColor.RED));
             return false;
         }
-        Location loc = new Location(world, s.x(), s.y(), s.z(), s.yaw(), s.pitch());
+        Location loc = safeHubStandLocation(new Location(world, s.x(), s.y(), s.z(), s.yaw(), s.pitch()));
         player.teleportAsync(loc).thenAccept(ok -> {
             if (Boolean.TRUE.equals(ok)) {
                 hubWorldManager.applySurvivalHubLoadoutAfterTemplate(player);
@@ -561,13 +567,13 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
         if (player == null || !player.isOnline()) {
             return false;
         }
-        exitLimboBeforeHubReturn(player);
+        exitLobbyBeforeHubReturn(player);
         prepareTemplateEditorLeave(player);
 
-        RegisteredServiceProvider<IronLegacyLimboBridge> bridgeReg =
-                Bukkit.getServicesManager().getRegistration(IronLegacyLimboBridge.class);
+        RegisteredServiceProvider<IronLegacyLobbyBridge> bridgeReg =
+                Bukkit.getServicesManager().getRegistration(IronLegacyLobbyBridge.class);
         if (bridgeReg != null) {
-            IronLegacyLimboBridge bridge = bridgeReg.getProvider();
+            IronLegacyLobbyBridge bridge = bridgeReg.getProvider();
             if (bridge.velocityEnabled() && !bridge.hubTargetIsThisServer()) {
                 bridge.returnToHubOrLobby(player, true, true);
                 return true;
@@ -587,11 +593,55 @@ public final class HollowCrownHubPlugin extends JavaPlugin {
             player.sendMessage(Component.text("Hub world is not loaded on this server.", NamedTextColor.RED));
             return false;
         }
-        Location loc = new Location(world, s.x(), s.y(), s.z(), s.yaw(), s.pitch());
+        Location loc = safeHubStandLocation(new Location(world, s.x(), s.y(), s.z(), s.yaw(), s.pitch()));
         player.teleport(loc);
         hubWorldManager.applySurvivalHubLoadoutAfterTemplate(player);
         finishTemplateEditorReturn(player);
         return true;
+    }
+
+    /**
+     * If the configured hub point is inside water/lava (or the block below is missing), nudge to a
+     * standable spot so /hub and leave-lobby do not dump players underwater.
+     */
+    public static Location safeHubStandLocation(Location raw) {
+        if (raw == null || raw.getWorld() == null) {
+            return raw;
+        }
+        World world = raw.getWorld();
+        int x = raw.getBlockX();
+        int z = raw.getBlockZ();
+        int startY = Math.max(world.getMinHeight() + 1, Math.min(world.getMaxHeight() - 2, raw.getBlockY()));
+        if (isStandable(world, x, startY, z)) {
+            return new Location(world, x + 0.5, startY, z + 0.5, raw.getYaw(), raw.getPitch());
+        }
+        // Search upward then downward for air with solid below.
+        for (int dy = 1; dy <= 48; dy++) {
+            int up = startY + dy;
+            if (up < world.getMaxHeight() - 1 && isStandable(world, x, up, z)) {
+                return new Location(world, x + 0.5, up, z + 0.5, raw.getYaw(), raw.getPitch());
+            }
+            int down = startY - dy;
+            if (down > world.getMinHeight() && isStandable(world, x, down, z)) {
+                return new Location(world, x + 0.5, down, z + 0.5, raw.getYaw(), raw.getPitch());
+            }
+        }
+        int surface = world.getHighestBlockYAt(x, z) + 1;
+        surface = Math.max(world.getMinHeight() + 1, Math.min(world.getMaxHeight() - 2, surface));
+        return new Location(world, x + 0.5, surface, z + 0.5, raw.getYaw(), raw.getPitch());
+    }
+
+    private static boolean isStandable(World world, int x, int y, int z) {
+        var feet = world.getBlockAt(x, y, z).getType();
+        var head = world.getBlockAt(x, y + 1, z).getType();
+        var below = world.getBlockAt(x, y - 1, z).getType();
+        if (!feet.isAir() || !head.isAir()) {
+            return false;
+        }
+        if (!below.isSolid()) {
+            return false;
+        }
+        return below != org.bukkit.Material.MAGMA_BLOCK && below != org.bukkit.Material.CACTUS;
     }
 
     /** Teleport everyone in a world to hub spawn (lobby destroy, publish refresh, etc.). */

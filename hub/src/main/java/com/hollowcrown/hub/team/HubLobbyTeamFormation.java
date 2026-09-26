@@ -3,7 +3,7 @@ package com.hollowcrown.hub.team;
 import com.hollowcrown.api.party.PartyService;
 import com.hollowcrown.api.party.PartyView;
 //import com.hollowcrown.api.team.TeamView;
-import com.hollowcrown.api.integration.PreMatchLimboService;
+import com.hollowcrown.api.integration.PreMatchLobbyService;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -17,14 +17,14 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-/** Match-scoped team helpers for pre-match limbo (independent from parties). */
-public final class HubLimboTeamFormation {
+/** Match-scoped team helpers for pre-match lobby (independent from parties). */
+public final class HubLobbyTeamFormation {
 
-    private HubLimboTeamFormation() {
+    private HubLobbyTeamFormation() {
     }
 
-    /** Clears stale team membership when entering a new lobby limbo session. */
-    public static void resetTeamForLimboEntry(HollowCrownHubPlugin plugin, Player player) {
+    /** Clears stale team membership when entering a new lobby session. */
+    public static void resetTeamForLobbyEntry(HollowCrownHubPlugin plugin, Player player) {
         if (plugin == null || player == null) {
             return;
         }
@@ -32,7 +32,7 @@ public final class HubLimboTeamFormation {
         refreshNametags(plugin, player.getWorld());
     }
 
-    public static void resetTeamsForLimboEntry(HollowCrownHubPlugin plugin, Collection<UUID> playerIds) {
+    public static void resetTeamsForLobbyEntry(HollowCrownHubPlugin plugin, Collection<UUID> playerIds) {
         if (plugin == null || playerIds == null || playerIds.isEmpty()) {
             return;
         }
@@ -79,7 +79,7 @@ public final class HubLimboTeamFormation {
     }*/
 
     /**
-     * When a party joins lobby limbo, place members on one numbered team up to {@code teamSizeMax}.
+     * When a party joins a lobby, place members on one numbered team up to {@code teamSizeMax}.
      * Solo players are unchanged — they use the Match Team menu.
      */
     public static Optional<String> bindPartyTeamOnLobbyJoin(
@@ -140,8 +140,8 @@ public final class HubLimboTeamFormation {
     }
 
     private static Set<UUID> sessionPlayerIds(Player player) {
-        RegisteredServiceProvider<PreMatchLimboService> reg =
-                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
+        RegisteredServiceProvider<PreMatchLobbyService> reg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLobbyService.class);
         if (reg == null) {
             return Set.of();
         }

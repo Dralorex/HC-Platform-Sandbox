@@ -32,11 +32,11 @@ import com.hollowcrown.hungergames.listeners.ReplenishChestProtectionListener;
 import com.hollowcrown.api.integration.HubPlayerMenus;
 import com.hollowcrown.api.integration.HubWorldApi;
 import com.hollowcrown.api.integration.IronLegacyHubBridge;
-import com.hollowcrown.api.integration.IronLegacyLimboBridge;
+import com.hollowcrown.api.integration.IronLegacyLobbyBridge;
 import com.hollowcrown.api.integration.IronLegacyMatchInstanceRuntime;
 import com.hollowcrown.api.integration.IronLegacyTemplateAdmin;
 import com.hollowcrown.api.integration.IronLegacyWorldsCatalog;
-import com.hollowcrown.api.integration.PreMatchLimboService;
+import com.hollowcrown.api.integration.PreMatchLobbyService;
 import com.hollowcrown.api.minigame.MinigameBootstrap;
 import com.hollowcrown.api.minigame.MinigamePluginKey;
 import com.hollowcrown.api.party.PartyService;
@@ -48,7 +48,7 @@ import com.hollowcrown.api.world.GameWorldScopeResolver;
 import com.hollowcrown.hungergames.integration.HubManagedLobbyRegistry;
 import com.hollowcrown.hungergames.integration.IlGameWorldScopeResolver;
 import com.hollowcrown.hungergames.integration.IronLegacyHubBridgeImpl;
-import com.hollowcrown.hungergames.integration.IronLegacyLimboBridgeImpl;
+import com.hollowcrown.hungergames.integration.IronLegacyLobbyBridgeImpl;
 import com.hollowcrown.hungergames.integration.IronLegacyTemplateAdminImpl;
 import com.hollowcrown.hungergames.integration.IronLegacyMechanic;
 import com.hollowcrown.hungergames.listeners.HubShardBoundaryListener;
@@ -96,7 +96,7 @@ public class HungerGamesPlugin extends JavaPlugin {
     private SharedStateManager sharedStateManager;
     private AdminHistoryManager adminHistoryManager;
     private ResourcePackManager resourcePackManager;
-    private IronLegacyLimboBridge ironLegacyLimboBridge;
+    private IronLegacyLobbyBridge ironLegacyLobbyBridge;
     private KillLeaderboardManager killLeaderboardManager;
     private KillLeaderboardSidebarManager killLeaderboardSidebarManager;
 
@@ -161,7 +161,7 @@ public class HungerGamesPlugin extends JavaPlugin {
         this.pickupGuard = new PickupGuardListener();
         this.replenishManager = new ReplenishManager(this);
         this.replenishMode = new ReplenishModeManager(this, replenishManager);
-        this.ironLegacyLimboBridge = new IronLegacyLimboBridgeImpl(this);
+        this.ironLegacyLobbyBridge = new IronLegacyLobbyBridgeImpl(this);
         this.worldSettingsManager = new WorldSettingsManager(this);
         //this.teamNameDatabaseManager = new TeamNameDatabaseManager(this);
         this.iconManager = new IconManager(this);
@@ -211,7 +211,7 @@ public class HungerGamesPlugin extends JavaPlugin {
         //Bukkit.getServicesManager().register(TeamChatProvider.class, new IronLegacyTeamChatProvider(this), this, ServicePriority.Normal);
         Bukkit.getServicesManager().register(IronLegacyHubBridge.class, new IronLegacyHubBridgeImpl(this), this, ServicePriority.Normal);
         Bukkit.getServicesManager().register(IronLegacyTemplateAdmin.class, new IronLegacyTemplateAdminImpl(this), this, ServicePriority.Normal);
-        Bukkit.getServicesManager().register(IronLegacyLimboBridge.class, ironLegacyLimboBridge, this, ServicePriority.Normal);
+        Bukkit.getServicesManager().register(IronLegacyLobbyBridge.class, ironLegacyLobbyBridge, this, ServicePriority.Normal);
     }
 
     @Override
@@ -339,13 +339,14 @@ public class HungerGamesPlugin extends JavaPlugin {
     public AdminHistoryManager history() { return adminHistoryManager; }
     public ResourcePackManager packs() { return resourcePackManager; }
     /**
-     * Pre-match limbo queues and arena UX (registered by HollowCrownHub).
+     * Pre-match lobby queues and arena UX (registered by HollowCrownHub).
+     * Named separately from {@link #lobby()} which is the Iron Legacy lobby manager.
      */
-    public PreMatchLimboService limbo() {
-        RegisteredServiceProvider<PreMatchLimboService> reg =
-                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
+    public PreMatchLobbyService preMatchLobby() {
+        RegisteredServiceProvider<PreMatchLobbyService> reg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLobbyService.class);
         if (reg == null) {
-            throw new IllegalStateException("PreMatchLimboService not registered. Is HollowCrownHub enabled?");
+            throw new IllegalStateException("PreMatchLobbyService not registered. Is HollowCrownHub enabled?");
         }
         return reg.getProvider();
     }

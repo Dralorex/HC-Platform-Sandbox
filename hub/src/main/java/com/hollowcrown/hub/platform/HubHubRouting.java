@@ -54,7 +54,9 @@ public final class HubHubRouting {
                 return sendGroupToHub(plugin, group);
             }
         }
-        return plugin.sendPlayerToHubSpawn(player, pickHubForSolo(plugin));
+        // Solo (and non-leader): always hub #1 — same as /hub. Avoid pickHubForSolo dumping
+        // players onto secondary hub.instances that may be underwater / unset intentionally.
+        return plugin.sendPlayerToHubSpawn(player, 1);
     }
 
     /** Assigns a group to hub instance(s) respecting capacity; keeps order stable. */

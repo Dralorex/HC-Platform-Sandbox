@@ -38,7 +38,7 @@ public class WorldsAdminRootMenu extends MenuView {
         inv.clear();
         inv.setItem(11, button(Material.IRON_DOOR, "§6Hub (general)", List.of(
                 "§7Lobby border radius + mob spawn toggles",
-                "§7applied everywhere hub/limbo rules run.",
+                "§7applied everywhere hub/lobby rules run.",
                 "",
                 "§eClick to edit"
         )));

@@ -126,17 +126,17 @@ public class GameLobbyMenu extends MenuView {
 
         World w = Bukkit.getWorld(selected.worldName());
         if (w == null) {
-            // Allow limbo routing even if target world is lazily loaded later.
-            boolean queued = HungerGamesPlugin.get().limbo().sendToLimbo(p, selected.key());
+            // Allow lobby routing even if target world is lazily loaded later.
+            boolean queued = HungerGamesPlugin.get().preMatchLobby().sendToLobby(p, selected.key());
             if (!queued) {
                 p.sendMessage(Component.text("World is currently unavailable.", NamedTextColor.RED));
                 return;
             }
-            p.sendMessage(Component.text("Joined limbo for " + selected.displayName(), NamedTextColor.GREEN));
+            p.sendMessage(Component.text("Joined lobby for " + selected.displayName(), NamedTextColor.GREEN));
             p.closeInventory();
             return;
         }
-        boolean queued = HungerGamesPlugin.get().limbo().sendToLimbo(p, selected.key());
+        boolean queued = HungerGamesPlugin.get().preMatchLobby().sendToLobby(p, selected.key());
         if (!queued) {
             HungerGamesPlugin.get().game().markJoinIntentCounted(p);
             p.teleport(w.getSpawnLocation().clone().add(0.5, 0.0, 0.5));
@@ -144,7 +144,7 @@ public class GameLobbyMenu extends MenuView {
             p.closeInventory();
             return;
         }
-        p.sendMessage(Component.text("Joined limbo for " + selected.displayName(), NamedTextColor.GREEN));
+        p.sendMessage(Component.text("Joined lobby for " + selected.displayName(), NamedTextColor.GREEN));
         p.closeInventory();
     }
 

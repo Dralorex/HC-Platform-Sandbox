@@ -18,6 +18,6 @@ public interface HubAdminGui {
 
     void openLobbyAdminShortcut(Player player);
 
-    /** Hub / limbo / match server-plugin whitelist or blacklist. */
+    /** Hub / lobby / match server-plugin whitelist or blacklist. */
     void openPluginPolicyAdmin(Player player);
 }

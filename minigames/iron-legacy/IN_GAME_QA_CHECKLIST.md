@@ -9,7 +9,7 @@ Use one symbol per line when testing:
 | ⚠️ | Couldn’t test |
 | ⬜ | Not tested yet |
 
-Test in **section order** when possible: it follows a typical **chronological player + OP setup path** (lobby → tools → maps → limbo → social → match → post-match → persistence).
+Test in **section order** when possible: it follows a typical **chronological player + OP setup path** (lobby → tools → maps → lobby → social → match → post-match → persistence).
 
 ---
 
@@ -56,7 +56,7 @@ Test in **section order** when possible: it follows a typical **chronological pl
 
 ## 4) Template World Edit / Publish
 
-*Create and freeze map versions before limbo/envoy tuning.*
+*Create and freeze map versions before lobby/envoy tuning.*
 
 - ⬜ `/il create <world>` creates template and teleports to editor  
 - ⬜ `/il gameedit <world>` teleports to editor  
@@ -110,24 +110,24 @@ Test in **section order** when possible: it follows a typical **chronological pl
 
 ---
 
-## 6) Limbo Setup + Zone
+## 6) Lobby Setup + Zone
 
-*Per-template limbo tooling.*
+*Per-template lobby tooling.*
 
-- ⬜ `/il game create limbozone <world>` gives Limbo Wand  
+- ⬜ `/il game create lobbyzone <world>` gives Lobby Wand  
 - ⬜ Wand: left = corner 1, right = corner 2, shift-right = confirm  
-- ⬜ Limbo outline appears after both corners set  
+- ⬜ Lobby outline appears after both corners set  
 - ⬜ Outline updates instantly when corners are changed  
-- ⬜ `/il game set limbo spawn` works only inside zone  
-- ⬜ Players entering limbo spawn at configured limbo spawn  
-- ⬜ Limbo players are forced Adventure mode  
-- ⬜ Limbo inventory loadout applies correctly  
-- ⬜ Leaving limbo via barrier item sends player to exact hub/lobby spawn  
-- ⬜ Leaving limbo removes player from limbo count/session  
+- ⬜ `/il game set lobby spawn` works only inside zone  
+- ⬜ Players entering lobby spawn at configured lobby spawn  
+- ⬜ Lobby players are forced Adventure mode  
+- ⬜ Lobby inventory loadout applies correctly  
+- ⬜ Leaving lobby via barrier item sends player to exact hub/lobby spawn  
+- ⬜ Leaving lobby removes player from lobby count/session  
 
 ---
 
-## 7) Hub / Limbo PvP Mode
+## 7) Hub / Lobby PvP Mode
 
 *Lobby-adjacent combat toggles.*
 
@@ -138,8 +138,8 @@ Test in **section order** when possible: it follows a typical **chronological pl
 - ⬜ Respawn invincibility is 3s with yellow particle ring  
 - ⬜ Invincible players cannot deal or receive PvP damage  
 - ⬜ PvP OFF in hub teleports player back to lobby spawn  
-- ⬜ PvP OFF in limbo does **not** teleport player anywhere  
-- ⬜ Limbo PvP off keeps current held slot (no forced slot swap)  
+- ⬜ PvP OFF in lobby does **not** teleport player anywhere  
+- ⬜ Lobby PvP off keeps current held slot (no forced slot swap)  
 
 ---
 
@@ -182,17 +182,17 @@ Test in **section order** when possible: it follows a typical **chronological pl
 
 ---
 
-## 10) Limbo Team System
+## 10) Lobby Team System
 
-*In limbo before launch.*
+*In lobby before launch.*
 
-- ⬜ Main Limbo Teams menu is 3 rows  
+- ⬜ Main Lobby Teams menu is 3 rows  
 - ⬜ Create Team works  
 - ⬜ Invite Players tab works (heads + paging + back layout)  
 - ⬜ Team Members tab works (heads + paging + back layout)  
 - ⬜ Team Invites tab works (accept/decline behavior)  
-- ⬜ Team cap checks enforce limbo team size max  
-- ⬜ Team invites only target eligible players in limbo  
+- ⬜ Team cap checks enforce lobby team size max  
+- ⬜ Team invites only target eligible players in lobby  
 
 ---
 
@@ -263,7 +263,7 @@ Test in **section order** when possible: it follows a typical **chronological pl
 - ⬜ Match cleanup kicks all remaining players safely  
 - ⬜ Runtime instance world is destroyed after match  
 - ⬜ Next match starts from clean template state (no leftover damage/build)  
-- ⬜ Limbo structures/zone state reset correctly for next run  
+- ⬜ Lobby structures/zone state reset correctly for next run  
 - ⬜ Replenish schedule **stops** on match end; **match context** cleared (no refill firing with no game)  
 
 ---

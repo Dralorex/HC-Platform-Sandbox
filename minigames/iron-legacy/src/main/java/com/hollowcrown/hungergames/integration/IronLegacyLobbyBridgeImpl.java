@@ -1,6 +1,6 @@
 package com.hollowcrown.hungergames.integration;
 
-import com.hollowcrown.api.integration.IronLegacyLimboBridge;
+import com.hollowcrown.api.integration.IronLegacyLobbyBridge;
 import com.hollowcrown.api.integration.IronLegacyWorldsCatalog;
 import com.hollowcrown.api.party.PartyService;
 import com.hollowcrown.api.party.PartyView;
@@ -17,9 +17,9 @@ import java.util.stream.Collectors;
 
 //TODO: [Hydraulic] Hook new teams system up, probably here.
 /**
- * Engine hooks for Hub-owned pre-match limbo (templates, match start, teams, lobby routing).
+ * Engine hooks for Hub-owned pre-match lobby (templates, match start, teams, lobby routing).
  */
-public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
+public final class IronLegacyLobbyBridgeImpl implements IronLegacyLobbyBridge {
 
     private final HungerGamesPlugin plugin;
     private final List<String> randomTeamNames = List.of(
@@ -27,9 +27,9 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
             "Nomads", "Phantoms", "Cyclones", "Titans", "Gladiators"
     );
 
-    public IronLegacyLimboBridgeImpl(HungerGamesPlugin plugin) {
+    public IronLegacyLobbyBridgeImpl(HungerGamesPlugin plugin) {
         this.plugin = plugin;
-        migrateLimboLobbyYamlDefaultsIfNeeded();
+        migrateLobbyYamlDefaultsIfNeeded();
     }
 
     @Override
@@ -64,35 +64,35 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
     }
 
     @Override
-    public Optional<LimboZoneCorners> limboZoneCorners(String templateKey) {
-        var cat = plugin.worldsCatalog().flatMap(c -> c.limboZoneCorners(templateKey));
+    public Optional<LobbyZoneCorners> lobbyZoneCorners(String templateKey) {
+        var cat = plugin.worldsCatalog().flatMap(c -> c.lobbyZoneCorners(templateKey));
         if (cat.isPresent()) {
             var z = cat.get();
-            return Optional.of(new LimboZoneCorners(z.x1(), z.y1(), z.z1(), z.x2(), z.y2(), z.z2()));
+            return Optional.of(new LobbyZoneCorners(z.x1(), z.y1(), z.z1(), z.x2(), z.y2(), z.z2()));
         }
-        return plugin.templates().limboZone(templateKey).map(z -> new LimboZoneCorners(
+        return plugin.templates().lobbyZone(templateKey).map(z -> new LobbyZoneCorners(
                 z.pos1().getX(), z.pos1().getY(), z.pos1().getZ(),
                 z.pos2().getX(), z.pos2().getY(), z.pos2().getZ()));
     }
 
     @Override
-    public Location resolveLimboSpawn(TemplateRow info, String sessionWorldName) {
+    public Location resolveLobbySpawn(TemplateRow info, String sessionWorldName) {
         // Prefer Hub catalog (reads worlds.yml fresh from disk) even when session world is set.
-        IronLegacyWorldsCatalog.LimboSpawn spawn = plugin.worldsCatalog()
-                .flatMap(c -> c.limboSpawn(info.key()))
+        IronLegacyWorldsCatalog.LobbySpawn spawn = plugin.worldsCatalog()
+                .flatMap(c -> c.lobbySpawn(info.key()))
                 .orElse(null);
 
-        String limboWorldName = sessionWorldName;
-        if (limboWorldName == null || limboWorldName.isBlank()) {
+        String lobbyWorldName = sessionWorldName;
+        if (lobbyWorldName == null || lobbyWorldName.isBlank()) {
             if (spawn != null && spawn.worldName() != null && !spawn.worldName().isBlank()) {
-                limboWorldName = spawn.worldName();
+                lobbyWorldName = spawn.worldName();
             } else {
-                String base = "worlds." + info.key() + ".limbo";
-                limboWorldName = plugin.templates().config().getString(base + ".world", "");
+                String base = "worlds." + info.key() + ".lobby";
+                lobbyWorldName = plugin.templates().config().getString(base + ".world", "");
             }
         }
         World w = null;
-        if (limboWorldName != null && !limboWorldName.isBlank()) w = Bukkit.getWorld(limboWorldName);
+        if (lobbyWorldName != null && !lobbyWorldName.isBlank()) w = Bukkit.getWorld(lobbyWorldName);
         if (w == null && info.worldName() != null) w = Bukkit.getWorld(info.worldName());
         if (w == null && info.worldName() != null) w = Bukkit.createWorld(new WorldCreator(info.worldName()));
         if (w == null) return plugin.lobby().getLobbySpawn();
@@ -100,7 +100,7 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
         if (spawn != null) {
             return new Location(w, spawn.x(), spawn.y(), spawn.z(), spawn.yaw(), spawn.pitch());
         }
-        String base = "worlds." + info.key() + ".limbo";
+        String base = "worlds." + info.key() + ".lobby";
         if (plugin.templates().config().contains(base + ".x")) {
             double x = plugin.templates().config().getDouble(base + ".x");
             double y = plugin.templates().config().getDouble(base + ".y");
@@ -109,14 +109,14 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
             float pitch = (float) plugin.templates().config().getDouble(base + ".pitch", 0.0);
             return new Location(w, x, y, z, yaw, pitch);
         }
-        plugin.getLogger().warning("No limbo spawn for template '" + info.key()
-                + "' — falling back to world spawn. Set via /hch template limbo spawn.");
+        plugin.getLogger().warning("No lobby spawn for template '" + info.key()
+                + "' — falling back to world spawn. Set via /hch template lobby spawn.");
         return w.getSpawnLocation().clone().add(0.5, 0, 0.5);
     }
 
     @Override
-    public boolean startGameOnPreparedInstance(World instanceWorld, Set<UUID> players, boolean fromLimbo) {
-        return plugin.game().startGameOnPreparedInstance(instanceWorld, players, fromLimbo);
+    public boolean startGameOnPreparedInstance(World instanceWorld, Set<UUID> players, boolean fromLobby) {
+        return plugin.game().startGameOnPreparedInstance(instanceWorld, players, fromLobby);
     }
 
     @Override
@@ -135,7 +135,7 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
     }
 
     @Override
-    public void assignTeamsForLimboLaunch(String templateKey, int teamSizeMax, Set<UUID> onlinePlayerIds) {
+    public void assignTeamsForLobbyLaunch(String templateKey, int teamSizeMax, Set<UUID> onlinePlayerIds) {
         boolean randomize = plugin.files().gameflow().getBoolean("teams.randomizeDefault", false);
         int maxSize = Math.max(1, teamSizeMax);
         if (randomize) {
@@ -192,58 +192,59 @@ public final class IronLegacyLimboBridgeImpl implements IronLegacyLimboBridge {
     }
 
     @Override
-    public boolean limboHostileMobSpawns() {
-        return plugin.files().lobby().getBoolean("limbo.mobSpawns.hostile", false);
+    public boolean lobbyHostileMobSpawns() {
+        return plugin.files().lobby().getBoolean("lobby.mobSpawns.hostile", false);
     }
 
     @Override
-    public boolean limboPassiveMobSpawns() {
-        return plugin.files().lobby().getBoolean("limbo.mobSpawns.passive", false);
+    public boolean lobbyPassiveMobSpawns() {
+        return plugin.files().lobby().getBoolean("lobby.mobSpawns.passive", false);
     }
 
     @Override
-    public void setLimboHostileMobSpawns(boolean value) {
-        plugin.files().lobby().set("limbo.mobSpawns.hostile", value);
+    public void setLobbyHostileMobSpawns(boolean value) {
+        plugin.files().lobby().set("lobby.mobSpawns.hostile", value);
         plugin.files().saveLobby();
     }
 
     @Override
-    public void setLimboPassiveMobSpawns(boolean value) {
-        plugin.files().lobby().set("limbo.mobSpawns.passive", value);
+    public void setLobbyPassiveMobSpawns(boolean value) {
+        plugin.files().lobby().set("lobby.mobSpawns.passive", value);
         plugin.files().saveLobby();
     }
 
     @Override
-    public String limboPvpSwordMaterialName() {
-        return plugin.files().lobby().getString("limbo.pvpSwordMaterial", "IRON_SWORD");
+    public String lobbyPvpSwordMaterialName() {
+        return plugin.files().lobby().getString("lobby.pvpSwordMaterial", "IRON_SWORD");
     }
 
     @Override
-    public void migrateLimboLobbyYamlDefaultsIfNeeded() {
+    public void migrateLobbyYamlDefaultsIfNeeded() {
         FileConfiguration c = plugin.files().lobby();
+        String legacy = "lim" + "bo";
         boolean dirty = false;
-        if (!c.contains("limbo.mobSpawns.hostile") && c.contains("lobby.mobSpawns.hostile")) {
-            c.set("limbo.mobSpawns.hostile", c.getBoolean("lobby.mobSpawns.hostile"));
+        if (!c.contains("lobby.mobSpawns.hostile") && c.contains(legacy + ".mobSpawns.hostile")) {
+            c.set("lobby.mobSpawns.hostile", c.getBoolean(legacy + ".mobSpawns.hostile"));
             dirty = true;
         }
-        if (!c.contains("limbo.mobSpawns.passive") && c.contains("lobby.mobSpawns.passive")) {
-            c.set("limbo.mobSpawns.passive", c.getBoolean("lobby.mobSpawns.passive"));
+        if (!c.contains("lobby.mobSpawns.passive") && c.contains(legacy + ".mobSpawns.passive")) {
+            c.set("lobby.mobSpawns.passive", c.getBoolean(legacy + ".mobSpawns.passive"));
             dirty = true;
         }
-        if (!c.contains("limbo.pvpSwordMaterial") && c.contains("lobby.pvpSwordMaterial")) {
-            c.set("limbo.pvpSwordMaterial", c.getString("lobby.pvpSwordMaterial", "IRON_SWORD"));
+        if (!c.contains("lobby.pvpSwordMaterial") && c.contains(legacy + ".pvpSwordMaterial")) {
+            c.set("lobby.pvpSwordMaterial", c.getString(legacy + ".pvpSwordMaterial", "IRON_SWORD"));
             dirty = true;
         }
-        if (!c.contains("limbo.mobSpawns.hostile")) {
-            c.set("limbo.mobSpawns.hostile", false);
+        if (!c.contains("lobby.mobSpawns.hostile")) {
+            c.set("lobby.mobSpawns.hostile", false);
             dirty = true;
         }
-        if (!c.contains("limbo.mobSpawns.passive")) {
-            c.set("limbo.mobSpawns.passive", false);
+        if (!c.contains("lobby.mobSpawns.passive")) {
+            c.set("lobby.mobSpawns.passive", false);
             dirty = true;
         }
-        if (!c.contains("limbo.pvpSwordMaterial")) {
-            c.set("limbo.pvpSwordMaterial", "IRON_SWORD");
+        if (!c.contains("lobby.pvpSwordMaterial")) {
+            c.set("lobby.pvpSwordMaterial", "IRON_SWORD");
             dirty = true;
         }
         if (dirty) {

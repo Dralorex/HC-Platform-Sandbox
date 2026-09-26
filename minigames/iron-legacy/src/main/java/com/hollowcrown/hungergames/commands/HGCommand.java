@@ -71,12 +71,12 @@ public class HGCommand implements CommandExecutor, TabCompleter {
         return false;
     }
 
-    /** Resolve template key for spawn-pad commands; player must stand in a template/limbo/match world. */
+    /** Resolve template key for spawn-pad commands; player must stand in a template/lobby/match world. */
     private Optional<String> requireSpawnTemplateKey(Player p) {
         var tk = HungerGamesPlugin.get().templates().resolveTemplateKeyForWorld(p.getWorld().getName());
         if (tk.isEmpty()) {
             p.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                    "\u00A7cStand in a template editor, limbo lobby, or match world to edit spawn pads."));
+                    "\u00A7cStand in a template editor, lobby, or match world to edit spawn pads."));
         }
         return tk;
     }
@@ -89,7 +89,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " help§7 - show this help menu"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " party§7 - open Hollow Crown Hub party menu"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/hub§7 (or /lobby) — teleport to Hollow Crown hub + utility hotbar"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " teams§7 - in limbo: Hub party menu; otherwise OP teams/main GUI"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " teams§7 - in lobby: Hub party menu; otherwise OP teams/main GUI"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " leaderboard|lb§7 - show top kills"));
 
         if (!op) return;
@@ -103,15 +103,15 @@ public class HGCommand implements CommandExecutor, TabCompleter {
 
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§bAdmin - Hub world (HollowCrownHub)"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§7Use §e/hch sethub§r, §e/hub§r, §e/hch hubworld …§7 for spawn, radius, build mode, pads."));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§bAdmin - Limbo / Match"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " hostilemobspawn <true|false|t|f>§7 - hostile spawns in §elimbo§7 worlds"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " passivemobspawn <true|false|t|f>§7 - passive spawns in §elimbo§7 worlds"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " start [limbo_world|template]§7 - force limbo match countdown (like lobby full)"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " stop§7 - stop match + cancel limbo queues, send players to hub"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§bAdmin - Lobby / Match"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " hostilemobspawn <true|false|t|f>§7 - hostile spawns in §elobby§7 worlds"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " passivemobspawn <true|false|t|f>§7 - passive spawns in §elobby§7 worlds"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " start [lobby_world|template]§7 - force lobby match countdown (like lobby full)"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " stop§7 - stop match + cancel lobby queues, send players to hub"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§e/" + label + " reload§7 - reload config/rules/templates/icons"));
 
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7bAdmin - Spawns/Teams/Rules"));
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " addspawn|clearspawns|removespawn|listspawns"));
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " addspawn|clearspawn [closest|all]|listspawns"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " addspawnring <count> <radius> [here|spawn]"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " showpads [seconds]"));
         sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7e/" + label + " randomteams <size> [forceop]"));
@@ -472,7 +472,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("Players only."));
                     return true;
                 }
-                if (HungerGamesPlugin.get().limbo().isInLimbo(p)) {
+                if (HungerGamesPlugin.get().preMatchLobby().isInLobby(p)) {
                     HungerGamesPlugin.get().hubPlayerMenus().ifPresentOrElse(
                             m -> m.openPartyMenu(p),
                             () -> p.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
@@ -547,7 +547,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 }
                 HungerGamesPlugin.get().lobby().setAllowHostileMobSpawns(onH);
                 HungerGamesPlugin.get().history().log(p.getName(), "set_hostile_mob_spawn", onH.toString());
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aLimbo hostile mob spawns: " + onH));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aLobby hostile mob spawns: " + onH));
                 return true;
             }
             case "passivemobspawn", "passivemobspawns" -> {
@@ -572,7 +572,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 }
                 HungerGamesPlugin.get().lobby().setAllowPassiveMobSpawns(onP);
                 HungerGamesPlugin.get().history().log(p.getName(), "set_passive_mob_spawn", onP.toString());
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aLimbo passive mob spawns: " + onP));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§aLobby passive mob spawns: " + onP));
                 return true;
             }
             case "joingame" -> {
@@ -648,24 +648,24 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                 }
                 if (key == null || key.isBlank()) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                            "§cUsage: /" + label + " start <limbo_instance_world|template_key>§7 (or stand in the limbo instance)"));
+                            "§cUsage: /" + label + " start <lobby_instance_world|template_key>§7 (or stand in the lobby instance)"));
                     return true;
                 }
-                boolean ok = HungerGamesPlugin.get().limbo().forceBeginTeleportCountdown(key);
+                boolean ok = HungerGamesPlugin.get().preMatchLobby().forceBeginTeleportCountdown(key);
                 if (ok) {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                            "§aLimbo match countdown started (same as lobby full)."));
+                            "§aLobby match countdown started (same as lobby full)."));
                 } else {
                     sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                            "§cNo active limbo queue for §f" + key + "§c. Players must join limbo first."));
+                            "§cNo active lobby queue for §f" + key + "§c. Players must join lobby first."));
                 }
                 return true;
             }
             case "stop" -> {
                 if (!requireRole(sender, "stop", ServerRoleManager.Role.GAME, ServerRoleManager.Role.STANDALONE)) return true;
-                HungerGamesPlugin.get().limbo().abortAllQueuesAndKickToHub();
+                HungerGamesPlugin.get().preMatchLobby().abortAllQueuesAndKickToHub();
                 game.stopGame(true);
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eStopped limbo queues and match (if any); players sent to hub."));
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§eStopped lobby queues and match (if any); players sent to hub."));
                 return true;
             }
             case "addspawn" -> {
@@ -679,22 +679,33 @@ public class HGCommand implements CommandExecutor, TabCompleter {
                                 + l.getBlockX() + "," + l.getBlockY() + "," + l.getBlockZ()));
                 return true;
             }
-            case "clearspawns" -> {
+            case "clearspawn" -> {
                 if (!(sender instanceof Player p)) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("Players only.")); return true; }
                 var tk = requireSpawnTemplateKey(p);
                 if (tk.isEmpty()) return true;
-                spawns.clear(tk.get());
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
-                        "\u00A7eCleared spawn pads for \u00A7f" + tk.get() + "\u00A7e."));
-                return true;
-            }
-            case "removespawn" -> {
-                if (!(sender instanceof Player p)) { sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("Players only.")); return true; }
-                var tk = requireSpawnTemplateKey(p);
-                if (tk.isEmpty()) return true;
-                var removed = spawns.removeNearest(tk.get(), p.getLocation());
-                if (removed == null) sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cNo spawn pads to remove."));
-                else sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7eRemoved pad at " + removed.getBlockX() + "," + removed.getBlockY() + "," + removed.getBlockZ()));
+                String mode = args.length >= 2 ? args[1].trim().toLowerCase(java.util.Locale.ROOT) : "";
+                if (mode.isEmpty() || mode.equals("closest") || mode.equals("near") || mode.equals("nearest")) {
+                    mode = "closest";
+                } else if (!mode.equals("all")) {
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                            "\u00A7cUsage: /" + label + " clearspawn [closest|all]"));
+                    return true;
+                }
+                if (mode.equals("all")) {
+                    int before = spawns.count(tk.get());
+                    spawns.clear(tk.get());
+                    sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                            "\u00A7eCleared \u00A7f" + before + "\u00A7e spawn pad(s) for \u00A7f" + tk.get() + "\u00A7e."));
+                } else {
+                    var removed = spawns.removeNearest(tk.get(), p.getLocation());
+                    if (removed == null) {
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("\u00A7cNo spawn pads to remove."));
+                    } else {
+                        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize(
+                                "\u00A7eRemoved closest pad at " + removed.getBlockX() + ","
+                                        + removed.getBlockY() + "," + removed.getBlockZ()));
+                    }
+                }
                 return true;
             }
             case "listspawns" -> {
@@ -1094,7 +1105,7 @@ public class HGCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         if (args.length == 1) return partial(args[0], List.of(
-                "help","gui","teams","party","leaderboard","lb","admin","hostilemobspawn","hostilemobspawns","passivemobspawn","passivemobspawns","joingame","start","stop","addspawn","clearspawns","removespawn",
+                "help","gui","teams","party","leaderboard","lb","admin","hostilemobspawn","hostilemobspawns","passivemobspawn","passivemobspawns","joingame","start","stop","addspawn","clearspawn",
                 "listspawns","addspawnring","showpads","randomteams",
                 "set","border","toggle","reload","envoy","giftdrop","addchests","massaddchests","addmanychests","replenish",
                 "rules","crafting","dispenser","build","dig"
@@ -1176,6 +1187,9 @@ public class HGCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2 && args[0].equalsIgnoreCase("start")) return Bukkit.getWorlds().stream().map(World::getName).collect(Collectors.toList());
         if (args.length == 2 && args[0].equalsIgnoreCase("border")) return partial(args[1], List.of("set"));
         if (args.length == 2 && args[0].equalsIgnoreCase("addspawnring")) return partial(args[1], List.of("<count>"));
+        if (args.length == 2 && args[0].equalsIgnoreCase("clearspawn")) {
+            return partial(args[1], List.of("closest", "all"));
+        }
         if (args.length == 3 && args[0].equalsIgnoreCase("addspawnring")) return partial(args[2], List.of("<radius>"));
         if (args.length == 4 && args[0].equalsIgnoreCase("addspawnring")) return partial(args[3], List.of("here","spawn"));
         if (args.length == 2 && args[0].equalsIgnoreCase("showpads")) return partial(args[1], List.of("5","10","15","30","60"));

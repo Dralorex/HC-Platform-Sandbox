@@ -10,7 +10,7 @@ import java.util.Set;
  * Hollow Crown Hub: cooperative plugin policy API.
  *
  * <p>Other Hollow Crown plugins should query this service before running mechanics in a given scope
- * (hub / limbo / match). If the policy reports the plugin as blocked, the calling plugin should
+ * (hub / lobby / match). If the policy reports the plugin as blocked, the calling plugin should
  * behave as if it does not exist for that player/world.</p>
  *
  * <p>Registered by HollowCrownHub when enabled. Querying plugins should fail-open (allow) when the
@@ -20,7 +20,7 @@ public interface HubPluginPolicyApi {
 
     enum Scope {
         HUB,
-        LIMBO,
+        LOBBY,
         MATCH
     }
 

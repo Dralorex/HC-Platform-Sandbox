@@ -1,6 +1,6 @@
 package com.hollowcrown.hub.nametag;
 
-import com.hollowcrown.api.integration.PreMatchLimboService;
+import com.hollowcrown.api.integration.PreMatchLobbyService;
 import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hub.policy.HubTemplatePolicyService;
 import com.hollowcrown.hub.team.TeamManager;
@@ -49,9 +49,9 @@ public final class HubNametagService {
         } else {
             player.getWorld();
         }
-        String tk = limboTemplateKey(player);
+        String tk = lobbyTemplateKey(player);
         if (tk == null || tk.isBlank()) {
-            tk = plugin.limboLayout().worldsYaml()
+            tk = plugin.lobbyLayout().worldsYaml()
                     .resolveTemplateKeyForWorld(player.getWorld().getName())
                     .orElse(null);
         }
@@ -59,25 +59,25 @@ public final class HubNametagService {
         return Optional.of(plugin.templatePolicies().configFor(tk));
     }
 
-    private static String limboTemplateKey(Player player) {
-        RegisteredServiceProvider<PreMatchLimboService> reg =
-                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
+    private static String lobbyTemplateKey(Player player) {
+        RegisteredServiceProvider<PreMatchLobbyService> reg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLobbyService.class);
         if (reg == null) {
             return null;
         }
-        return reg.getProvider().limboTemplateKey(player);
+        return reg.getProvider().lobbyTemplateKey(player);
     }
 
     private boolean useRelationshipColors(HubTemplatePolicyService.TemplateConfig cfg, World world) {
         if (world == null) return false;
-        if (isInLimboWorld(world)) return true;
+        if (isInLobbyWorld(world)) return true;
         return cfg.colorMode() == HubTemplatePolicyService.ColorMode.TEAM;
     }
 
-    private boolean isInLimboWorld(World world) {
-        RegisteredServiceProvider<PreMatchLimboService> reg =
-                Bukkit.getServicesManager().getRegistration(PreMatchLimboService.class);
-        return reg != null && reg.getProvider().isInLimboWorld(world);
+    private boolean isInLobbyWorld(World world) {
+        RegisteredServiceProvider<PreMatchLobbyService> reg =
+                Bukkit.getServicesManager().getRegistration(PreMatchLobbyService.class);
+        return reg != null && reg.getProvider().isInLobbyWorld(world);
     }
 
     /**

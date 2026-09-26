@@ -1,6 +1,7 @@
 package com.hollowcrown.hungergames.managers;
 
 import com.hollowcrown.api.integration.HubWorldApi;
+import com.hollowcrown.hub.HollowCrownHubPlugin;
 import com.hollowcrown.hungergames.HungerGamesPlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -54,14 +55,14 @@ public final class LobbyManager {
             plugin.templates().restoreLobbyAfterLeavingTemplate(p);
             return;
         }
-        plugin.limbo().leaveLimbo(p);
+        plugin.preMatchLobby().leaveLobby(p);
         Location center = getLobbySpawn();
         if (center == null) {
             p.sendMessage(Component.text("Hub spawn is not set. Ask an admin to run /hch sethub.", NamedTextColor.RED));
             return;
         }
         Location spawn = resolveShardSpawn(p, center);
-        p.teleport(spawn);
+        p.teleport(HollowCrownHubPlugin.safeHubStandLocation(spawn));
         plugin.packs().applyIfEnabled(p);
         hubWorld().ifPresent(h -> h.applyHubUtilityLoadout(p, wipeInv, selectCompass));
         plugin.templates().restoreLobbyAfterLeavingTemplate(p);
@@ -71,18 +72,20 @@ public final class LobbyManager {
         int shard = plugin.lobbyShards().assignPlayer(p);
         if (shard < 0) {
             p.sendMessage(Component.text("All hub shards are currently full. Try again shortly.", NamedTextColor.RED));
-            return center;
+            return HollowCrownHubPlugin.safeHubStandLocation(center);
         }
         int total = Math.max(1, plugin.lobbyShards().shardCount());
         double spacing = Math.max(8.0, plugin.files().gameflow().getDouble("lobbies.shardSpacing", 48.0));
-        if (total == 1 || shard == 0) return center;
+        if (total == 1 || shard == 0) {
+            return HollowCrownHubPlugin.safeHubStandLocation(center);
+        }
         int ringIndex = shard - 1;
         int ringSlots = Math.max(1, total - 1);
         double angle = (2 * Math.PI * ringIndex) / ringSlots;
         Location out = center.clone();
         out.setX(center.getX() + (Math.cos(angle) * spacing));
         out.setZ(center.getZ() + (Math.sin(angle) * spacing));
-        return out;
+        return HollowCrownHubPlugin.safeHubStandLocation(out);
     }
 
     public void ensureLobbyLoadout(Player p, boolean selectCompass) {
@@ -93,12 +96,12 @@ public final class LobbyManager {
         });
     }
 
-    public void prepareForLimboJoin(Player p) {
-        plugin.limbo().prepareForLimboJoin(p);
+    public void prepareForLobbyJoin(Player p) {
+        plugin.preMatchLobby().prepareForLobbyJoin(p);
     }
 
-    public void applyLimboLoadout(Player p) {
-        plugin.limbo().applyLimboLoadout(p);
+    public void applyLobbyLoadout(Player p) {
+        plugin.preMatchLobby().applyLobbyLoadout(p);
     }
 
     public void applyLobbyAfterTemplateExitWithoutPriorBuildMode(Player p) {
@@ -125,22 +128,22 @@ public final class LobbyManager {
         return hubWorld().map(HubWorldApi::protectionRadiusBlocks).orElse(64.0);
     }
 
-    /** Limbo worlds only (pre-match service registered by HollowCrownHub). */
+    /** Lobby worlds only (pre-match service registered by HollowCrownHub). */
     public boolean allowHostileMobSpawns() {
-        return plugin.limbo().allowHostileMobSpawns();
+        return plugin.preMatchLobby().allowHostileMobSpawns();
     }
 
-    /** Limbo worlds only (pre-match service registered by HollowCrownHub). */
+    /** Lobby worlds only (pre-match service registered by HollowCrownHub). */
     public boolean allowPassiveMobSpawns() {
-        return plugin.limbo().allowPassiveMobSpawns();
+        return plugin.preMatchLobby().allowPassiveMobSpawns();
     }
 
     public void setAllowHostileMobSpawns(boolean value) {
-        plugin.limbo().setAllowHostileMobSpawns(value);
+        plugin.preMatchLobby().setAllowHostileMobSpawns(value);
     }
 
     public void setAllowPassiveMobSpawns(boolean value) {
-        plugin.limbo().setAllowPassiveMobSpawns(value);
+        plugin.preMatchLobby().setAllowPassiveMobSpawns(value);
     }
 
     public void givePvpPadItem(Player p) {

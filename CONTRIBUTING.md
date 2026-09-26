@@ -23,7 +23,7 @@ Use **Conventional Commits** so history stays searchable:
 Examples:
 
 ```
-feat(hub): add queue drain into pre-match limbo
+feat(hub): add queue drain into pre-match lobby
 fix(iron-legacy): border shrink timer on empty world
 docs: document three-jar server deploy
 build(api): bump Paper API to 1.21.4-R0.1-SNAPSHOT

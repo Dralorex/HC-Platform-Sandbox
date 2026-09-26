@@ -22,9 +22,9 @@ public interface IronLegacyWorldsCatalog {
             int version
     ) {}
 
-    record LimboZoneCorners(double x1, double y1, double z1, double x2, double y2, double z2) {}
+    record LobbyZoneCorners(double x1, double y1, double z1, double x2, double y2, double z2) {}
 
-    record LimboSpawn(String worldName, double x, double y, double z, float yaw, float pitch) {}
+    record LobbySpawn(String worldName, double x, double y, double z, float yaw, float pitch) {}
 
     List<TemplateInfo> listTemplateInfos();
 
@@ -34,9 +34,9 @@ public interface IronLegacyWorldsCatalog {
 
     int minimumPercentage(String templateKey);
 
-    Optional<LimboZoneCorners> limboZoneCorners(String templateKey);
+    Optional<LobbyZoneCorners> lobbyZoneCorners(String templateKey);
 
-    Optional<LimboSpawn> limboSpawn(String templateKey);
+    Optional<LobbySpawn> lobbySpawn(String templateKey);
 
     String resolveServerTarget(String templateKey);
 

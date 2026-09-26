@@ -59,7 +59,7 @@ JARs (order): foundation/target/HC-Foundation-*.jar
               minigames/iron-legacy/target/HCIronLegacy-*.jar
 Do NOT deploy hollowcrown-api.
 
-KNOWN GAP: /hch queue join enqueues only — no auto limbo/match.
+KNOWN GAP: /hch queue join enqueues only — no auto lobby/match.
 
 HOW TO USE WHEN SOMETHING FAILS
 1. Find the failing line below.
@@ -86,7 +86,7 @@ HOW TO USE WHEN SOMETHING FAILS
 ⬜ Phase 0 console checks
 ⬜ /hch sethub → /hub → /hch join → join lobby
 ⬜ /hch party create + invite + accept
-⬜ Compass → Game Lobby → limbo → /il start
+⬜ Compass → Game Lobby → lobby → /il start
 ⬜ /il stop → /hub
 
 BUG REPORT TEMPLATE

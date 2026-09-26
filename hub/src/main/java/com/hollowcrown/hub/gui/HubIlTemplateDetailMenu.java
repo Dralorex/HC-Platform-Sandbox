@@ -92,13 +92,11 @@ public final class HubIlTemplateDetailMenu extends HubMenuView {
                 List.of("§7Flip worlds.yml enabled")));
         inv.setItem(42, btn(Material.PAINTING, "§bIcon preview",
                 List.of("§7Opens preview chest")));
-        inv.setItem(43, btn(Material.BLAZE_ROD, "§dLimbo wand",
-                List.of("§7Same as §f/hch template limbo wand "
-                                + inf.map(IronLegacyTemplateRow::worldName).filter(s -> s != null && !s.isBlank())
-                                        .orElse(templateKey),
-                        "§7Corners in §fthis§7 template world")));
-        inv.setItem(44, btn(Material.RECOVERY_COMPASS, "§bLimbo spawn here",
-                List.of("§7Same as §f/hch template limbo spawn",
+        inv.setItem(43, btn(Material.GOLDEN_HOE, "§6Lobby circle wand",
+                List.of("§7Same as §f/hch template lobby wand",
+                        "§7Center + edge in §fthis§7 template world")));
+        inv.setItem(44, btn(Material.RECOVERY_COMPASS, "§bLobby spawn here",
+                List.of("§7Same as §f/hch template lobby spawn",
                         "§7Stand §binside§7 saved zone")));
         inv.setItem(48, btn(Material.ARROW, "§7Back to list", List.of()));
         inv.setItem(53, btn(Material.BARRIER, "§cClose", List.of()));
@@ -162,9 +160,9 @@ public final class HubIlTemplateDetailMenu extends HubMenuView {
             return;
         }
         if (slot == 43) {
-            if (plugin.limboLayout().giveLimboWand(p)) {
+            if (plugin.lobbyLayout().giveLobbyWand(p)) {
                 p.sendMessage(Component.text(
-                        "Limbo wand added — use corners in this template world; shift-right-click saves.",
+                        "Lobby circle wand added. Left=center, Right=edge, Shift+scroll cycles, Shift-right saves.",
                         NamedTextColor.GREEN));
             } else {
                 p.sendMessage(Component.text("Could not give wand (invalid key or inventory full?).", NamedTextColor.RED));
@@ -172,11 +170,11 @@ public final class HubIlTemplateDetailMenu extends HubMenuView {
             return;
         }
         if (slot == 44) {
-            if (plugin.limboLayout().setLimboSpawnHere(p)) {
-                p.sendMessage(Component.text("Limbo spawn saved for this template.", NamedTextColor.GREEN));
+            if (plugin.lobbyLayout().setLobbySpawnHere(p)) {
+                p.sendMessage(Component.text("Lobby spawn saved for this template.", NamedTextColor.GREEN));
             } else {
                 p.sendMessage(Component.text(
-                        "Failed — teleport into this template world and stand inside the saved limbo zone.",
+                        "Failed — teleport into this template world and stand inside the saved lobby zone.",
                         NamedTextColor.RED));
             }
             return;

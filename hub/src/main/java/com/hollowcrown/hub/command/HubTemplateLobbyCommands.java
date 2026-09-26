@@ -9,14 +9,14 @@ import org.bukkit.entity.Player;
 import java.util.Locale;
 
 /**
- * {@code /hch template limbo …} — Hub-owned limbo zone wand + spawn (writes HCIronLegacy {@code worlds.yml}).
+ * {@code /hch template lobby …} — circle zone wand + spawn (writes HCIronLegacy {@code worlds.yml}).
  */
-public final class HubTemplateLimboCommands {
+public final class HubTemplateLobbyCommands {
 
-    private HubTemplateLimboCommands() {
+    private HubTemplateLobbyCommands() {
     }
 
-    /** {@code args[0]} {@code template}, {@code args[1]} {@code limbo}. */
+    /** {@code args[0]} {@code template}, {@code args[1]} {@code lobby}. */
     public static boolean handle(HollowCrownHubPlugin plugin, CommandSender sender, String[] args) {
         if (!sender.hasPermission("hollowcrownhub.admin")) {
             sender.sendMessage(Component.text("You need hollowcrownhub.admin.", NamedTextColor.RED));
@@ -32,42 +32,37 @@ public final class HubTemplateLimboCommands {
                 help(sender);
                 yield true;
             }
-            case "wand" -> wand(plugin, sender, args);
-            case "spawn" -> HubIlWorldSetCommand.applyLimboSpawn(sender, plugin);
+            case "wand" -> giveWand(plugin, sender);
+            case "spawn" -> HubIlWorldSetCommand.applyLobbySpawn(sender, plugin);
             default -> {
-                sender.sendMessage(Component.text("Unknown limbo subcommand. Try /hch template limbo help", NamedTextColor.RED));
+                sender.sendMessage(Component.text("Unknown lobby subcommand. Try /hch template lobby help", NamedTextColor.RED));
                 yield true;
             }
         };
     }
 
-    private static boolean wand(HollowCrownHubPlugin plugin, CommandSender sender, String[] args) {
+    private static boolean giveWand(HollowCrownHubPlugin plugin, CommandSender sender) {
         if (!(sender instanceof Player p)) {
             sender.sendMessage(Component.text("Players only (wand goes into inventory).", NamedTextColor.RED));
             return true;
         }
-        if (plugin.limboLayout().giveLimboWand(p)) {
+        if (plugin.lobbyLayout().giveLobbyWand(p)) {
             p.sendMessage(Component.text(
-                    "Limbo wand given — works in any template world. Left/right-click blocks for corners, shift-right-click saves.",
+                    "Lobby circle wand given. Left=center, Right=edge, Shift+scroll cycles tip, Shift-right saves. Spawn: /hch template lobby spawn",
                     NamedTextColor.GREEN));
         } else {
-            sender.sendMessage(Component.text(
-                    "Could not give wand (inventory full?).",
-                    NamedTextColor.RED));
+            sender.sendMessage(Component.text("Could not give wand (inventory full?).", NamedTextColor.RED));
         }
         return true;
     }
 
     private static void help(CommandSender sender) {
-        sender.sendMessage(Component.text("Limbo setup (/hch template limbo)", NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("Lobby zone (/hch template lobby)", NamedTextColor.GOLD));
         sender.sendMessage(Component.text(
-                " wand — corner wand (auto-detects world, writes worlds.yml under HCIronLegacy)",
+                " wand — circle zone (center, edge, Shift+scroll, shift-right save)",
                 NamedTextColor.GRAY));
         sender.sendMessage(Component.text(
-                " spawn — save limbo spawn at your feet (inside saved zone, template world)",
+                " spawn — save lobby spawn at your feet (inside the saved circle, template world)",
                 NamedTextColor.GRAY));
-        sender.sendMessage(Component.text(
-                "Alias: /hch template set limbo spawn  — same as spawn",
-                NamedTextColor.DARK_GRAY));
     }
 }
