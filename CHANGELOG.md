@@ -11,8 +11,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- Match freeze: apply health/food/sat **once** at countdown start only; move-damage unchanged. No locks during matches.
-- Hub/lobby: hunger/health lock **only while PvP is off**. With PvP on, sat drains and can heal normally. One-shot vitals on PvP off / death; clear absorption on PvP activate.
+- Match freeze: apply health/food/sat **once** at countdown start; move-damage unchanged. No hunger locks in matches.
+- Hub/lobby: on PvP off / death → healed and full (no hunger lock). PvP on / match → vanilla sat drain and heal.
 
 ## [HC-Plugins-a0.1.24] - 2026-09-28
 

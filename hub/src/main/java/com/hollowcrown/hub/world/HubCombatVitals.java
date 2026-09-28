@@ -3,15 +3,15 @@ package com.hollowcrown.hub.world;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
-import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.potion.PotionEffectType;
 
 /**
- * One-shot combat vitals + peaceful hub/lobby hunger lock.
+ * One-shot combat vitals. No hunger locks anywhere.
  *
- * <p>Vitals (full HP, food 20, sat 6/20) apply once on PvP off, death, or match countdown start.
- * Hunger/health lock applies only in hub or pre-match lobby while PvP is <em>off</em>.
- * During PvP or a match: no locks — saturation drains and can heal normally.</p>
+ * <ul>
+ *   <li>PvP off / death / match countdown start → healed and full (HP, food 20, sat 6/20)</li>
+ *   <li>PvP on / match → vanilla sat drain and heal; can die</li>
+ * </ul>
  */
 public final class HubCombatVitals {
 
@@ -22,7 +22,7 @@ public final class HubCombatVitals {
     private HubCombatVitals() {
     }
 
-    /** Full health, clear absorption, food full, saturation {@link #RESET_SATURATION}. */
+    /** Healed and full: max health, food 20, saturation {@link #RESET_SATURATION}, no absorption. */
     public static void resetAfterCombat(Player p) {
         if (p == null || !p.isOnline()) return;
         clearAbsorptionAndRegen(p);
@@ -34,7 +34,7 @@ public final class HubCombatVitals {
         p.setExhaustion(0f);
     }
 
-    /** Entering PvP: strip free absorption/regen hearts only — do not touch food/sat/health. */
+    /** Entering PvP: strip free absorption/regen hearts only. */
     public static void prepareForPvp(Player p) {
         clearAbsorptionAndRegen(p);
     }
@@ -45,13 +45,5 @@ public final class HubCombatVitals {
         p.removePotionEffect(PotionEffectType.ABSORPTION);
         p.removePotionEffect(PotionEffectType.REGENERATION);
         p.removePotionEffect(PotionEffectType.HEALTH_BOOST);
-    }
-
-    /** True when peaceful hub/lobby should freeze hunger regen (PvP off). */
-    public static boolean isPeacefulHungerLockRegain(EntityRegainHealthEvent.RegainReason reason) {
-        if (reason == null) return true;
-        return reason == EntityRegainHealthEvent.RegainReason.SATIATED
-                || reason == EntityRegainHealthEvent.RegainReason.REGEN
-                || reason == EntityRegainHealthEvent.RegainReason.EATING;
     }
 }
