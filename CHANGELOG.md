@@ -11,7 +11,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- Hub/lobby/match PvP: block all health regain (not only hunger satiated), zero saturation on PvP activate, and re-zero sat after PvP death so players stop constantly healing mid-fight.
+- Match freeze countdown: apply health/hunger vitals **once** at countdown start (not on pad teleport and not every tick); lock food changes and all healing during FREEZE; move-damage penalty unchanged.
+- Hub/lobby PvP: vitals applied once on activate / death / deactivate; lock hunger bar while PvP is on; block all health regain mid-fight.
 
 ## [HC-Plugins-a0.1.24] - 2026-09-28
 

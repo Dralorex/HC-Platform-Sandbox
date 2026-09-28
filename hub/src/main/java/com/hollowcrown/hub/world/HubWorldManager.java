@@ -35,6 +35,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
+import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -1045,6 +1046,14 @@ public final class HubWorldManager implements HubWorldApi, Listener {
             e.setCancelled(true);
             e.setAmount(0.0);
         }
+    }
+
+    /** Lock hunger while hub PvP is active — vitals applied once on activate / death / deactivate. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onFoodChange(FoodLevelChangeEvent e) {
+        if (!(e.getEntity() instanceof Player p)) return;
+        if (!pvpActive.contains(p.getUniqueId())) return;
+        e.setCancelled(true);
     }
 
     /** Block absorption/regen/health-boost potions while hub PvP is active. */

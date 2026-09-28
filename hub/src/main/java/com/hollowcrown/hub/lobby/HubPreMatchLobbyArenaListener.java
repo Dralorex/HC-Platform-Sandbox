@@ -29,6 +29,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
+import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -356,6 +357,13 @@ public final class HubPreMatchLobbyArenaListener implements Listener {
             e.setCancelled(true);
             e.setAmount(0.0);
         }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onFoodChange(FoodLevelChangeEvent e) {
+        if (!(e.getEntity() instanceof Player p)) return;
+        if (!arenaState.pvpActive().contains(p.getUniqueId())) return;
+        e.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)

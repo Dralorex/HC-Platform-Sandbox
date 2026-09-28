@@ -16,7 +16,9 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
+import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
@@ -328,14 +330,7 @@ public class GameManager implements Listener {
                         boolean keepAdventure = ws.keepAdventureOnStart();
                         p.setGameMode(keepAdventure ? GameMode.ADVENTURE : GameMode.SURVIVAL);
                     }
-                    p.setFoodLevel(20);
-                    p.setSaturation(6f);
-                    p.setExhaustion(0f);
-                    p.setAbsorptionAmount(0f);
-                    p.removePotionEffect(PotionEffectType.ABSORPTION);
-                    p.removePotionEffect(PotionEffectType.REGENERATION);
-                    p.removePotionEffect(PotionEffectType.HEALTH_BOOST);
-                    p.setHealth(Math.min(20.0, p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue()));
+                    // Health/hunger applied once in beginCountdown — not here and not every tick.
                 }
 
                 if (fromLobbyLaunch && lobbyClearTemplateKey != null) {
@@ -354,6 +349,9 @@ public class GameManager implements Listener {
                     state = State.RUNNING;
                     hardFreezeActive = false;
                     softLeashEndMs = 0L;
+                    for (Player p : plist) {
+                        if (p != null && p.isOnline()) applyMatchStartVitals(p);
+                    }
                     try { plugin.leaderboardSidebar().refreshAll(); } catch (Throwable ignored) {}
                     try { HungerGamesPlugin.get().replenish().startSchedule(); } catch (Throwable ignored) {}
                     
@@ -405,6 +403,23 @@ public class GameManager implements Listener {
         return true;
     }
 
+    /** Full HP, food 20, saturation 6/20, no absorption — called once when hard freeze countdown begins. */
+    private void applyMatchStartVitals(Player p) {
+        p.setFoodLevel(20);
+        p.setSaturation(6f);
+        p.setExhaustion(0f);
+        p.setAbsorptionAmount(0f);
+        p.removePotionEffect(PotionEffectType.ABSORPTION);
+        p.removePotionEffect(PotionEffectType.REGENERATION);
+        p.removePotionEffect(PotionEffectType.HEALTH_BOOST);
+        try {
+            double max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
+            p.setHealth(Math.min(20.0, max));
+        } catch (Throwable ignored) {
+            p.setHealth(20.0);
+        }
+    }
+
     //Tries to evenly distribute spawn locations to be the furthest possible from each other, but with a random starting point
     private List<Location> evenDistribute(List<Location> spots){
         ArrayList<Location> temp = new ArrayList<>(spots);
@@ -447,21 +462,10 @@ public class GameManager implements Listener {
 
     private void beginCountdown(List<Player> plist, World launchWorld) {
         hardFreezeActive = true; // punish moves from now on
+        // Apply combat vitals once at countdown start — never again until match end / next launch.
         for (Player p : plist) {
             if (p == null || !p.isOnline()) continue;
-            p.setFoodLevel(20);
-            p.setSaturation(6f);
-            p.setExhaustion(0f);
-            p.setAbsorptionAmount(0f);
-            p.removePotionEffect(PotionEffectType.ABSORPTION);
-            p.removePotionEffect(PotionEffectType.REGENERATION);
-            p.removePotionEffect(PotionEffectType.HEALTH_BOOST);
-            try {
-                double max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
-                p.setHealth(Math.min(20.0, max));
-            } catch (Throwable ignored) {
-                p.setHealth(20.0);
-            }
+            applyMatchStartVitals(p);
         }
 
         final int base = activeMatchSettings != null
@@ -799,13 +803,34 @@ public class GameManager implements Listener {
         if (!(e.getEntity() instanceof Player p)) return;
         if (state != State.FREEZE && state != State.RUNNING) return;
         if (!participants.contains(p.getUniqueId())) return;
-        EntityRegainHealthEvent.RegainReason reason = e.getRegainReason();
-        boolean allowMagic = state == State.RUNNING
-                && reason == EntityRegainHealthEvent.RegainReason.MAGIC;
-        if (!allowMagic) {
+        // Countdown / soft leash: nothing heals. Running: only intentional MAGIC (golden apple).
+        if (state == State.FREEZE || hardFreezeActive) {
+            e.setCancelled(true);
+            e.setAmount(0.0);
+            return;
+        }
+        if (e.getRegainReason() != EntityRegainHealthEvent.RegainReason.MAGIC) {
             e.setCancelled(true);
             e.setAmount(0.0);
         }
+    }
+
+    /** Lock hunger bar during freeze countdown — vitals were applied once at countdown start. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onFoodChange(FoodLevelChangeEvent e) {
+        if (!(e.getEntity() instanceof Player p)) return;
+        if (state != State.FREEZE && !hardFreezeActive) return;
+        if (!participants.contains(p.getUniqueId())) return;
+        e.setCancelled(true);
+    }
+
+    /** No eating during freeze countdown. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onConsume(PlayerItemConsumeEvent e) {
+        Player p = e.getPlayer();
+        if (state != State.FREEZE && !hardFreezeActive) return;
+        if (!participants.contains(p.getUniqueId())) return;
+        e.setCancelled(true);
     }
 
     /** During freeze countdown, block absorption/regen potion application so pads start clean. */
@@ -819,8 +844,6 @@ public class GameManager implements Listener {
             return;
         }
         PotionEffectType type = e.getModifiedType();
-        // Freeze: block absorption/regen entirely. Running: still block free REGEN/HEALTH_BOOST
-        // (golden apples apply ABSORPTION + MAGIC heal via regain, which is allowed above).
         if (type == null) return;
         if (hardFreezeActive || state == State.FREEZE) {
             if (type.equals(PotionEffectType.ABSORPTION)
