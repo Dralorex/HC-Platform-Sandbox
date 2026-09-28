@@ -5,6 +5,7 @@ Monorepo for the **Hollow Crown Hub stack**: shared API, Foundation bootstrap, H
 - **Paper** 1.21.4 · **Java** 21
 - **Git**: conventional commits — see [CONTRIBUTING.md](CONTRIBUTING.md)
 - **Layout**: [docs/REPO_LAYOUT.md](docs/REPO_LAYOUT.md)
+- **Architecture / file threading**: [docs/ARCHITECTURE_FLOW.md](docs/ARCHITECTURE_FLOW.md)
 - **Packaging**: [docs/PACKAGING.md](docs/PACKAGING.md) (three plugin JARs, not one)
 
 ## Layout

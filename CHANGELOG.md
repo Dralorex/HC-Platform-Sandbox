@@ -9,6 +9,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `docs/ARCHITECTURE_FLOW.md` — full architecture flowchart: plugin/service graphs, match thread, and every Java file’s purpose + connections (api, foundation, hub, iron-legacy).
+
 ### Fixed
 
 - Match freeze: apply health/food/sat **once** at countdown start; move-damage unchanged. No hunger locks in matches.

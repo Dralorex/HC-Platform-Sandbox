@@ -35,6 +35,7 @@ HC-Platform/                          # Git root (this repo)
 ├── docs/                             # Project documentation
 │   ├── PACKAGING.md
 │   ├── REPO_LAYOUT.md
+│   ├── ARCHITECTURE_FLOW.md          # Full file threading + mermaid graphs (api/hub/IL)
 │   ├── PLATFORM_FEATURES.md          # Copy-paste feature list (keep in sync with code)
 │   ├── PLATFORM_COMMANDS.md          # Copy-paste command list (keep in sync with code)
 │   └── PLATFORM_REFERENCE.md         # Detailed GUIs, integration, config
