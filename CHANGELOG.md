@@ -9,6 +9,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [HC-Plugins-a0.1.24] - 2026-09-28
+
+Tagged plugins: **API a0.1.15**, **Foundation a0.1.5**, **Hub a0.1.20**, **Iron Legacy a0.3.23**.
+
+### Added
+
+- Team Members Manager GUI for managing roster from the team menu (Hydraulic).
+- Team members can claim leadership if the leader has been offline for 5 minutes (Hydraulic).
+
+### Changed
+
+- Renamed `TeamManagerInstance.allowTeamCustomization` to `gameNotRunning` (Hydraulic).
+
 ## [HC-Plugins-a0.1.23] - 2026-09-24
 
 Tagged plugins: **API a0.1.15**, **Foundation a0.1.5**, **Hub a0.1.19**, **Iron Legacy a0.3.22**.

@@ -23,10 +23,10 @@
     <!-- Per-plugin release tags (bump only modules that changed; patch +1 unless user says otherwise). -->
     <hc.api.version>1.21.4-a0.1.15</hc.api.version>
     <hc.foundation.version>1.21.4-a0.1.5</hc.foundation.version>
-    <hc.hub.version>1.21.4-a0.1.19</hc.hub.version>
-    <hc.ironlegacy.version>1.21.4-a0.3.22</hc.ironlegacy.version>
+    <hc.hub.version>1.21.4-a0.1.20</hc.hub.version>
+    <hc.ironlegacy.version>1.21.4-a0.3.23</hc.ironlegacy.version>
     <!-- Deploy zip filename: HC-Plugins-${hc.plugins.zip.tag}.zip -->
-    <hc.plugins.zip.tag>a0.1.23</hc.plugins.zip.tag>
+    <hc.plugins.zip.tag>a0.1.24</hc.plugins.zip.tag>
     <java.version>21</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <paper.api.version>1.21.4-R0.1-SNAPSHOT</paper.api.version> <!-- This is a single-line comment in a POM file -->
