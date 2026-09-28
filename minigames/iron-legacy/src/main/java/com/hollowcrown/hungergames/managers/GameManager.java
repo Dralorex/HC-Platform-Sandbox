@@ -793,34 +793,46 @@ public class GameManager implements Listener {
         }
     }
 
-    /** No hunger/saturation healing for match participants during FREEZE or RUNNING. */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    /** No natural health regen for match participants during FREEZE or RUNNING (golden apples = MAGIC still ok while RUNNING). */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onRegainHealth(EntityRegainHealthEvent e) {
         if (!(e.getEntity() instanceof Player p)) return;
         if (state != State.FREEZE && state != State.RUNNING) return;
         if (!participants.contains(p.getUniqueId())) return;
         EntityRegainHealthEvent.RegainReason reason = e.getRegainReason();
-        if (reason == EntityRegainHealthEvent.RegainReason.SATIATED
-                || reason == EntityRegainHealthEvent.RegainReason.REGEN
-                || reason == EntityRegainHealthEvent.RegainReason.EATING) {
+        boolean allowMagic = state == State.RUNNING
+                && reason == EntityRegainHealthEvent.RegainReason.MAGIC;
+        if (!allowMagic) {
             e.setCancelled(true);
+            e.setAmount(0.0);
         }
     }
 
     /** During freeze countdown, block absorption/regen potion application so pads start clean. */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onPotionEffect(EntityPotionEffectEvent e) {
         if (!(e.getEntity() instanceof Player p)) return;
-        if (!hardFreezeActive) return;
+        if (state != State.FREEZE && state != State.RUNNING) return;
         if (!participants.contains(p.getUniqueId())) return;
         if (e.getAction() != EntityPotionEffectEvent.Action.ADDED
                 && e.getAction() != EntityPotionEffectEvent.Action.CHANGED) {
             return;
         }
         PotionEffectType type = e.getModifiedType();
-        if (type != null && (type.equals(PotionEffectType.ABSORPTION)
-                || type.equals(PotionEffectType.REGENERATION)
-                || type.equals(PotionEffectType.HEALTH_BOOST))) {
+        // Freeze: block absorption/regen entirely. Running: still block free REGEN/HEALTH_BOOST
+        // (golden apples apply ABSORPTION + MAGIC heal via regain, which is allowed above).
+        if (type == null) return;
+        if (hardFreezeActive || state == State.FREEZE) {
+            if (type.equals(PotionEffectType.ABSORPTION)
+                    || type.equals(PotionEffectType.REGENERATION)
+                    || type.equals(PotionEffectType.HEALTH_BOOST)
+                    || type.equals(PotionEffectType.INSTANT_HEALTH)) {
+                e.setCancelled(true);
+            }
+            return;
+        }
+        if (type.equals(PotionEffectType.REGENERATION)
+                || type.equals(PotionEffectType.HEALTH_BOOST)) {
             e.setCancelled(true);
         }
     }

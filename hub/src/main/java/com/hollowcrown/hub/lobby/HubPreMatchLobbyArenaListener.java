@@ -120,7 +120,7 @@ public final class HubPreMatchLobbyArenaListener implements Listener {
         arenaState.activateCountdown().remove(id);
         arenaState.deactivateCountdown().remove(id);
         arenaState.pendingDeactivateOnDeath().remove(id);
-        HubCombatVitals.clearAbsorptionAndRegen(p);
+        HubCombatVitals.prepareForPvp(p);
         sendPvpStatusLine(p, "PVP mode Activated", NamedTextColor.RED);
     }
 
@@ -340,24 +340,25 @@ public final class HubPreMatchLobbyArenaListener implements Listener {
                     sendPvpStatusLine(p, "PVP mode Deactivated", NamedTextColor.GREEN);
                 } else {
                     HubCombatVitals.resetAfterCombat(p);
+                    if (arenaState.pvpActive().contains(id)) {
+                        HubCombatVitals.prepareForPvp(p);
+                    }
                 }
             }
         }.runTask(hub);
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onRegainHealth(EntityRegainHealthEvent e) {
         if (!(e.getEntity() instanceof Player p)) return;
         if (!arenaState.pvpActive().contains(p.getUniqueId())) return;
-        EntityRegainHealthEvent.RegainReason reason = e.getRegainReason();
-        if (reason == EntityRegainHealthEvent.RegainReason.SATIATED
-                || reason == EntityRegainHealthEvent.RegainReason.REGEN
-                || reason == EntityRegainHealthEvent.RegainReason.EATING) {
+        if (HubCombatVitals.isBlockedPvpRegain(e.getRegainReason(), false)) {
             e.setCancelled(true);
+            e.setAmount(0.0);
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onPotionEffect(EntityPotionEffectEvent e) {
         if (!(e.getEntity() instanceof Player p)) return;
         if (!arenaState.pvpActive().contains(p.getUniqueId())) return;
@@ -368,7 +369,8 @@ public final class HubPreMatchLobbyArenaListener implements Listener {
         PotionEffectType type = e.getModifiedType();
         if (type != null && (type.equals(PotionEffectType.ABSORPTION)
                 || type.equals(PotionEffectType.REGENERATION)
-                || type.equals(PotionEffectType.HEALTH_BOOST))) {
+                || type.equals(PotionEffectType.HEALTH_BOOST)
+                || type.equals(PotionEffectType.INSTANT_HEALTH))) {
             e.setCancelled(true);
         }
     }

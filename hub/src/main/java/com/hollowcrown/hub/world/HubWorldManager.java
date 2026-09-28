@@ -697,7 +697,7 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         activateCountdown.remove(id);
         deactivateCountdown.remove(id);
         pendingDeactivateOnDeath.remove(id);
-        HubCombatVitals.clearAbsorptionAndRegen(p);
+        HubCombatVitals.prepareForPvp(p);
         sendPvpStatusLine(p, "PVP mode Activated", NamedTextColor.RED);
     }
 
@@ -1029,25 +1029,26 @@ public final class HubWorldManager implements HubWorldApi, Listener {
                     applyHubUtilityLoadout(p, true, false);
                 }
                 HubCombatVitals.resetAfterCombat(p);
+                if (pvpActive.contains(id)) {
+                    HubCombatVitals.prepareForPvp(p);
+                }
             }
         }.runTask(plugin);
     }
 
-    /** No hunger/saturation healing while hub PvP is active. */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    /** No health regen of any kind while hub PvP is active. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onRegainHealth(EntityRegainHealthEvent e) {
         if (!(e.getEntity() instanceof Player p)) return;
         if (!pvpActive.contains(p.getUniqueId())) return;
-        EntityRegainHealthEvent.RegainReason reason = e.getRegainReason();
-        if (reason == EntityRegainHealthEvent.RegainReason.SATIATED
-                || reason == EntityRegainHealthEvent.RegainReason.REGEN
-                || reason == EntityRegainHealthEvent.RegainReason.EATING) {
+        if (HubCombatVitals.isBlockedPvpRegain(e.getRegainReason(), false)) {
             e.setCancelled(true);
+            e.setAmount(0.0);
         }
     }
 
-    /** Block free absorption/regen potions while hub PvP is active (combat items mid-fight stay vanilla outside this). */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    /** Block absorption/regen/health-boost potions while hub PvP is active. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onPotionEffect(EntityPotionEffectEvent e) {
         if (!(e.getEntity() instanceof Player p)) return;
         if (!pvpActive.contains(p.getUniqueId())) return;
@@ -1058,7 +1059,8 @@ public final class HubWorldManager implements HubWorldApi, Listener {
         PotionEffectType type = e.getModifiedType();
         if (type != null && (type.equals(PotionEffectType.ABSORPTION)
                 || type.equals(PotionEffectType.REGENERATION)
-                || type.equals(PotionEffectType.HEALTH_BOOST))) {
+                || type.equals(PotionEffectType.HEALTH_BOOST)
+                || type.equals(PotionEffectType.INSTANT_HEALTH))) {
             e.setCancelled(true);
         }
     }

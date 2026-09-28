@@ -9,6 +9,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Hub/lobby/match PvP: block all health regain (not only hunger satiated), zero saturation on PvP activate, and re-zero sat after PvP death so players stop constantly healing mid-fight.
+
 ## [HC-Plugins-a0.1.24] - 2026-09-28
 
 Tagged plugins: **API a0.1.15**, **Foundation a0.1.5**, **Hub a0.1.20**, **Iron Legacy a0.3.23**.
