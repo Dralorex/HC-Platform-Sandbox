@@ -33,9 +33,6 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityPotionEffectEvent;
-import org.bukkit.event.entity.EntityRegainHealthEvent;
-import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -55,7 +52,6 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.RegisteredServiceProvider;
-import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.HashMap;
@@ -1030,48 +1026,8 @@ public final class HubWorldManager implements HubWorldApi, Listener {
                     applyHubUtilityLoadout(p, true, false);
                 }
                 HubCombatVitals.resetAfterCombat(p);
-                if (pvpActive.contains(id)) {
-                    HubCombatVitals.prepareForPvp(p);
-                }
             }
         }.runTask(plugin);
-    }
-
-    /** No health regen of any kind while hub PvP is active. */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onRegainHealth(EntityRegainHealthEvent e) {
-        if (!(e.getEntity() instanceof Player p)) return;
-        if (!pvpActive.contains(p.getUniqueId())) return;
-        if (HubCombatVitals.isBlockedPvpRegain(e.getRegainReason(), false)) {
-            e.setCancelled(true);
-            e.setAmount(0.0);
-        }
-    }
-
-    /** Lock hunger while hub PvP is active — vitals applied once on activate / death / deactivate. */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onFoodChange(FoodLevelChangeEvent e) {
-        if (!(e.getEntity() instanceof Player p)) return;
-        if (!pvpActive.contains(p.getUniqueId())) return;
-        e.setCancelled(true);
-    }
-
-    /** Block absorption/regen/health-boost potions while hub PvP is active. */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
-    public void onPotionEffect(EntityPotionEffectEvent e) {
-        if (!(e.getEntity() instanceof Player p)) return;
-        if (!pvpActive.contains(p.getUniqueId())) return;
-        if (e.getAction() != EntityPotionEffectEvent.Action.ADDED
-                && e.getAction() != EntityPotionEffectEvent.Action.CHANGED) {
-            return;
-        }
-        PotionEffectType type = e.getModifiedType();
-        if (type != null && (type.equals(PotionEffectType.ABSORPTION)
-                || type.equals(PotionEffectType.REGENERATION)
-                || type.equals(PotionEffectType.HEALTH_BOOST)
-                || type.equals(PotionEffectType.INSTANT_HEALTH))) {
-            e.setCancelled(true);
-        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
