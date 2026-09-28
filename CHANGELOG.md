@@ -9,6 +9,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Match freeze: apply health/food/sat **once** at countdown start; move-damage unchanged. No hunger locks in matches.
+- Hub/lobby: on PvP off / death → healed and full (no hunger lock). PvP on / match → vanilla sat drain and heal.
+
 ## [HC-Plugins-a0.1.24] - 2026-09-28
 
 Tagged plugins: **API a0.1.15**, **Foundation a0.1.5**, **Hub a0.1.20**, **Iron Legacy a0.3.23**.

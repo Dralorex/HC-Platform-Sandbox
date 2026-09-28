@@ -6,8 +6,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffectType;
 
 /**
- * Shared hub/lobby combat vitals: full health, modest saturation, no absorption.
- * Saturation {@code 6} on the 0–20 scale equals {@code 3} on a 0–10 scale.
+ * One-shot combat vitals. No hunger locks anywhere.
+ *
+ * <ul>
+ *   <li>PvP off / death / match countdown start → healed and full (HP, food 20, sat 6/20)</li>
+ *   <li>PvP on / match → vanilla sat drain and heal; can die</li>
+ * </ul>
  */
 public final class HubCombatVitals {
 
@@ -18,7 +22,7 @@ public final class HubCombatVitals {
     private HubCombatVitals() {
     }
 
-    /** Full health, clear absorption/regen effects, food full, saturation {@link #RESET_SATURATION}. */
+    /** Healed and full: max health, food 20, saturation {@link #RESET_SATURATION}, no absorption. */
     public static void resetAfterCombat(Player p) {
         if (p == null || !p.isOnline()) return;
         clearAbsorptionAndRegen(p);
@@ -28,6 +32,11 @@ public final class HubCombatVitals {
         p.setFoodLevel(RESET_FOOD_LEVEL);
         p.setSaturation(RESET_SATURATION);
         p.setExhaustion(0f);
+    }
+
+    /** Entering PvP: strip free absorption/regen hearts only. */
+    public static void prepareForPvp(Player p) {
+        clearAbsorptionAndRegen(p);
     }
 
     public static void clearAbsorptionAndRegen(Player p) {

@@ -14,8 +14,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.EntityPotionEffectEvent;
-import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -328,14 +326,7 @@ public class GameManager implements Listener {
                         boolean keepAdventure = ws.keepAdventureOnStart();
                         p.setGameMode(keepAdventure ? GameMode.ADVENTURE : GameMode.SURVIVAL);
                     }
-                    p.setFoodLevel(20);
-                    p.setSaturation(6f);
-                    p.setExhaustion(0f);
-                    p.setAbsorptionAmount(0f);
-                    p.removePotionEffect(PotionEffectType.ABSORPTION);
-                    p.removePotionEffect(PotionEffectType.REGENERATION);
-                    p.removePotionEffect(PotionEffectType.HEALTH_BOOST);
-                    p.setHealth(Math.min(20.0, p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue()));
+                    // Health/hunger applied once in beginCountdown — not here and not every tick.
                 }
 
                 if (fromLobbyLaunch && lobbyClearTemplateKey != null) {
@@ -354,6 +345,9 @@ public class GameManager implements Listener {
                     state = State.RUNNING;
                     hardFreezeActive = false;
                     softLeashEndMs = 0L;
+                    for (Player p : plist) {
+                        if (p != null && p.isOnline()) applyMatchStartVitals(p);
+                    }
                     try { plugin.leaderboardSidebar().refreshAll(); } catch (Throwable ignored) {}
                     try { HungerGamesPlugin.get().replenish().startSchedule(); } catch (Throwable ignored) {}
                     
@@ -405,6 +399,23 @@ public class GameManager implements Listener {
         return true;
     }
 
+    /** Full HP, food 20, saturation 6/20, no absorption — called once when hard freeze countdown begins. */
+    private void applyMatchStartVitals(Player p) {
+        p.setFoodLevel(20);
+        p.setSaturation(6f);
+        p.setExhaustion(0f);
+        p.setAbsorptionAmount(0f);
+        p.removePotionEffect(PotionEffectType.ABSORPTION);
+        p.removePotionEffect(PotionEffectType.REGENERATION);
+        p.removePotionEffect(PotionEffectType.HEALTH_BOOST);
+        try {
+            double max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
+            p.setHealth(Math.min(20.0, max));
+        } catch (Throwable ignored) {
+            p.setHealth(20.0);
+        }
+    }
+
     //Tries to evenly distribute spawn locations to be the furthest possible from each other, but with a random starting point
     private List<Location> evenDistribute(List<Location> spots){
         ArrayList<Location> temp = new ArrayList<>(spots);
@@ -447,21 +458,10 @@ public class GameManager implements Listener {
 
     private void beginCountdown(List<Player> plist, World launchWorld) {
         hardFreezeActive = true; // punish moves from now on
+        // Apply combat vitals once at countdown start — never again until match end / next launch.
         for (Player p : plist) {
             if (p == null || !p.isOnline()) continue;
-            p.setFoodLevel(20);
-            p.setSaturation(6f);
-            p.setExhaustion(0f);
-            p.setAbsorptionAmount(0f);
-            p.removePotionEffect(PotionEffectType.ABSORPTION);
-            p.removePotionEffect(PotionEffectType.REGENERATION);
-            p.removePotionEffect(PotionEffectType.HEALTH_BOOST);
-            try {
-                double max = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH).getValue();
-                p.setHealth(Math.min(20.0, max));
-            } catch (Throwable ignored) {
-                p.setHealth(20.0);
-            }
+            applyMatchStartVitals(p);
         }
 
         final int base = activeMatchSettings != null
@@ -790,38 +790,6 @@ public class GameManager implements Listener {
                 mover.setHealth(Math.max(0.0, mover.getHealth() - 1.0));
                 mover.playSound(mover.getLocation(), Sound.ENTITY_PLAYER_HURT, SoundCategory.PLAYERS, 1.0f, 1.0f);
             }
-        }
-    }
-
-    /** No hunger/saturation healing for match participants during FREEZE or RUNNING. */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onRegainHealth(EntityRegainHealthEvent e) {
-        if (!(e.getEntity() instanceof Player p)) return;
-        if (state != State.FREEZE && state != State.RUNNING) return;
-        if (!participants.contains(p.getUniqueId())) return;
-        EntityRegainHealthEvent.RegainReason reason = e.getRegainReason();
-        if (reason == EntityRegainHealthEvent.RegainReason.SATIATED
-                || reason == EntityRegainHealthEvent.RegainReason.REGEN
-                || reason == EntityRegainHealthEvent.RegainReason.EATING) {
-            e.setCancelled(true);
-        }
-    }
-
-    /** During freeze countdown, block absorption/regen potion application so pads start clean. */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onPotionEffect(EntityPotionEffectEvent e) {
-        if (!(e.getEntity() instanceof Player p)) return;
-        if (!hardFreezeActive) return;
-        if (!participants.contains(p.getUniqueId())) return;
-        if (e.getAction() != EntityPotionEffectEvent.Action.ADDED
-                && e.getAction() != EntityPotionEffectEvent.Action.CHANGED) {
-            return;
-        }
-        PotionEffectType type = e.getModifiedType();
-        if (type != null && (type.equals(PotionEffectType.ABSORPTION)
-                || type.equals(PotionEffectType.REGENERATION)
-                || type.equals(PotionEffectType.HEALTH_BOOST))) {
-            e.setCancelled(true);
         }
     }
 

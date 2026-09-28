@@ -27,8 +27,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityPotionEffectEvent;
-import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -42,7 +40,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.RegisteredServiceProvider;
-import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import com.hollowcrown.hub.world.HubCombatVitals;
@@ -120,7 +117,7 @@ public final class HubPreMatchLobbyArenaListener implements Listener {
         arenaState.activateCountdown().remove(id);
         arenaState.deactivateCountdown().remove(id);
         arenaState.pendingDeactivateOnDeath().remove(id);
-        HubCombatVitals.clearAbsorptionAndRegen(p);
+        HubCombatVitals.prepareForPvp(p);
         sendPvpStatusLine(p, "PVP mode Activated", NamedTextColor.RED);
     }
 
@@ -343,34 +340,6 @@ public final class HubPreMatchLobbyArenaListener implements Listener {
                 }
             }
         }.runTask(hub);
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onRegainHealth(EntityRegainHealthEvent e) {
-        if (!(e.getEntity() instanceof Player p)) return;
-        if (!arenaState.pvpActive().contains(p.getUniqueId())) return;
-        EntityRegainHealthEvent.RegainReason reason = e.getRegainReason();
-        if (reason == EntityRegainHealthEvent.RegainReason.SATIATED
-                || reason == EntityRegainHealthEvent.RegainReason.REGEN
-                || reason == EntityRegainHealthEvent.RegainReason.EATING) {
-            e.setCancelled(true);
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onPotionEffect(EntityPotionEffectEvent e) {
-        if (!(e.getEntity() instanceof Player p)) return;
-        if (!arenaState.pvpActive().contains(p.getUniqueId())) return;
-        if (e.getAction() != EntityPotionEffectEvent.Action.ADDED
-                && e.getAction() != EntityPotionEffectEvent.Action.CHANGED) {
-            return;
-        }
-        PotionEffectType type = e.getModifiedType();
-        if (type != null && (type.equals(PotionEffectType.ABSORPTION)
-                || type.equals(PotionEffectType.REGENERATION)
-                || type.equals(PotionEffectType.HEALTH_BOOST))) {
-            e.setCancelled(true);
-        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
