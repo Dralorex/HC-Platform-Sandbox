@@ -33,6 +33,8 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityRegainHealthEvent;
+import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -1028,6 +1030,32 @@ public final class HubWorldManager implements HubWorldApi, Listener {
                 HubCombatVitals.resetAfterCombat(p);
             }
         }.runTask(plugin);
+    }
+
+    /**
+     * Peaceful hub only (PvP off): no hunger/saturation healing.
+     * While hub PvP is on, vanilla sat drain + heal apply.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onRegainHealth(EntityRegainHealthEvent e) {
+        if (!(e.getEntity() instanceof Player p)) return;
+        if (!isInHubProtection(p)) return;
+        if (pvpActive.contains(p.getUniqueId())) return;
+        if (canModifyHub(p)) return;
+        if (HubCombatVitals.isPeacefulHungerLockRegain(e.getRegainReason())) {
+            e.setCancelled(true);
+            e.setAmount(0.0);
+        }
+    }
+
+    /** Peaceful hub only (PvP off): freeze food bar. PvP on = unlocked. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onFoodChange(FoodLevelChangeEvent e) {
+        if (!(e.getEntity() instanceof Player p)) return;
+        if (!isInHubProtection(p)) return;
+        if (pvpActive.contains(p.getUniqueId())) return;
+        if (canModifyHub(p)) return;
+        e.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)

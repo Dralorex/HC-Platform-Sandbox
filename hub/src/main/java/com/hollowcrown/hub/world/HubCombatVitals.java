@@ -3,11 +3,15 @@ package com.hollowcrown.hub.world;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
+import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.potion.PotionEffectType;
 
 /**
- * One-shot combat vitals: full health, food 20, saturation 6/20 (≡ 3/10), no absorption.
- * Call only on PvP off, death, or match countdown start — never every tick, never lock hunger.
+ * One-shot combat vitals + peaceful hub/lobby hunger lock.
+ *
+ * <p>Vitals (full HP, food 20, sat 6/20) apply once on PvP off, death, or match countdown start.
+ * Hunger/health lock applies only in hub or pre-match lobby while PvP is <em>off</em>.
+ * During PvP or a match: no locks — saturation drains and can heal normally.</p>
  */
 public final class HubCombatVitals {
 
@@ -18,7 +22,7 @@ public final class HubCombatVitals {
     private HubCombatVitals() {
     }
 
-    /** Full health, clear absorption, food full, saturation {@link #RESET_SATURATION}. Vanilla drain/regen after this. */
+    /** Full health, clear absorption, food full, saturation {@link #RESET_SATURATION}. */
     public static void resetAfterCombat(Player p) {
         if (p == null || !p.isOnline()) return;
         clearAbsorptionAndRegen(p);
@@ -41,5 +45,13 @@ public final class HubCombatVitals {
         p.removePotionEffect(PotionEffectType.ABSORPTION);
         p.removePotionEffect(PotionEffectType.REGENERATION);
         p.removePotionEffect(PotionEffectType.HEALTH_BOOST);
+    }
+
+    /** True when peaceful hub/lobby should freeze hunger regen (PvP off). */
+    public static boolean isPeacefulHungerLockRegain(EntityRegainHealthEvent.RegainReason reason) {
+        if (reason == null) return true;
+        return reason == EntityRegainHealthEvent.RegainReason.SATIATED
+                || reason == EntityRegainHealthEvent.RegainReason.REGEN
+                || reason == EntityRegainHealthEvent.RegainReason.EATING;
     }
 }
