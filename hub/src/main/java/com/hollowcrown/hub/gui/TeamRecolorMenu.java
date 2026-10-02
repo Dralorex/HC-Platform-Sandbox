@@ -79,8 +79,7 @@ public class TeamRecolorMenu extends HubMenuView {
             return;
         }
 
-        team.sendFakeTeamPackets();
-        TeamManager.sendFakeTeamPacketsTo(team);
+        team.getTeamManagerInstance().markDirtyAndScheduleFlush();
         openAfterCreate(p);
     }
 

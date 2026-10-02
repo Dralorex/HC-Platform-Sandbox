@@ -113,8 +113,7 @@ public final class HubLobbyTeamFormation {
             if(!team.members.contains(uuid) && team.members.size() < teamSizeMax)
                 team.members.add(uuid);
 
-        TeamManager.sendFakeTeamPackets(team);
-        TeamManager.sendFakeTeamPacketsTo(team);
+        teamManagerInstance.markDirtyAndScheduleFlush();
         return Optional.of(team.getName());
     }
 
@@ -152,8 +151,7 @@ public final class HubLobbyTeamFormation {
         if (plugin == null || world == null) {
             return;
         }
-        //plugin.nametags().onTeamRosterChanged(world, java.util.Set.of());
-        TeamManager.getOrCreateWorldInstance(world).sendAllFakeTeamPackets();
+        TeamManager.getOrCreateWorldInstance(world).markDirtyAndScheduleFlush();
     }
 
     private static String prettyColorName(ChatColor c) {

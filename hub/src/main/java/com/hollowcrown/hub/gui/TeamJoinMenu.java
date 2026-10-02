@@ -57,7 +57,8 @@ public class TeamJoinMenu extends HubMenuView {
                 .append(Component.text(team.getName(), TextColor.color(team.color.asRGB()))));
             //HungerGamesPlugin.get().game().applyTeamColors();
             team.members.add(p.getUniqueId());
-            TeamManager.sendFakeTeamPackets(team);
+            teamManagerInstance.markDirtyAndScheduleFlush();
+            TeamManager.sendFakeTeamPacketsTo(p);
             p.closeInventory();
         } catch (IllegalStateException ex) {
             p.sendMessage(Component.text(ex.getMessage() != null ? ex.getMessage() : "Could not join team.", NamedTextColor.RED));

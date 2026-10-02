@@ -1,23 +1,22 @@
 package com.hollowcrown.hub.team;
 
-import com.hollowcrown.hub.HollowCrownHubPlugin;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 
 public class TeamListener implements Listener {
 
     @EventHandler
     public void playerJoin(PlayerJoinEvent event){
-        //HollowCrownHubPlugin.getPlugin(HollowCrownHubPlugin.class).getLogger().info("Sending team data to " + event.getPlayer().getName());
-        //HollowCrownHubPlugin plugin = HollowCrownHubPlugin.getPlugin(HollowCrownHubPlugin.class);
-        //Bukkit.getScheduler().runTaskLater(plugin, () -> {
-        //    TeamManager.sendFakeTeamPacketsTo(event.getPlayer());
-        //    plugin.getLogger().info("Sending team data to " + event.getPlayer().getName() + ", loader: " + TeamManager.class.getClassLoader() + " hash: " + System.identityHashCode(TeamManager.instances) + ", all instances: " + TeamManager.instances);
-        //}, 2);
+        // Sync this viewer only — do not broadcast sendAllFakeTeamPackets on join.
+        TeamManager.sendFakeTeamPacketsTo(event.getPlayer());
+    }
+
+    @EventHandler
+    public void playerChangedWorld(PlayerChangedWorldEvent event){
         TeamManager.sendFakeTeamPacketsTo(event.getPlayer());
     }
 

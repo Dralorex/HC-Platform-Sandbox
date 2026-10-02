@@ -136,9 +136,7 @@ public class TeamColorMenu extends HubMenuView {
         t.members.add(owner);
         p.sendMessage(Component.text("Created team ", NamedTextColor.GREEN)
                 .append(Component.text(teamName, TextColor.color(picked.asRGB()))));
-        //plug.game().applyTeamColors();
-        t.sendFakeTeamPackets();
-        TeamManager.sendFakeTeamPacketsTo(t);
+        teamManagerInstance.markDirtyAndScheduleFlush();
         openAfterCreate(p);
     }
 

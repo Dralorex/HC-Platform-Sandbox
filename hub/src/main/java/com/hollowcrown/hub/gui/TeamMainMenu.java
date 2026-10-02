@@ -150,8 +150,7 @@ public class TeamMainMenu extends HubMenuView {
                             p.sendMessage(Component.text("Cannot rename team", NamedTextColor.RED));
                             return;
                         }
-                        my.sendFakeTeamPackets();
-                        TeamManager.sendFakeTeamPacketsTo(my);
+                        my.getTeamManagerInstance().markDirtyAndScheduleFlush();
                         p.openInventory(new TeamMainMenu(p).getInventory());
                     }), () -> org.bukkit.Bukkit.getScheduler().runTask(HollowCrownHubPlugin.get(), () -> {
                         p.sendMessage(Component.text("Team name not entered.", NamedTextColor.RED));
@@ -180,16 +179,16 @@ public class TeamMainMenu extends HubMenuView {
                 teamManagerInstance.teams.remove(my.getName().toLowerCase(Locale.ROOT));
                 teamManagerInstance.takenColors.remove(my.color);
                 FakeTeam fakeTeam = new FakeTeam(my.getName());
-                for(Player player : Bukkit.getOnlinePlayers())
+                for(Player player : teamManagerInstance.audiencePlayers())
                     fakeTeam.sendRemovalTo(player);
             }
             else{
                 p.sendMessage(Component.text("Team left.", NamedTextColor.GREEN));
                 FakeTeam fakeTeam = new FakeTeam(my.getName());
-                for(Player player : Bukkit.getOnlinePlayers())
+                for(Player player : teamManagerInstance.audiencePlayers())
                     fakeTeam.sendPlayerRemovalTo(player, p.getName());
             }
-            TeamManager.sendFakeTeamPackets(my);
+            teamManagerInstance.markDirtyAndScheduleFlush();
             TeamManager.sendFakeTeamPacketsTo(p);
             p.openInventory(new TeamMainMenu(p).getInventory());
             return;

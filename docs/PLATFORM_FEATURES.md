@@ -207,6 +207,9 @@ HOLLOWCROWNHUB — Teams (Hub-owned, FakeTeamAPI)
 TeamManager (per-world instances)
   Status: Implemented
   Create / join / invite / leave / recolor. UUID team ids. Depends on FakeTeamAPI.
+  FakeTeam sync: dirty-flag + coalesced flush (no idle heartbeat spam); packets scoped
+  to the instance world (not server-wide getOnlinePlayers). Join/world-change syncs
+  that viewer only. Ally/rival still use targeted sendFakeTeamPackets.
 
 Team GUIs
   Status: Implemented
