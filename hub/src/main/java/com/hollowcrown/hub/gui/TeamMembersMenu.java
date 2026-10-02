@@ -215,9 +215,9 @@ public class TeamMembersMenu extends HubMenuView {
         player.sendMessage(Component.text("You have been removed from ").append(Component.text(team.getName(), TextColor.color(team.color.asRGB()))));
         team.members.remove(player.getUniqueId());
         FakeTeam fakeTeam = new FakeTeam(team.getName());
-        for(Player otherPlayer : Bukkit.getOnlinePlayers())
+        for(Player otherPlayer : team.getTeamManagerInstance().audiencePlayers())
             fakeTeam.sendPlayerRemovalTo(otherPlayer, player.getName());
-        TeamManager.sendFakeTeamPackets(team);
+        team.getTeamManagerInstance().markDirtyAndScheduleFlush();
         TeamManager.sendFakeTeamPacketsTo(player);
     }
 }

@@ -104,7 +104,8 @@ public class TeamManager {
         for(TeamManager.TeamManagerInstance teamManagerInstance : TeamManager.instances.values()) {
             if(!teamManagerInstance.gameNotRunning)
                 teamManagerInstance.verifyTeamIntegrity();
-            teamManagerInstance.sendAllFakeTeamPackets();
+            // Only resync FakeTeam packets when roster/relationship state actually changed.
+            teamManagerInstance.flushIfDirty();
 
             //Claim team leadership prompt.
             //Because I thought it would be funny, I made the messages get increasingly human as time goes on.
@@ -212,6 +213,10 @@ public class TeamManager {
         public int maxPlayersPerTeam = 2;
         public int maxAllies = 2;
         public int maxRivals = 2;
+        /** When true, FakeTeam packets need a resync for this instance. */
+        private boolean dirty = false;
+        /** Ensures at most one coalesced flush is scheduled per tick. */
+        private boolean flushScheduled = false;
 
         public TeamManagerInstance(Object identifier) {
             this.identifier = identifier;
@@ -220,6 +225,48 @@ public class TeamManager {
 
         public Object getIdentifier() {
             return identifier;
+        }
+
+        public void markDirty() {
+            dirty = true;
+        }
+
+        public boolean isDirty() {
+            return dirty;
+        }
+
+        /**
+         * Mark dirty and schedule at most one {@link #sendAllFakeTeamPackets()} on the next server tick.
+         * Prefer this over calling both {@link TeamManager#sendFakeTeamPackets(Team)} and
+         * {@link TeamManager#sendFakeTeamPacketsTo(Team)} for the same action.
+         */
+        public void markDirtyAndScheduleFlush() {
+            dirty = true;
+            if (flushScheduled) {
+                return;
+            }
+            flushScheduled = true;
+            Bukkit.getScheduler().runTask(HollowCrownHubPlugin.get(), () -> {
+                flushScheduled = false;
+                flushIfDirty();
+            });
+        }
+
+        /** Send all FakeTeam packets for this instance if dirty, then clear the flag. */
+        public boolean flushIfDirty() {
+            if (!dirty) {
+                return false;
+            }
+            dirty = false;
+            return TeamManager.sendAllFakeTeamPackets(this);
+        }
+
+        /**
+         * Players who should receive this instance's FakeTeam packets: same world when the
+         * identifier is a {@link World}, otherwise online members of teams in this instance.
+         */
+        public Collection<Player> audiencePlayers() {
+            return TeamManager.audiencePlayers(this);
         }
 
         public Team findPlayerTeam(Player player){
@@ -239,6 +286,7 @@ public class TeamManager {
 
         public void clearAllTeams(){
             Server server = Bukkit.getServer();
+            Collection<Player> audience = audiencePlayers();
             for(Team team : teams.values()) {
                 List<Player> players = new ArrayList<>();
                 for (UUID member : team.members){
@@ -250,11 +298,12 @@ public class TeamManager {
                 }
                 FakeTeam fakeTeam = new FakeTeam(team.name)
                         .players(players);
-                for(Player player : Bukkit.getOnlinePlayers()){
+                for(Player player : audience){
                     fakeTeam.sendRemovalTo(player);
                 }
             }
             teams.clear();
+            dirty = false;
         }
 
         public Color getRandomUnusedColor(){
@@ -324,6 +373,7 @@ public class TeamManager {
             teamManagerInstance.teams.put(name.toLowerCase(Locale.ROOT), this);
             Instant now = Instant.now();
             timestamp = now.getNano() + (now.getEpochSecond() * 1000000000);
+            teamManagerInstance.markDirty();
         }
 
         public Team(String name, Color color, TeamManagerInstance teamManagerInstance){
@@ -334,6 +384,7 @@ public class TeamManager {
             teamManagerInstance.teams.put(name.toLowerCase(Locale.ROOT), this);
             Instant now = Instant.now();
             timestamp = now.getNano() + (now.getEpochSecond() * 1000000000);
+            teamManagerInstance.markDirty();
         }
 
         /**
@@ -346,6 +397,7 @@ public class TeamManager {
                 return false;
             this.members.clear();
             members.forEach((player -> this.members.add(player.getUniqueId())));
+            teamManagerInstance.markDirty();
             return true;
         }
 
@@ -368,6 +420,7 @@ public class TeamManager {
             teamManagerInstance.teams.remove(name.toLowerCase());
             teamManagerInstance.teams.put(newName.toLowerCase(), this);
             name = newName;
+            teamManagerInstance.markDirty();
             return true;
         }
 
@@ -383,6 +436,7 @@ public class TeamManager {
             teamManagerInstance.takenColors.remove(this.color);
             teamManagerInstance.takenColors.add(color);
             this.color = color;
+            teamManagerInstance.markDirty();
             return true;
         }
 
@@ -452,6 +506,7 @@ public class TeamManager {
             other.rivals.remove(this);
             allies.add(other);
             other.allies.add(this);
+            teamManagerInstance.markDirty();
             //Remove any invites
             allianceInvites.removeIf((e) -> (e.offeringTeam == other && e.receivingTeam == this) || (e.offeringTeam == this && e.receivingTeam == other));
             for(UUID uuid : members) {
@@ -476,6 +531,8 @@ public class TeamManager {
             }
             TeamManager.sendFakeTeamPackets(this);
             TeamManager.sendFakeTeamPackets(other);
+            // Immediate targeted sends already synced viewers; avoid a redundant heartbeat flush.
+            teamManagerInstance.dirty = false;
             return true;
         }
 
@@ -483,6 +540,7 @@ public class TeamManager {
             if(allies.contains(other)){
                 allies.remove(other);
                 other.allies.remove(this);
+                teamManagerInstance.markDirty();
                 for(UUID uuid : members) {
                     Player player = Bukkit.getServer().getPlayer(uuid);
                     if (player != null) {
@@ -504,6 +562,7 @@ public class TeamManager {
                 }
                 TeamManager.sendFakeTeamPackets(this);
                 TeamManager.sendFakeTeamPackets(other);
+                teamManagerInstance.dirty = false;
             }
         }
 
@@ -517,6 +576,7 @@ public class TeamManager {
             if(!rivals.contains(rival)){
                 rivals.add(rival);
                 removeAlly(rival);
+                teamManagerInstance.markDirty();
                 for(UUID uuid : rival.members) {
                     Player player = Bukkit.getServer().getPlayer(uuid);
                     if (player != null) {
@@ -537,12 +597,14 @@ public class TeamManager {
                 }
                 TeamManager.sendFakeTeamPackets(this);
                 TeamManager.sendFakeTeamPackets(rival);
+                teamManagerInstance.dirty = false;
             }
         }
 
         public void removeRival(Team rival) {
             if (rivals.contains(rival)) {
                 rivals.remove(rival);
+                teamManagerInstance.markDirty();
                 for (UUID uuid : rival.members) {
                     Player player = Bukkit.getServer().getPlayer(uuid);
                     if (player != null) {
@@ -563,6 +625,7 @@ public class TeamManager {
                 }
                 TeamManager.sendFakeTeamPackets(this);
                 TeamManager.sendFakeTeamPackets(rival);
+                teamManagerInstance.dirty = false;
             }
         }
 
@@ -848,26 +911,35 @@ public class TeamManager {
         TeamManagerInstance instance = reference instanceof TeamManagerInstance teamManagerInstance ? teamManagerInstance : instances.get(reference);
         if(instance == null)
             return false;
+        boolean changed = false;
         for(Team team : instance.teams.values()){
-            for(UUID member : team.members){
+            for(UUID member : new ArrayList<>(team.members)){
                 Team best = team;
                 for(Team other : instance.teams.values()){
                     if(other == best)
                         continue;
                     if(other.members.contains(member)){
-                        if(other.timestamp <= best.timestamp)
+                        if(other.timestamp <= best.timestamp) {
                             other.members.remove(member);
+                            changed = true;
+                        }
                         else{
                             best.members.remove(member);
                             best = other;
+                            changed = true;
                         }
                     }
                 }
             }
         }
         //Remove empty teams
+        int before = instance.teams.size();
         instance.teams.entrySet().removeIf(e -> e.getValue().members.isEmpty());
+        if(instance.teams.size() != before)
+            changed = true;
 
+        if(changed)
+            instance.markDirty();
         return true;
     }
 
@@ -928,11 +1000,38 @@ public class TeamManager {
         for(Team team : instance.teams.values()){
             team.allies.clear();
         }
-        for(Player player : Bukkit.getServer().getOnlinePlayers())
+        instance.markDirtyAndScheduleFlush();
+        for(Player player : audiencePlayers(instance))
             player.sendMessage(Component.text("All alliances have been disbanded!", TextColor.color(255, 85, 85)));
         if(disallowFutureAlliances)
             instance.allowAlliances = false;
         return true;
+    }
+
+    /**
+     * Players who should receive FakeTeam packets for an instance.
+     * World-keyed instances only reach players in that world; other identifiers fall back to
+     * online members of teams in the instance (never the entire server).
+     */
+    public static Collection<Player> audiencePlayers(TeamManagerInstance instance) {
+        if (instance == null) {
+            return List.of();
+        }
+        Object id = instance.getIdentifier();
+        if (id instanceof World world) {
+            return world.getPlayers();
+        }
+        LinkedHashSet<Player> out = new LinkedHashSet<>();
+        Server server = Bukkit.getServer();
+        for (Team team : instance.teams.values()) {
+            for (UUID uuid : team.members) {
+                Player player = server.getPlayer(uuid);
+                if (player != null) {
+                    out.add(player);
+                }
+            }
+        }
+        return out;
     }
 
     /**
@@ -942,6 +1041,9 @@ public class TeamManager {
      * @see TeamManagerInstance
      */
     public static boolean sendFakeTeamPackets(Team team){
+        if (team == null || team.teamManagerInstance == null) {
+            return false;
+        }
         Server server = Bukkit.getServer();
         ArrayList<Player> players = new ArrayList<>(team.members.size());
         for(UUID uuid : team.members){
@@ -949,8 +1051,6 @@ public class TeamManager {
             if(player != null)
                 players.add(player);
         }
-        //I finally fixed it!
-        //Bukkit.getLogger().info("teamManagerInstance: " + team.teamManagerInstance + ", ref: " + team.teamManagerInstance.getIdentifier() + ", loader: " + TeamManager.class.getClassLoader() + " hash: " + System.identityHashCode(TeamManager.instances) + ", all instances: " + instances);
         //Keep track of which players have already been sent a customized team packet
         ArrayList<Player> inTeams = new ArrayList<>(team.getTeamManagerInstance().maxPlayersPerTeam * team.teamManagerInstance.teams.size());
         for(Team otherTeam : team.teamManagerInstance.teams.values()){
@@ -966,12 +1066,12 @@ public class TeamManager {
                 }
             }
         }
-        //Send any non-teamed player (spectators) a packet that declares this team to them without enemy/ally coloration.
+        // Spectators / unteamed players in this instance's world only (not the whole server).
         FakeTeam fake = new FakeTeam(team.name)
                 .color(FakeTeam.PlayerNameColor.WHITE)
                 .stringPrefixColored("[" + team.name + "] ", team.color)
                 .players(players);
-        for(Player player : server.getOnlinePlayers()){
+        for(Player player : audiencePlayers(team.teamManagerInstance)){
             if(!inTeams.contains(player))
                 fake.sendTo(player);
         }
@@ -1068,21 +1168,20 @@ public class TeamManager {
             return false;
         for(Team team : instance.teams.values())
             sendFakeTeamPackets(team);
+        instance.dirty = false;
         return true;
     }
 
     public static void nukeTeamsForWorld(World world){
+        Collection<Player> audience = world.getPlayers();
         FakeTeam nuke = new FakeTeam("tempTeamToTerrorizeTemporaryTeamTitles")
-                .players(world.getPlayers());
-        //Bukkit.getLogger().info("Nuking teams with team containing " + world.getPlayers());
-        for(Player player : Bukkit.getOnlinePlayers()){
+                .players(audience);
+        for(Player player : audience){
             nuke.sendTo(player);
-            //Bukkit.getLogger().info("Sending nuke to " + player);
         }
         Bukkit.getScheduler().runTaskLater(HollowCrownHubPlugin.get(), () -> {
-            for(Player player : Bukkit.getOnlinePlayers()){
+            for(Player player : world.getPlayers()){
                 nuke.sendRemovalTo(player);
-                //Bukkit.getLogger().info("Sending nuke removal to " + player);
             }
         }, 5);
     }

@@ -13,6 +13,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `docs/ARCHITECTURE_FLOW.md` — full architecture flowchart: plugin/service graphs, match thread, and every Java file’s purpose + connections (api, foundation, hub, iron-legacy).
 
+### Changed
+
+- Hub TeamManager FakeTeam sync: dirty-flag heartbeat (idle steady-state ~0 team packets), world-scoped audiences instead of server-wide `getOnlinePlayers`, coalesced per-tick flush on roster/relationship edits, and per-player sync on join/world change. Relationship colors and leadership prompts unchanged.
+
 ### Fixed
 
 - Match freeze: apply health/food/sat **once** at countdown start; move-damage unchanged. No hunger locks in matches.
